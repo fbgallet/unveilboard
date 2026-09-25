@@ -7,6 +7,7 @@ import {
   Rectangle2d,
   ShapeUtil,
   T,
+  createShapePropsMigrationSequence,
   resizeBox,
   useValue,
   type TLResizeInfo,
@@ -24,9 +25,14 @@ declare module 'tldraw' {
 
 export type SpotlightShape = TLShape<typeof SPOTLIGHT_TYPE>
 
+// Migrations des propriétés, déclarées dès la première version. Pour faire évoluer la forme :
+// ids = createShapePropsMigrationIds(SPOTLIGHT_TYPE, { AddX: 1 }), puis { id: ids.AddX, up, down }.
+const spotlightMigrations = createShapePropsMigrationSequence({ sequence: [] })
+
 export class SpotlightShapeUtil extends ShapeUtil<SpotlightShape> {
   static override type = SPOTLIGHT_TYPE
   static override props = { w: T.number, h: T.number }
+  static override migrations = spotlightMigrations
 
   getDefaultProps(): SpotlightShape['props'] {
     return { w: 480, h: 300 }
