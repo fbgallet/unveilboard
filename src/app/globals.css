@@ -1,26 +1,319 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-serif-display), Georgia, serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overscroll-behavior: none;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #fff;
+  color: #18181b;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* ---------- Boutons du panneau ---------- */
+
+@layer components {
+  .btn,
+  .btn-primary,
+  .btn-xs {
+    @apply rounded-md border px-3 py-1.5 font-medium transition disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn {
+    @apply border-zinc-300 bg-white hover:bg-zinc-100;
+  }
+  .btn-primary {
+    @apply border-amber-500 bg-amber-400 text-white hover:bg-amber-500;
+  }
+  .btn-xs {
+    @apply border-zinc-200 bg-white px-2 py-0.5 text-xs hover:bg-amber-50;
+  }
+  .pbtn {
+    @apply flex h-8 w-8 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200/70 hover:text-stone-900 disabled:opacity-30 disabled:hover:bg-transparent;
+  }
+  .pbtn-active {
+    @apply bg-amber-100 text-amber-700 hover:bg-amber-200 hover:text-amber-800;
+  }
+  .pill {
+    @apply rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide;
+  }
+  .pill-show { @apply bg-emerald-100 text-emerald-800; }
+  .pill-hide { @apply bg-zinc-200 text-zinc-700; }
+  .pill-dim { @apply bg-stone-200 text-stone-600; }
+  .pill-undim { @apply bg-sky-100 text-sky-800; }
+  .pill-highlight { @apply bg-amber-100 text-amber-800; }
+  .pill-focus { @apply bg-violet-100 text-violet-800; }
+  kbd {
+    @apply rounded border border-zinc-300 bg-white px-1 font-mono text-[10px];
+  }
+}
+
+/* ---------- Pastilles d'étape (mode édition) ---------- */
+
+.step-badge {
+  position: absolute;
+  z-index: 100000;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: white;
+  font: 700 12px/22px var(--font-geist-sans), sans-serif;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+}
+.step-badge-active {
+  background: #b45309;
+  outline: 3px solid #fde68a;
+}
+
+/* ---------- Mode présentation ---------- */
+
+/* Pas d'interface tldraw pendant la présentation, sauf document déverrouillé. */
+.studio[data-mode='present'][data-unlocked='false'] .tlui-layout {
+  display: none;
+}
+/* Déverrouillé : la barre de présentation passe au-dessus de la barre d'outils tldraw. */
+.studio[data-mode='present'][data-unlocked='true'] .progress {
+  bottom: 64px;
+  background: none;
+}
+
+/* Rattachement rapide de la sélection (document déverrouillé) */
+.quick-assign {
+  bottom: 116px;
+  animation: pres-rise 200ms ease-out both;
+}
+.qa-btn {
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 150ms;
+}
+.qa-btn:hover:not(:disabled) {
+  background: #f5f5f4;
+}
+.qa-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.qa-btn-primary {
+  background: #fbbf24;
+  color: white;
+}
+.qa-btn-primary:hover:not(:disabled) {
+  background: #f59e0b;
+}
+
+/* Réglages du laser */
+.laser-caret {
+  display: flex;
+  height: 32px;
+  width: 14px;
+  align-items: center;
+  justify-content: center;
+  margin-left: -4px;
+  border-radius: 4px;
+  color: #a8a29e;
+}
+.laser-caret:hover {
+  color: #1c1917;
+  background: rgb(231 229 228 / 0.7);
+}
+.laser-popover {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  translate: -50% 0;
+  width: 240px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #e7e5e4;
+  background: rgb(255 255 255 / 0.97);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.14);
+  color: #44403c;
+  animation: pres-rise 160ms ease-out both;
+}
+.lp-preview {
+  display: block;
+  width: 100%;
+  height: 44px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  background: #1c1917;
+  fill: none;
+  stroke-linecap: round;
+  overflow: visible;
+}
+.lp-label {
+  display: flex;
+  justify-content: space-between;
+  margin: 10px 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #78716c;
+}
+.lp-label span {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #44403c;
+  font-variant-numeric: tabular-nums;
+}
+.lp-swatch {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 2px solid white;
+  outline: 1px solid #d6d3d1;
+  cursor: pointer;
+}
+.lp-swatch-active {
+  outline: 2px solid #1c1917;
+}
+.lp-custom {
+  background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+  overflow: hidden;
+}
+.lp-custom input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.lp-range {
+  width: 100%;
+  accent-color: #f59e0b;
+}
+.lp-reset {
+  margin-top: 10px;
+  font-size: 11px;
+  color: #78716c;
+  text-decoration: underline dotted;
+}
+.lp-reset:hover {
+  color: #1c1917;
+}
+
+/* Poignée de redimensionnement du panneau de narration */
+.resize-handle {
+  position: absolute;
+  inset: 0 auto 0 -4px;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 10;
+}
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  inset: 0 3px;
+  background: transparent;
+  transition: background 150ms;
+}
+.resize-handle:hover::after,
+body.is-resizing .resize-handle::after {
+  background: #f59e0b;
+}
+body.is-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* Boutons de présentation : discrets, visibles au survol. */
+.progress .tools {
+  opacity: 0.45;
+  transition: opacity 200ms;
+}
+.progress:hover .tools,
+.progress .tools:focus-within,
+.progress .tools:has(.laser-popover) {
+  opacity: 1;
+}
+
+.tl-shape.pres {
+  transition:
+    opacity 450ms ease,
+    filter 450ms ease;
+}
+.tl-shape.pres-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.tl-shape.pres-dim {
+  opacity: 0.18 !important;
+  filter: grayscale(1);
+}
+.tl-shape.pres-hl {
+  filter: drop-shadow(0 0 6px rgb(251 191 36 / 0.95)) drop-shadow(0 0 18px rgb(251 191 36 / 0.55));
+}
+
+/* Effets d'entrée */
+.tl-shape.pres-enter-fade {
+  animation: pres-fade 550ms ease-out both;
+}
+.tl-shape.pres-enter-rise {
+  animation: pres-rise 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.tl-shape.pres-enter-draw {
+  transition: none;
+  animation: pres-draw-r 800ms ease-in-out both;
+}
+.tl-shape.pres-enter-draw.pres-dir-l { animation-name: pres-draw-l; }
+.tl-shape.pres-enter-draw.pres-dir-d { animation-name: pres-draw-d; }
+.tl-shape.pres-enter-draw.pres-dir-u { animation-name: pres-draw-u; }
+
+@keyframes pres-fade {
+  from { opacity: 0; }
+}
+@keyframes pres-rise {
+  from { opacity: 0; translate: 0 24px; }
+}
+/* Découpe calculée à partir de la géométrie réelle (voir drawClip dans adapter.ts). */
+@keyframes pres-draw-r {
+  from { clip-path: inset(var(--clip-t) var(--clip-start) var(--clip-b) var(--clip-l)); }
+  to { clip-path: inset(var(--clip-t) var(--clip-r) var(--clip-b) var(--clip-l)); }
+}
+@keyframes pres-draw-l {
+  from { clip-path: inset(var(--clip-t) var(--clip-r) var(--clip-b) var(--clip-start)); }
+  to { clip-path: inset(var(--clip-t) var(--clip-r) var(--clip-b) var(--clip-l)); }
+}
+@keyframes pres-draw-d {
+  from { clip-path: inset(var(--clip-t) var(--clip-r) var(--clip-start) var(--clip-l)); }
+  to { clip-path: inset(var(--clip-t) var(--clip-r) var(--clip-b) var(--clip-l)); }
+}
+@keyframes pres-draw-u {
+  from { clip-path: inset(var(--clip-start) var(--clip-r) var(--clip-b) var(--clip-l)); }
+  to { clip-path: inset(var(--clip-t) var(--clip-r) var(--clip-b) var(--clip-l)); }
+}
+
+/* Narration : le texte glisse à chaque changement d'étape. */
+.narration-body {
+  animation: pres-rise 500ms ease-out both;
+}
+
+.progress {
+  background: linear-gradient(to top, rgb(255 255 255 / 0.95), rgb(255 255 255 / 0));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tl-shape.pres,
+  .tl-shape[class*='pres-enter'],
+  .narration-body {
+    animation: none !important;
+    transition: none !important;
+  }
 }
