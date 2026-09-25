@@ -60,6 +60,9 @@ export function storeValue(key: string, value: number | boolean) {
 /** Document modifiable pendant la présentation (cadenas ouvert). */
 export const editUnlockedAtom = atom<boolean>('editUnlocked', false)
 
+/** Nœuds d'arbre repliés et visibles à l'étape courante (pastilles « +n »). */
+export const foldedBadgesAtom = atom<string[]>('foldedBadges', [])
+
 /** Étape sélectionnée dans le panneau d'édition. */
 export const activeStepIdAtom = atom<string | null>('activeStepId', null)
 

@@ -1,4 +1,4 @@
-import type { Effect, Sequence, ShapeRef, Step } from './types'
+import type { Effect, Sequence, ShapeRef, Step, StepActionType } from './types'
 
 export type Visibility = 'visible' | 'hidden' | 'dim'
 
@@ -7,17 +7,23 @@ export interface ShapeState {
   highlighted: boolean
   /** Effet d'entrée à jouer si l'objet apparaît à l'étape courante. */
   entering?: Effect
+  /** Nœud d'arbre dont la branche est repliée. */
+  folded?: boolean
 }
 
 export interface ComputeOptions {
   /** Résout une liste de cibles (ex. : un cadre → ses enfants). */
   resolve?: (refs: ShapeRef[]) => ShapeRef[]
   /**
-   * Objets non gérés par la séquence dont la visibilité dépend d'autres objets
-   * (ex. : une flèche liée à deux boîtes). Un objet dépendant est caché si l'une
-   * de ses dépendances l'est, atténué si l'une l'est.
+   * Objets dont la visibilité dépend d'autres objets (ex. : une flèche liée à deux boîtes).
+   * Un objet dépendant est caché si l'une de ses dépendances l'est ; s'il n'est pas géré
+   * par la séquence, il est aussi atténué si l'une l'est.
    */
   dependencies?: Map<ShapeRef, ShapeRef[]>
+  /** Arbres : parent de chaque nœud. Un nœud est caché si un ancêtre est caché ou replié. */
+  tree?: Map<ShapeRef, ShapeRef>
+  /** Nœuds repliés dans le document (état de départ, modifié par fold / unfold). */
+  folded?: Set<ShapeRef>
 }
 
 export type Stage = Map<ShapeRef, ShapeState>
@@ -49,7 +55,11 @@ export function computeStage(seq: Sequence, index: number, opts: ComputeOptions 
     stage.set(id, { ...prev, ...patch })
   }
 
-  for (const id of managedShapes(seq, resolve)) set(id, { visibility: 'hidden' })
+  const managed = managedShapes(seq, resolve)
+  for (const id of managed) set(id, { visibility: 'hidden' })
+  const folded = new Set(opts.folded)
+  /** Nœuds dépliés à l'étape courante : leurs descendants entrent en fondu. */
+  const unfoldedNow = new Set<ShapeRef>()
 
   const last = Math.min(index, seq.steps.length - 1)
   for (let i = 0; i <= last; i++) {
@@ -76,6 +86,14 @@ export function computeStage(seq: Sequence, index: number, opts: ComputeOptions 
             if (stage.get(id)?.visibility === 'dim') set(id, { visibility: 'visible' })
           })
           break
+        case 'fold':
+          ids.forEach((id) => folded.add(id))
+          break
+        case 'unfold':
+          ids.forEach((id) => {
+            if (folded.delete(id) && isCurrent) unfoldedNow.add(id)
+          })
+          break
         // highlight et focus sont transitoires : traités après la boucle.
       }
     }
@@ -83,20 +101,63 @@ export function computeStage(seq: Sequence, index: number, opts: ComputeOptions 
     if (!isCurrent) for (const [id, s] of stage) if (s.entering) stage.set(id, { ...s, entering: undefined })
   }
 
+  if (opts.tree) applyTree(stage, opts.tree, folded, unfoldedNow, managed)
+
   if (opts.dependencies) {
     for (const [id, deps] of opts.dependencies) {
-      if (stage.has(id)) continue
+      const own = stage.get(id)
       const states = deps.map((d) => stage.get(d)?.visibility ?? 'visible')
-      if (states.includes('hidden')) set(id, { visibility: 'hidden' })
-      else if (states.includes('dim')) set(id, { visibility: 'dim' })
+      if (states.includes('hidden')) {
+        set(id, { visibility: 'hidden', entering: undefined })
+        continue
+      }
+      if (own?.visibility === 'hidden') continue
+      if (!own && states.includes('dim')) set(id, { visibility: 'dim' })
       // Une flèche qui dépend d'un objet entrant entre avec lui.
       const entering = deps.map((d) => stage.get(d)?.entering).find(Boolean)
-      if (entering && !states.includes('hidden')) set(id, { entering: 'fade' })
+      if (entering && !own?.entering) set(id, { entering: 'fade' })
     }
   }
 
   if (last >= 0) applyTransient(seq.steps[last], stage, resolve)
   return stage
+}
+
+/**
+ * Contrainte de parenté : un nœud est caché si un ancêtre est caché ou replié.
+ * Un nœud non géré par la séquence apparaît avec son parent (même effet) ;
+ * les nœuds révélés par un dépliage à l'étape courante entrent en fondu.
+ */
+function applyTree(
+  stage: Stage,
+  parent: Map<ShapeRef, ShapeRef>,
+  folded: Set<ShapeRef>,
+  unfoldedNow: Set<ShapeRef>,
+  managed: Set<ShapeRef>
+) {
+  const done = new Set<ShapeRef>()
+  const visit = (id: ShapeRef, trail: Set<ShapeRef>) => {
+    if (done.has(id) || trail.has(id)) return
+    trail.add(id)
+    const p = parent.get(id)
+    if (p) {
+      visit(p, trail)
+      const ps = stage.get(p)
+      const own = stage.get(id) ?? { visibility: 'visible' as const, highlighted: false }
+      if (ps?.visibility === 'hidden' || folded.has(p)) {
+        stage.set(id, { ...own, visibility: 'hidden', entering: undefined })
+      } else if (own.visibility !== 'hidden' && !own.entering) {
+        const entering = !managed.has(id) && ps?.entering ? ps.entering : unfoldedNow.has(p) ? 'fade' : undefined
+        if (entering) stage.set(id, { ...own, entering })
+      }
+    }
+    done.add(id)
+  }
+  for (const id of parent.keys()) visit(id, new Set())
+  for (const id of folded) {
+    const s = stage.get(id)
+    stage.set(id, { ...(s ?? { visibility: 'visible', highlighted: false }), folded: true })
+  }
 }
 
 function applyTransient(step: Step, stage: Stage, resolve: (r: ShapeRef[]) => ShapeRef[]) {
@@ -115,7 +176,11 @@ function applyTransient(step: Step, stage: Stage, resolve: (r: ShapeRef[]) => Sh
     if (!focus.has(id) && s.visibility === 'visible') stage.set(id, { ...s, visibility: 'dim' })
   }
   stage.set(FOCUS_MARKER, { visibility: 'dim', highlighted: false })
-  for (const id of focus) stage.set(id, { ...(stage.get(id) ?? { highlighted: false }), visibility: 'visible' })
+  // Un focus ne révèle pas un objet caché (ex. : dans une branche repliée).
+  for (const id of focus) {
+    const s = stage.get(id) ?? { visibility: 'visible' as const, highlighted: false }
+    if (s.visibility !== 'hidden') stage.set(id, { ...s, visibility: 'visible' })
+  }
 }
 
 /**
@@ -130,14 +195,21 @@ export function stateOf(stage: Stage, id: ShapeRef): ShapeState {
   return { visibility: stage.has(FOCUS_MARKER) ? 'dim' : 'visible', highlighted: false }
 }
 
-/** Objets que la caméra doit cadrer en mode « suivre » pour une étape donnée. */
-export function stepFocusTargets(step: Step, resolve = identity): ShapeRef[] {
-  const priority = ['focus', 'show', 'highlight'] as const
-  for (const type of priority) {
-    const ids = step.actions.filter((a) => a.type === type).flatMap((a) => resolve(a.targets))
-    if (ids.length) return ids
+/**
+ * Objets que la caméra doit cadrer en mode « suivre » pour une étape donnée :
+ * les cibles de l'action prioritaire, et (sauf focus) tout ce qui entre à cette étape,
+ * par exemple les nœuds qui apparaissent avec leur parent ou qu'un dépliage révèle.
+ */
+export function stepFocusTargets(step: Step, resolve = identity, stage?: Stage): ShapeRef[] {
+  const targets = (type: StepActionType) => step.actions.filter((a) => a.type === type).flatMap((a) => resolve(a.targets))
+  const focus = targets('focus')
+  if (focus.length) return focus
+  const entering = stage ? [...stage].filter(([, s]) => s.entering && s.visibility !== 'hidden').map(([id]) => id) : []
+  for (const type of ['show', 'unfold', 'highlight'] as const) {
+    const ids = targets(type)
+    if (ids.length) return [...new Set([...ids, ...entering])]
   }
-  return []
+  return entering
 }
 
 /**

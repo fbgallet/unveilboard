@@ -6,6 +6,7 @@ import { computeStage, latestShown, stateOf, stepFocusTargets, type Stage } from
 import { migrateSequence } from '../sequence/migrate'
 import type { Sequence, ShapeRef, StepCamera } from '../sequence/types'
 import { SPOTLIGHT_TYPE } from './spotlight'
+import { getTreeIndex } from './tree'
 
 const META_KEY = 'sequence'
 
@@ -39,10 +40,19 @@ function arrowDependencies(editor: Editor): Map<ShapeRef, ShapeRef[]> {
   return deps
 }
 
+/** Arbres : parent de chaque nœud, et nœuds repliés dans le document (état de départ). */
+function treeOptions(editor: Editor) {
+  const { parent } = getTreeIndex(editor)
+  const folded = new Set<ShapeRef>()
+  for (const id of new Set(parent.values())) if (editor.getShape(id)?.meta.folded) folded.add(id)
+  return { tree: parent as Map<ShapeRef, ShapeRef>, folded }
+}
+
 export function computeEditorStage(editor: Editor, seq: Sequence, index: number): Stage {
   return computeStage(seq, index, {
     resolve: resolveTargets(editor),
     dependencies: arrowDependencies(editor),
+    ...treeOptions(editor),
   })
 }
 
@@ -124,7 +134,7 @@ export function moveCamera(
   if (mode === 'keep') return
 
   let bounds: Box | null = null
-  if (mode === 'follow' && step) bounds = boundsOf(editor, stepFocusTargets(step, resolveTargets(editor)))
+  if (mode === 'follow' && step) bounds = boundsOf(editor, stepFocusTargets(step, resolveTargets(editor), stage))
   if (!bounds) bounds = boundsOf(editor, visibleShapeIds(editor, stage))
   if (!bounds) return
 

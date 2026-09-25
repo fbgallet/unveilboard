@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeStage, stateOf } from './compute'
+import { computeStage, stateOf, stepFocusTargets } from './compute'
 import { migrateSequence } from './migrate'
 import { SEQUENCE_VERSION, type Sequence, type Step, type StepAction } from './types'
 
@@ -59,6 +59,72 @@ describe('computeStage', () => {
     const c = seq(step({ type: 'show', targets: ['cadre'] }))
     expect(vis(c, -1, 'enfant', { resolve })).toBe('hidden')
     expect(vis(c, 0, 'enfant', { resolve })).toBe('visible')
+  })
+})
+
+describe('arbres : contrainte de parenté, fold / unfold', () => {
+  // racine → a → a1 ; racine → b ; la flèche e relie racine et a.
+  const tree = new Map([
+    ['a', 'racine'],
+    ['a1', 'a'],
+    ['b', 'racine'],
+  ])
+  const dependencies = new Map([['e', ['racine', 'a']]])
+  const s = seq(
+    step({ type: 'show', targets: ['racine'] }),
+    step({ type: 'show', targets: ['b'] }),
+    step({ type: 'fold', targets: ['a'] }),
+    step({ type: 'unfold', targets: ['a'] })
+  )
+  const at = (i: number, id: string, folded?: Set<string>) =>
+    stateOf(computeStage(s, i, { tree, dependencies, folded }), id)
+
+  it('un nœud non géré apparaît avec son parent, avec le même effet', () => {
+    expect(at(-1, 'a').visibility).toBe('hidden')
+    expect(at(-1, 'a1').visibility).toBe('hidden')
+    expect(at(0, 'a1')).toMatchObject({ visibility: 'visible', entering: 'fade' })
+    expect(at(0, 'e')).toMatchObject({ visibility: 'visible', entering: 'fade' })
+  })
+
+  it("un nœud géré attend sa propre étape, même si son parent est visible", () => {
+    expect(at(0, 'b').visibility).toBe('hidden')
+    expect(at(1, 'b').visibility).toBe('visible')
+  })
+
+  it('replier cache toute la branche, et les flèches qui y mènent', () => {
+    expect(at(2, 'a').visibility).toBe('visible')
+    expect(at(2, 'a')).toMatchObject({ folded: true })
+    expect(at(2, 'a1').visibility).toBe('hidden')
+    expect(at(2, 'b').visibility).toBe('visible')
+  })
+
+  it('déplier révèle la branche en fondu', () => {
+    expect(at(3, 'a1')).toMatchObject({ visibility: 'visible', entering: 'fade' })
+  })
+
+  it("l'état replié du document est l'état de départ", () => {
+    const folded = new Set(['racine'])
+    expect(at(0, 'racine', folded).visibility).toBe('visible')
+    expect(at(0, 'a', folded).visibility).toBe('hidden')
+    expect(at(0, 'e', folded).visibility).toBe('hidden')
+  })
+
+  it('la caméra cadre aussi ce qui entre avec les cibles (enfants, branche dépliée)', () => {
+    const t = (i: number) => stepFocusTargets(s.steps[i], undefined, computeStage(s, i, { tree, dependencies })).sort()
+    expect(t(0)).toEqual(['a', 'a1', 'e', 'racine'])
+    expect(t(3)).toEqual(['a', 'a1'])
+  })
+
+  it('un focus ne révèle pas un nœud caché', () => {
+    const f = seq(step({ type: 'show', targets: ['racine'] }), step({ type: 'fold', targets: ['a'] }, { type: 'focus', targets: ['a1'] }))
+    expect(stateOf(computeStage(f, 1, { tree }), 'a1').visibility).toBe('hidden')
+  })
+
+  it('une flèche gérée est cachée tant que ses extrémités le sont', () => {
+    const g = seq(step({ type: 'show', targets: ['e'] }), step({ type: 'show', targets: ['x'] }))
+    const deps = new Map([['e', ['x']]])
+    expect(stateOf(computeStage(g, 0, { dependencies: deps }), 'e').visibility).toBe('hidden')
+    expect(stateOf(computeStage(g, 1, { dependencies: deps }), 'e')).toMatchObject({ visibility: 'visible', entering: 'fade' })
   })
 })
 

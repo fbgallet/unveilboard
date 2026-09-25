@@ -8,6 +8,7 @@ import { applyLaserTiming } from '@/lib/canvas/laser'
 import {
   activeSpotsAtom,
   editUnlockedAtom,
+  foldedBadgesAtom,
   laserPopoverOpenAtom,
   laserSettingsAtom,
   liveSpotAtom,
@@ -57,6 +58,7 @@ export function usePresentation(editor: Editor) {
         prevSpots = ''
         shapeClassesAtom.set(null)
         activeSpotsAtom.set([])
+        foldedBadgesAtom.set([])
         return
       }
       const seq = readSequence(editor)
@@ -87,6 +89,7 @@ export function usePresentation(editor: Editor) {
         byId.set(id, { className: cls.join(' '), style })
       }
       shapeClassesAtom.set({ byId, fallback: { className: 'pres pres-visible' } })
+      foldedBadgesAtom.set([...stage].filter(([, s]) => s.folded && s.visibility !== 'hidden').map(([id]) => id))
 
       // Calques occultants : quand la séquence en change, elle reprend la main sur la fenêtre tracée à la volée.
       const spots = activeSpotlights(editor, seq, index, stage)

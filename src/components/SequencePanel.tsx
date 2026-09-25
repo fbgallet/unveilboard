@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Box, createShapeId, useValue, type Editor, type TLShapeId } from 'tldraw'
 import { readSequence, writeSequence } from '@/lib/canvas/adapter'
 import { SPOTLIGHT_TYPE } from '@/lib/canvas/spotlight'
+import { getTreeIndex } from '@/lib/canvas/tree'
 import {
   addStep,
   addTargets,
@@ -37,6 +38,8 @@ import { SyncIndicator } from './SyncIndicator'
 import { ResizeHandle } from './ResizeHandle'
 
 const ADDABLE: StepActionType[] = ['show', 'dim', 'hide', 'undim', 'highlight', 'focus']
+/** Proposées seulement si la sélection contient un nœud d'arbre qui a des enfants. */
+const TREE_ACTIONS: StepActionType[] = ['fold', 'unfold']
 
 function setPanelOpen(open: boolean) {
   sequencePanelOpenAtom.set(open)
@@ -66,6 +69,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
   const seq = useValue('sequence', () => readSequence(editor) ?? emptySequence(), [editor])
   const selection = useValue('selection', () => editor.getSelectedShapeIds(), [editor])
   const activeId = useValue(activeStepIdAtom)
+  const canFold = useValue('can fold', () => selection.some((id) => getTreeIndex(editor).children.has(id)), [editor, selection])
   const appears = appearanceIndex(seq)
 
   const save = (next: Sequence) => writeSequence(editor, next)
@@ -163,6 +167,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
             count={seq.steps.length}
             active={step.id === activeId}
             selection={selection}
+            canFold={canFold}
             onActivate={() => activeStepIdAtom.set(step.id)}
             onChange={(patch) => save(updateStep(seq, step.id, patch))}
             onAdd={(type) => save(addTargets(seq, step.id, type, selection))}
@@ -200,6 +205,7 @@ interface StepCardProps {
   count: number
   active: boolean
   selection: TLShapeId[]
+  canFold: boolean
   onActivate(): void
   onChange(patch: Partial<Step>): void
   onAdd(type: StepActionType): void
@@ -276,7 +282,7 @@ function StepCard(p: StepCardProps) {
       {p.active && (
         <div className="mt-2 space-y-2" onClick={(e) => e.stopPropagation()}>
           <div className="flex flex-wrap gap-1">
-            {ADDABLE.map((type) => (
+            {(p.canFold ? [...ADDABLE, ...TREE_ACTIONS] : ADDABLE).map((type) => (
               <button
                 key={type}
                 className="btn-xs"
