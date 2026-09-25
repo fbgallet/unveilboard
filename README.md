@@ -17,7 +17,8 @@ pnpm dev
 ## Mise en ligne (Vercel + Neon)
 
 1. Créer un projet Neon et copier l'URL de connexion **pooled** (hôte en `-pooler`).
-2. Appliquer le schéma sur Neon : `DATABASE_URL=<url neon> pnpm db:migrate`.
+2. Appliquer le schéma sur Neon, **avec l'URL entre guillemets simples** (elle contient des `&`) :
+   `DATABASE_URL='postgresql://…-pooler…/neondb?sslmode=require' pnpm db:migrate`
 3. Sur Vercel, définir les variables : `DATABASE_URL`, `APP_PASSWORD`, `SESSION_SECRET` (`openssl rand -base64 48`), `NEXT_PUBLIC_TLDRAW_LICENSE_KEY`.
 4. Optionnel : créer un store Vercel Blob (ajoute `BLOB_READ_WRITE_TOKEN`) pour stocker les images hors du document.
 
