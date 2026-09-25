@@ -10,8 +10,8 @@ export interface ShapeState {
 }
 
 export interface ComputeOptions {
-  /** Étend une liste de cibles (ex. : un cadre → ses enfants). */
-  expand?: (refs: ShapeRef[]) => ShapeRef[]
+  /** Résout une liste de cibles (ex. : un cadre → ses enfants). */
+  resolve?: (refs: ShapeRef[]) => ShapeRef[]
   /**
    * Objets non gérés par la séquence dont la visibilité dépend d'autres objets
    * (ex. : une flèche liée à deux boîtes). Un objet dépendant est caché si l'une
@@ -25,11 +25,11 @@ export type Stage = Map<ShapeRef, ShapeState>
 const identity = (refs: ShapeRef[]) => refs
 
 /** Ensemble des objets qui apparaissent à un moment de la séquence (donc cachés au départ). */
-export function managedShapes(seq: Sequence, expand = identity): Set<ShapeRef> {
+export function managedShapes(seq: Sequence, resolve = identity): Set<ShapeRef> {
   const managed = new Set<ShapeRef>()
   for (const step of seq.steps) {
     for (const action of step.actions) {
-      if (action.type === 'show') expand(action.targets).forEach((id) => managed.add(id))
+      if (action.type === 'show') resolve(action.targets).forEach((id) => managed.add(id))
     }
   }
   return managed
@@ -41,7 +41,7 @@ export function managedShapes(seq: Sequence, expand = identity): Set<ShapeRef> {
  * Les objets absents de la Map sont visibles, sans effet.
  */
 export function computeStage(seq: Sequence, index: number, opts: ComputeOptions = {}): Stage {
-  const expand = opts.expand ?? identity
+  const resolve = opts.resolve ?? identity
   const stage: Stage = new Map()
 
   const set = (id: ShapeRef, patch: Partial<ShapeState>) => {
@@ -49,13 +49,13 @@ export function computeStage(seq: Sequence, index: number, opts: ComputeOptions 
     stage.set(id, { ...prev, ...patch })
   }
 
-  for (const id of managedShapes(seq, expand)) set(id, { visibility: 'hidden' })
+  for (const id of managedShapes(seq, resolve)) set(id, { visibility: 'hidden' })
 
   const last = Math.min(index, seq.steps.length - 1)
   for (let i = 0; i <= last; i++) {
     const isCurrent = i === last
     for (const action of seq.steps[i].actions) {
-      const ids = expand(action.targets)
+      const ids = resolve(action.targets)
       switch (action.type) {
         case 'show':
           ids.forEach((id) =>
@@ -95,19 +95,19 @@ export function computeStage(seq: Sequence, index: number, opts: ComputeOptions 
     }
   }
 
-  if (last >= 0) applyTransient(seq.steps[last], stage, expand)
+  if (last >= 0) applyTransient(seq.steps[last], stage, resolve)
   return stage
 }
 
-function applyTransient(step: Step, stage: Stage, expand: (r: ShapeRef[]) => ShapeRef[]) {
+function applyTransient(step: Step, stage: Stage, resolve: (r: ShapeRef[]) => ShapeRef[]) {
   const focus = new Set<ShapeRef>()
   for (const action of step.actions) {
     if (action.type === 'highlight') {
-      expand(action.targets).forEach((id) =>
+      resolve(action.targets).forEach((id) =>
         stage.set(id, { ...(stage.get(id) ?? { visibility: 'visible' }), highlighted: true })
       )
     }
-    if (action.type === 'focus') expand(action.targets).forEach((id) => focus.add(id))
+    if (action.type === 'focus') resolve(action.targets).forEach((id) => focus.add(id))
   }
   if (focus.size === 0) return
   // Focus : tout ce qui n'est pas ciblé est atténué pendant l'étape.
@@ -131,10 +131,10 @@ export function stateOf(stage: Stage, id: ShapeRef): ShapeState {
 }
 
 /** Objets que la caméra doit cadrer en mode « suivre » pour une étape donnée. */
-export function stepFocusTargets(step: Step, expand = identity): ShapeRef[] {
+export function stepFocusTargets(step: Step, resolve = identity): ShapeRef[] {
   const priority = ['focus', 'show', 'highlight'] as const
   for (const type of priority) {
-    const ids = step.actions.filter((a) => a.type === type).flatMap((a) => expand(a.targets))
+    const ids = step.actions.filter((a) => a.type === type).flatMap((a) => resolve(a.targets))
     if (ids.length) return ids
   }
   return []
@@ -145,13 +145,13 @@ export function stepFocusTargets(step: Step, expand = identity): ShapeRef[] {
  * Sert aux calques occultants : afficher un nouveau calque remplace les précédents.
  * Un objet jamais montré par la séquence compte comme apparu avant la première étape.
  */
-export function latestShown(seq: Sequence, index: number, ids: ShapeRef[], expand = identity): ShapeRef[] {
+export function latestShown(seq: Sequence, index: number, ids: ShapeRef[], resolve = identity): ShapeRef[] {
   if (!ids.length) return []
   const shownAt = new Map<ShapeRef, number>()
   const last = Math.min(index, seq.steps.length - 1)
   for (let i = 0; i <= last; i++) {
     for (const action of seq.steps[i].actions) {
-      if (action.type === 'show') expand(action.targets).forEach((id) => shownAt.set(id, i))
+      if (action.type === 'show') resolve(action.targets).forEach((id) => shownAt.set(id, i))
     }
   }
   const rank = (id: ShapeRef) => shownAt.get(id) ?? -1

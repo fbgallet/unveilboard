@@ -43,6 +43,8 @@ export interface Step {
 }
 
 export interface Sequence {
+  /** Version du format (voir migrate.ts). Absente dans les documents d'avant la phase 2 : version 1. */
+  version?: number
   id: string
   title: string
   steps: Step[]
@@ -70,10 +72,13 @@ export const EFFECT_LABELS: Record<Effect, string> = {
   none: 'Aucun',
 }
 
+/** Version courante du format de séquence. */
+export const SEQUENCE_VERSION = 1
+
 export function newId(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`
 }
 
 export function emptySequence(): Sequence {
-  return { id: newId('seq'), title: 'Nouvelle séquence', steps: [] }
+  return { version: SEQUENCE_VERSION, id: newId('seq'), title: 'Nouvelle séquence', steps: [] }
 }

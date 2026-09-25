@@ -3,6 +3,7 @@
 
 import { Box, getArrowInfo, type Editor, type JsonObject, type TLArrowBinding, type TLShapeId } from 'tldraw'
 import { computeStage, latestShown, stateOf, stepFocusTargets, type Stage } from '../sequence/compute'
+import { migrateSequence } from '../sequence/migrate'
 import type { Sequence, ShapeRef, StepCamera } from '../sequence/types'
 import { SPOTLIGHT_TYPE } from './spotlight'
 
@@ -10,7 +11,8 @@ const META_KEY = 'sequence'
 
 export function readSequence(editor: Editor): Sequence | null {
   const meta = editor.getDocumentSettings().meta
-  return (meta[META_KEY] as unknown as Sequence | undefined) ?? null
+  const raw = meta[META_KEY] as unknown as Sequence | undefined
+  return raw ? migrateSequence(raw) : null
 }
 
 export function writeSequence(editor: Editor, seq: Sequence) {
@@ -19,7 +21,7 @@ export function writeSequence(editor: Editor, seq: Sequence) {
 }
 
 /** Un cadre ou un groupe entraîne ses descendants ; les objets supprimés sont ignorés. */
-export function makeExpand(editor: Editor) {
+export function resolveTargets(editor: Editor) {
   return (refs: ShapeRef[]): ShapeRef[] => {
     const existing = (refs as TLShapeId[]).filter((id) => editor.getShape(id))
     return [...editor.getShapeAndDescendantIds(existing)]
@@ -39,7 +41,7 @@ function arrowDependencies(editor: Editor): Map<ShapeRef, ShapeRef[]> {
 
 export function computeEditorStage(editor: Editor, seq: Sequence, index: number): Stage {
   return computeStage(seq, index, {
-    expand: makeExpand(editor),
+    resolve: resolveTargets(editor),
     dependencies: arrowDependencies(editor),
   })
 }
@@ -104,7 +106,7 @@ export function activeSpotlights(editor: Editor, seq: Sequence, index: number, s
     .getCurrentPageShapes()
     .filter((s) => s.type === SPOTLIGHT_TYPE && stateOf(stage, s.id).visibility !== 'hidden')
     .map((s) => s.id)
-  return latestShown(seq, index, visible, makeExpand(editor))
+  return latestShown(seq, index, visible, resolveTargets(editor))
 }
 
 const DEFAULT_CAMERA: Required<StepCamera> = { mode: 'follow', padding: 96, maxZoom: 1.4 }
@@ -122,7 +124,7 @@ export function moveCamera(
   if (mode === 'keep') return
 
   let bounds: Box | null = null
-  if (mode === 'follow' && step) bounds = boundsOf(editor, stepFocusTargets(step, makeExpand(editor)))
+  if (mode === 'follow' && step) bounds = boundsOf(editor, stepFocusTargets(step, resolveTargets(editor)))
   if (!bounds) bounds = boundsOf(editor, visibleShapeIds(editor, stage))
   if (!bounds) return
 

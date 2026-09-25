@@ -34,6 +34,8 @@ export default function Studio({ docId, seedDemo }: { docId: string; seedDemo: b
   // Synchronisation avec le serveur, et remise à zéro de l'état de présentation en quittant le document.
   useEffect(() => {
     if (!editor) return
+    // En développement : l'éditeur est accessible depuis la console et les tests Playwright.
+    if (process.env.NODE_ENV === 'development') Object.assign(window, { editor })
     const stop = startCloudSync(editor, docId, { seedDemo })
     return () => {
       stop()

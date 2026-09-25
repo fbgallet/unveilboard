@@ -1,5 +1,5 @@
 import { createShapeId, toRichText, type Editor, type TLShapeId } from 'tldraw'
-import type { Sequence } from './sequence/types'
+import { SEQUENCE_VERSION, type Sequence } from './sequence/types'
 
 // Schéma de démonstration : « La liberté est-elle une illusion ? »
 
@@ -78,6 +78,7 @@ export function seedDemo(editor: Editor): Sequence {
   })
 
   return {
+    version: SEQUENCE_VERSION,
     id: 'seq_demo',
     title: 'La liberté est-elle une illusion ?',
     steps: [
