@@ -17,24 +17,43 @@ export const recenterAtom = atom<number>('recenter', 0)
 /** Panneau de narration visible pendant la présentation. */
 export const narrationVisibleAtom = atom<boolean>('narrationVisible', true)
 
-/** Largeur du panneau de narration (px), réglable à la souris. */
-export const NARRATION_WIDTH = { min: 280, default: 460 }
-export const narrationWidthAtom = atom<number>('narrationWidth', readStoredWidth())
+/** Bornes de largeur d'un panneau latéral redimensionnable (px). */
+export interface WidthLimits {
+  min: number
+  default: number
+}
 
-function readStoredWidth() {
+/** Largeur du panneau de narration (px), réglable à la souris. */
+export const NARRATION_WIDTH: WidthLimits = { min: 280, default: 460 }
+export const narrationWidthAtom = atom<number>('narrationWidth', readStoredWidth('narrationWidth', NARRATION_WIDTH))
+
+/** Panneau des étapes (mode édition) : largeur réglable, repliable. */
+export const SEQUENCE_PANEL_WIDTH: WidthLimits = { min: 300, default: 380 }
+export const sequencePanelWidthAtom = atom<number>(
+  'sequencePanelWidth',
+  readStoredWidth('sequencePanelWidth', SEQUENCE_PANEL_WIDTH)
+)
+export const sequencePanelOpenAtom = atom<boolean>('sequencePanelOpen', readStoredValue('sequencePanelOpen') !== 'false')
+
+function readStoredValue(key: string) {
   try {
-    const v = Number(localStorage.getItem('narrationWidth'))
-    return v >= NARRATION_WIDTH.min ? v : NARRATION_WIDTH.default
+    return localStorage.getItem(key)
   } catch {
-    return NARRATION_WIDTH.default
+    return null
   }
 }
 
-export function storeNarrationWidth(width: number) {
+function readStoredWidth(key: string, limits: WidthLimits) {
+  const v = Number(readStoredValue(key))
+  return v >= limits.min ? v : limits.default
+}
+
+/** Mémorise un réglage d'affichage (largeur, panneau ouvert…). */
+export function storeValue(key: string, value: number | boolean) {
   try {
-    localStorage.setItem('narrationWidth', String(Math.round(width)))
+    localStorage.setItem(key, String(typeof value === 'number' ? Math.round(value) : value))
   } catch {
-    // stockage indisponible (navigation privée…) : la largeur ne sera pas mémorisée
+    // stockage indisponible (navigation privée…) : le réglage ne sera pas mémorisé
   }
 }
 
@@ -92,3 +111,22 @@ function readStored<T extends object>(key: string, fallback: T): T {
     return fallback
   }
 }
+
+// ---------- Calque occultant ----------
+
+/** Rectangle en coordonnées de page (identique à BoxModel de tldraw). */
+export interface PageRect {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/** Calques occultants (formes) actifs à l'étape courante, d'après la séquence. */
+export const activeSpotsAtom = atom<string[]>('activeSpots', [])
+
+/** Fenêtre tracée à la volée pendant la présentation (non enregistrée dans le document). */
+export const liveSpotAtom = atom<PageRect | null>('liveSpot', null)
+
+/** Outil de tracé de la fenêtre à la volée actif (poignées visibles, pointeur capturé). */
+export const spotToolAtom = atom<boolean>('spotTool', false)

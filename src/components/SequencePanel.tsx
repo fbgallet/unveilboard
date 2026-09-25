@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { useValue, type Editor, type TLShapeId } from 'tldraw'
+import { Box, createShapeId, useValue, type Editor, type TLShapeId } from 'tldraw'
 import { readSequence, writeSequence } from '@/lib/canvas/adapter'
+import { SPOTLIGHT_TYPE } from '@/lib/canvas/spotlight'
 import {
   addStep,
   addTargets,
@@ -24,13 +25,44 @@ import {
   type Step,
   type StepActionType,
 } from '@/lib/sequence/types'
-import { activeStepIdAtom } from '@/lib/presentation/store'
+import {
+  SEQUENCE_PANEL_WIDTH,
+  activeStepIdAtom,
+  sequencePanelOpenAtom,
+  sequencePanelWidthAtom,
+  storeValue,
+} from '@/lib/presentation/store'
 import { enterPresentation } from './usePresentation'
 import { SyncIndicator } from './SyncIndicator'
+import { ResizeHandle } from './ResizeHandle'
 
 const ADDABLE: StepActionType[] = ['show', 'dim', 'hide', 'undim', 'highlight', 'focus']
 
+function setPanelOpen(open: boolean) {
+  sequencePanelOpenAtom.set(open)
+  storeValue('sequencePanelOpen', open)
+}
+
 export function SequencePanel({ editor }: { editor: Editor }) {
+  const open = useValue(sequencePanelOpenAtom)
+  const width = useValue(sequencePanelWidthAtom)
+  if (!open) {
+    return (
+      <button
+        className="flex h-full w-9 shrink-0 flex-col items-center gap-3 border-l border-zinc-200 bg-zinc-50 pt-3 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+        onClick={() => setPanelOpen(true)}
+        title="Déplier le panneau des étapes"
+        aria-label="Déplier le panneau des étapes"
+      >
+        <span aria-hidden="true">«</span>
+        <span className="text-xs font-medium [writing-mode:vertical-rl]">Séquence</span>
+      </button>
+    )
+  }
+  return <SequencePanelContent editor={editor} width={width} />
+}
+
+function SequencePanelContent({ editor, width }: { editor: Editor; width: number }) {
   const seq = useValue('sequence', () => readSequence(editor) ?? emptySequence(), [editor])
   const selection = useValue('selection', () => editor.getSelectedShapeIds(), [editor])
   const activeId = useValue(activeStepIdAtom)
@@ -47,6 +79,16 @@ export function SequencePanel({ editor }: { editor: Editor }) {
     activeStepIdAtom.set(step.id)
   }
 
+  /** Calque occultant autour de la sélection (ou au centre de la vue), qui apparaît à l'étape active. */
+  function addSpotlight() {
+    const vp = editor.getViewportPageBounds()
+    const box = editor.getSelectionPageBounds()?.clone().expandBy(24) ?? Box.FromCenter(vp.center, { x: vp.w * 0.4, y: vp.h * 0.4 })
+    const id = createShapeId()
+    editor.createShape({ id, type: SPOTLIGHT_TYPE, x: box.x, y: box.y, props: { w: box.w, h: box.h } })
+    editor.select(id)
+    if (activeIndex >= 0) save(addTargets(seq, seq.steps[activeIndex].id, 'show', [id]))
+  }
+
   const selectionHint =
     selection.length === 1 && appears.has(selection[0])
       ? `Cet objet apparaît à l'étape ${appears.get(selection[0])}.`
@@ -55,13 +97,27 @@ export function SequencePanel({ editor }: { editor: Editor }) {
         : 'Sélectionnez des objets sur le canevas pour les ajouter à une étape.'
 
   return (
-    <aside className="flex h-full w-[380px] shrink-0 flex-col border-l border-zinc-200 bg-zinc-50 text-sm text-zinc-800">
+    <aside
+      className="relative flex h-full shrink-0 flex-col border-l border-zinc-200 bg-zinc-50 text-sm text-zinc-800"
+      style={{ width }}
+    >
+      <ResizeHandle width={sequencePanelWidthAtom} limits={SEQUENCE_PANEL_WIDTH} storageKey="sequencePanelWidth" />
       <header className="flex flex-col gap-2 border-b border-zinc-200 p-3">
         <div className="flex items-center justify-between">
           <Link href="/" className="text-xs text-zinc-500 hover:text-zinc-900">
             ← Mes schémas
           </Link>
-          <SyncIndicator />
+          <div className="flex items-center gap-2">
+            <SyncIndicator />
+            <button
+              className="rounded px-1.5 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-900"
+              onClick={() => setPanelOpen(false)}
+              title="Replier le panneau"
+              aria-label="Replier le panneau"
+            >
+              »
+            </button>
+          </div>
         </div>
         <input
           className="rounded bg-transparent px-1 text-base font-semibold outline-none focus:bg-white"
@@ -87,6 +143,14 @@ export function SequencePanel({ editor }: { editor: Editor }) {
         <p className="mb-2 text-xs text-zinc-500">{selectionHint}</p>
         <button className="btn w-full" onClick={newStepFromSelection}>
           + Nouvelle étape{selection.length ? ' (faire apparaître la sélection)' : ''}
+        </button>
+        <button
+          className="btn mt-2 w-full"
+          onClick={addSpotlight}
+          title="Pendant la présentation, tout est flouté sauf ce rectangle. Un nouveau calque remplace le précédent ; « Cacher » le retire."
+        >
+          + Calque occultant{selection.length ? ' autour de la sélection' : ''}
+          {activeIndex >= 0 ? ` (étape ${activeIndex + 1})` : ''}
         </button>
       </div>
 
@@ -123,7 +187,7 @@ export function SequencePanel({ editor }: { editor: Editor }) {
 
       <footer className="border-t border-zinc-200 p-3 text-[11px] leading-relaxed text-zinc-500">
         En présentation : <kbd>→</kbd>/<kbd>Espace</kbd> suivant · <kbd>←</kbd> précédent · <kbd>O</kbd> vue
-        d&apos;ensemble · <kbd>C</kbd> recentrer · <kbd>K</kbd> laser · <kbd>N</kbd> narration · <kbd>F</kbd> plein écran ·{' '}
+        d&apos;ensemble · <kbd>C</kbd> recentrer · <kbd>K</kbd> laser · <kbd>M</kbd> calque occultant · <kbd>N</kbd> narration · <kbd>F</kbd> plein écran ·{' '}
         <kbd>Échap</kbd> quitter
       </footer>
     </aside>

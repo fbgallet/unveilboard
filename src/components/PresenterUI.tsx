@@ -10,14 +10,16 @@ import {
   editUnlockedAtom,
   laserPopoverOpenAtom,
   laserSettingsAtom,
+  liveSpotAtom,
+  spotToolAtom,
   updateLaserSettings,
   narrationVisibleAtom,
   narrationWidthAtom,
   overviewAtom,
   stepIndexAtom,
-  storeNarrationWidth,
 } from '@/lib/presentation/store'
 import {
+  clearLiveSpot,
   exitPresentation,
   goToStep,
   recenter,
@@ -26,8 +28,10 @@ import {
   toggleLaser,
   toggleNarration,
   toggleOverview,
+  toggleSpotTool,
   toggleUnlocked,
 } from './usePresentation'
+import { ResizeHandle } from './ResizeHandle'
 
 export function NarrationPanel({ editor }: { editor: Editor }) {
   const seq = useValue('sequence', () => readSequence(editor), [editor])
@@ -42,7 +46,12 @@ export function NarrationPanel({ editor }: { editor: Editor }) {
       className="narration relative flex h-full shrink-0 flex-col border-l border-stone-200 bg-[#fbfaf7] px-10 py-12"
       style={{ width }}
     >
-      <ResizeHandle />
+      <ResizeHandle
+        width={narrationWidthAtom}
+        limits={NARRATION_WIDTH}
+        storageKey="narrationWidth"
+        onResized={recenterAfterResize}
+      />
       <button
         className="pbtn absolute right-3 top-3"
         onClick={toggleNarration}
@@ -66,44 +75,6 @@ export function NarrationPanel({ editor }: { editor: Editor }) {
         )}
       </div>
     </aside>
-  )
-}
-
-/** Poignée sur le bord gauche du panneau : glisser pour redimensionner, double-clic pour réinitialiser. */
-function ResizeHandle() {
-  function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    e.preventDefault()
-    const handle = e.currentTarget
-    handle.setPointerCapture(e.pointerId)
-    document.body.classList.add('is-resizing')
-    const onMove = (ev: PointerEvent) => {
-      const max = window.innerWidth * 0.7
-      narrationWidthAtom.set(Math.min(max, Math.max(NARRATION_WIDTH.min, window.innerWidth - ev.clientX)))
-    }
-    const onUp = () => {
-      handle.removeEventListener('pointermove', onMove)
-      handle.removeEventListener('pointerup', onUp)
-      document.body.classList.remove('is-resizing')
-      storeNarrationWidth(narrationWidthAtom.get())
-      recenterAfterResize()
-    }
-    handle.addEventListener('pointermove', onMove)
-    handle.addEventListener('pointerup', onUp)
-  }
-
-  return (
-    <div
-      className="resize-handle"
-      onPointerDown={onPointerDown}
-      onDoubleClick={() => {
-        narrationWidthAtom.set(NARRATION_WIDTH.default)
-        storeNarrationWidth(NARRATION_WIDTH.default)
-        recenterAfterResize()
-      }}
-      title="Glisser pour redimensionner · double-clic pour réinitialiser"
-      role="separator"
-      aria-orientation="vertical"
-    />
   )
 }
 
@@ -146,6 +117,7 @@ export function ProgressBar({ editor }: { editor: Editor }) {
         <ToolBtn onClick={toggleOverview} active={overview} title="Vue d'ensemble (O)" icon="overview" />
         <ToolBtn onClick={recenter} title="Recentrer sur l'étape (C)" icon="recenter" />
         <LaserControl editor={editor} active={laser} />
+        <SpotControl editor={editor} />
         <ToolBtn
           onClick={toggleUnlocked}
           active={unlocked}
@@ -250,6 +222,29 @@ function LaserControl({ editor, active }: { editor: Editor; active: boolean }) {
   )
 }
 
+/** Calque occultant à la volée, avec un bouton pour le retirer quand il est posé. */
+function SpotControl({ editor }: { editor: Editor }) {
+  const tool = useValue(spotToolAtom)
+  const live = useValue(liveSpotAtom)
+  return (
+    <div className="relative flex items-center">
+      <ToolBtn
+        onClick={() => toggleSpotTool(editor)}
+        active={tool || !!live}
+        title={tool ? 'Terminer le réglage du calque (M)' : 'Calque occultant : tracer la zone à garder lisible (M)'}
+        icon="spot"
+      />
+      {live && (
+        <button className="spot-clear" onClick={clearLiveSpot} title="Retirer le calque (Échap)" aria-label="Retirer le calque">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      )}
+    </div>
+  )
+}
+
 /** Aperçu du faisceau avec les réglages courants. */
 function LaserPreview({ color, width }: { color: string; width: number }) {
   const d = 'M 12 30 C 60 4, 110 52, 196 18'
@@ -294,6 +289,7 @@ type IconName =
   | 'overview'
   | 'recenter'
   | 'laser'
+  | 'spot'
   | 'locked'
   | 'unlocked'
   | 'panel'
@@ -320,6 +316,12 @@ const ICONS: Record<IconName, ReactNode> = {
     <>
       <circle cx="12" cy="12" r="3" fill="currentColor" />
       <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4" />
+    </>
+  ),
+  spot: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2.5" strokeDasharray="2.5 3" />
+      <rect x="7.5" y="8" width="9" height="8" rx="1.5" />
     </>
   ),
   locked: (

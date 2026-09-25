@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Tldraw, useValue, type Editor, type TLComponents } from 'tldraw'
 import 'tldraw/tldraw.css'
 import { LaserOverlayUtil } from '@/lib/canvas/laser'
+import { SpotlightShapeUtil } from '@/lib/canvas/spotlight'
 import { activeStepIdAtom, editUnlockedAtom, modeAtom, stepIndexAtom } from '@/lib/presentation/store'
 import { assetStore } from '@/lib/sync/assetStore'
 import { startCloudSync } from '@/lib/sync/cloudSync'
@@ -14,12 +15,15 @@ import { NarrationPanel, ProgressBar } from './PresenterUI'
 import { usePresentation } from './usePresentation'
 import { QuickAssign } from './QuickAssign'
 import { SyncBanner } from './SyncIndicator'
+import { SpotlightOverlay } from './SpotlightOverlay'
 
 const overlayUtils = [LaserOverlayUtil]
+const shapeUtils = [SpotlightShapeUtil]
 
 const components: TLComponents = {
   ShapeWrapper: PresShapeWrapper,
   OnTheCanvas: StepBadges,
+  InFrontOfTheCanvas: SpotlightOverlay,
 }
 
 export default function Studio({ docId, seedDemo }: { docId: string; seedDemo: boolean }) {
@@ -47,6 +51,7 @@ export default function Studio({ docId, seedDemo }: { docId: string; seedDemo: b
           // Cache local (IndexedDB) propre à chaque document.
           persistenceKey={`doc:${docId}`}
           assets={assetStore}
+          shapeUtils={shapeUtils}
           components={components}
           overlayUtils={overlayUtils}
           licenseKey={process.env.NEXT_PUBLIC_TLDRAW_LICENSE_KEY}

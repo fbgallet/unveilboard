@@ -2,8 +2,9 @@
 // Si le moteur de canevas change un jour, c'est ce fichier qu'il faudra réécrire.
 
 import { Box, getArrowInfo, type Editor, type JsonObject, type TLArrowBinding, type TLShapeId } from 'tldraw'
-import { computeStage, stateOf, stepFocusTargets, type Stage } from '../sequence/compute'
+import { computeStage, latestShown, stateOf, stepFocusTargets, type Stage } from '../sequence/compute'
 import type { Sequence, ShapeRef, StepCamera } from '../sequence/types'
+import { SPOTLIGHT_TYPE } from './spotlight'
 
 const META_KEY = 'sequence'
 
@@ -84,7 +85,7 @@ export function drawClip(editor: Editor, ref: ShapeRef): { direction: DrawDirect
   }
 }
 
-function boundsOf(editor: Editor, ids: ShapeRef[]): Box | null {
+export function boundsOf(editor: Editor, ids: ShapeRef[]): Box | null {
   const boxes = ids
     .map((id) => editor.getShapePageBounds(id as TLShapeId))
     .filter((b): b is Box => !!b)
@@ -95,6 +96,15 @@ function visibleShapeIds(editor: Editor, stage: Stage): ShapeRef[] {
   return [...editor.getCurrentPageShapeIds()].filter(
     (id) => stateOf(stage, id).visibility !== 'hidden'
   )
+}
+
+/** Calques occultants actifs : visibles, et apparus le plus récemment. */
+export function activeSpotlights(editor: Editor, seq: Sequence, index: number, stage: Stage): ShapeRef[] {
+  const visible = editor
+    .getCurrentPageShapes()
+    .filter((s) => s.type === SPOTLIGHT_TYPE && stateOf(stage, s.id).visibility !== 'hidden')
+    .map((s) => s.id)
+  return latestShown(seq, index, visible, makeExpand(editor))
 }
 
 const DEFAULT_CAMERA: Required<StepCamera> = { mode: 'follow', padding: 96, maxZoom: 1.4 }

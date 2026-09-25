@@ -300,6 +300,148 @@ body.is-resizing {
   to { clip-path: inset(var(--clip-t) var(--clip-r) var(--clip-b) var(--clip-l)); }
 }
 
+/* ---------- Calque occultant ---------- */
+
+/* La forme : un cadre en pointillés, d'épaisseur constante à l'écran. */
+.spotlight-frame {
+  border: calc(2px * var(--tl-scale)) dashed #f59e0b;
+  border-radius: calc(10px * var(--tl-scale));
+  background: rgb(245 158 11 / 0.04);
+}
+.spotlight-frame-live {
+  border-width: calc(1.5px * var(--tl-scale));
+  background: none;
+  opacity: 0.6;
+}
+.spotlight-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: top left;
+  transform: scale(var(--tl-scale)) translateY(calc(-100% - 4px));
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #f59e0b;
+  color: white;
+  font: 600 11px/16px var(--font-geist-sans), sans-serif;
+  white-space: nowrap;
+}
+
+/* Le voile : flou partout, sauf dans les fenêtres découpées (clip-path calculé en JS). */
+.spot-veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* backdrop-filter posé en JS (SpotlightOverlay) : le compilateur CSS ne garderait que la version -webkit-. */
+  background: rgb(250 250 249 / 0.3);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 450ms ease,
+    visibility 0s linear 450ms;
+}
+.spot-veil-on {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 450ms ease;
+}
+.spot-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 1.5px rgb(28 25 23 / 0.16),
+    0 10px 40px -6px rgb(28 25 23 / 0.35);
+}
+
+/* Tracé à la volée */
+.spot-editor {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  cursor: crosshair;
+  touch-action: none;
+}
+.spot-frame {
+  position: absolute;
+  left: 0;
+  top: 0;
+  cursor: move;
+  border: 1px solid rgb(245 158 11 / 0.45);
+  border-radius: 10px;
+  transition: border-color 150ms;
+}
+/* Zones de saisie invisibles : bords sur toute leur longueur, coins. */
+.spot-zone {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.spot-zone-n,
+.spot-zone-s { left: 10px; right: 10px; height: 12px; cursor: ns-resize; }
+.spot-zone-e,
+.spot-zone-w { top: 10px; bottom: 10px; width: 12px; cursor: ew-resize; }
+.spot-zone-n { top: -6px; }
+.spot-zone-s { bottom: -6px; }
+.spot-zone-e { right: -6px; }
+.spot-zone-w { left: -6px; }
+.spot-zone-nw,
+.spot-zone-ne,
+.spot-zone-se,
+.spot-zone-sw { width: 16px; height: 16px; }
+.spot-zone-nw { left: -8px; top: -8px; cursor: nwse-resize; }
+.spot-zone-ne { right: -8px; top: -8px; cursor: nesw-resize; }
+.spot-zone-se { right: -8px; bottom: -8px; cursor: nwse-resize; }
+.spot-zone-sw { left: -8px; bottom: -8px; cursor: nesw-resize; }
+/* Points discrets, visibles seulement au survol d'un bord ou pendant le redimensionnement. */
+.spot-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  border: 1px solid #f59e0b;
+  background: white;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+.spot-frame:has(.spot-zone:hover),
+.spot-frame-resizing {
+  border-color: #f59e0b;
+}
+.spot-frame:has(.spot-zone:hover) .spot-dot,
+.spot-frame-resizing .spot-dot {
+  opacity: 1;
+}
+.spot-hint {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  translate: -50% 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgb(28 25 23 / 0.85);
+  color: white;
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: pres-fade 200ms ease-out both;
+}
+.spot-clear {
+  display: flex;
+  height: 32px;
+  width: 14px;
+  align-items: center;
+  justify-content: center;
+  margin-left: -4px;
+  border-radius: 4px;
+  color: #a8a29e;
+}
+.spot-clear:hover {
+  color: #1c1917;
+  background: rgb(231 229 228 / 0.7);
+}
+
 /* Narration : le texte glisse à chaque changement d'étape. */
 .narration-body {
   animation: pres-rise 500ms ease-out both;
@@ -312,7 +454,8 @@ body.is-resizing {
 @media (prefers-reduced-motion: reduce) {
   .tl-shape.pres,
   .tl-shape[class*='pres-enter'],
-  .narration-body {
+  .narration-body,
+  .spot-veil {
     animation: none !important;
     transition: none !important;
   }

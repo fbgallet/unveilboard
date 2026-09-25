@@ -139,3 +139,22 @@ export function stepFocusTargets(step: Step, expand = identity): ShapeRef[] {
   }
   return []
 }
+
+/**
+ * Parmi des objets visibles, ceux apparus le plus récemment (étapes 0..index).
+ * Sert aux calques occultants : afficher un nouveau calque remplace les précédents.
+ * Un objet jamais montré par la séquence compte comme apparu avant la première étape.
+ */
+export function latestShown(seq: Sequence, index: number, ids: ShapeRef[], expand = identity): ShapeRef[] {
+  if (!ids.length) return []
+  const shownAt = new Map<ShapeRef, number>()
+  const last = Math.min(index, seq.steps.length - 1)
+  for (let i = 0; i <= last; i++) {
+    for (const action of seq.steps[i].actions) {
+      if (action.type === 'show') expand(action.targets).forEach((id) => shownAt.set(id, i))
+    }
+  }
+  const rank = (id: ShapeRef) => shownAt.get(id) ?? -1
+  const top = Math.max(...ids.map(rank))
+  return ids.filter((id) => rank(id) === top)
+}

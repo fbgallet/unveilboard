@@ -2,19 +2,22 @@
 
 import { useEffect, useRef } from 'react'
 import { react, type Editor, type TLCamera } from 'tldraw'
-import { computeEditorStage, drawClip, moveCamera, readSequence } from '@/lib/canvas/adapter'
+import { activeSpotlights, boundsOf, computeEditorStage, drawClip, moveCamera, readSequence } from '@/lib/canvas/adapter'
 import { stateOf } from '@/lib/sequence/compute'
 import { applyLaserTiming } from '@/lib/canvas/laser'
 import {
+  activeSpotsAtom,
   editUnlockedAtom,
   laserPopoverOpenAtom,
   laserSettingsAtom,
+  liveSpotAtom,
   modeAtom,
   narrationVisibleAtom,
   overviewAtom,
   recenterAtom,
   shapeClassesAtom,
   type ShapePresentation,
+  spotToolAtom,
   stepIndexAtom,
 } from '@/lib/presentation/store'
 
@@ -26,6 +29,7 @@ export function enterPresentation(fromIndex = -1) {
 
 export function exitPresentation() {
   laserPopoverOpenAtom.set(false)
+  clearLiveSpot()
   modeAtom.set('edit')
   editUnlockedAtom.set(false)
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
@@ -46,10 +50,13 @@ export function usePresentation(editor: Editor) {
   useEffect(() => {
     let prevIndex = -2
     let animatedIndex = -2
+    let prevSpots = ''
     return react('presentation classes', () => {
       if (modeAtom.get() !== 'present') {
         prevIndex = -2
+        prevSpots = ''
         shapeClassesAtom.set(null)
+        activeSpotsAtom.set([])
         return
       }
       const seq = readSequence(editor)
@@ -80,6 +87,15 @@ export function usePresentation(editor: Editor) {
         byId.set(id, { className: cls.join(' '), style })
       }
       shapeClassesAtom.set({ byId, fallback: { className: 'pres pres-visible' } })
+
+      // Calques occultants : quand la séquence en change, elle reprend la main sur la fenêtre tracée à la volée.
+      const spots = activeSpotlights(editor, seq, index, stage)
+      const spotsKey = spots.join(',')
+      if (spotsKey !== prevSpots) {
+        if (prevSpots || spotsKey) liveSpotAtom.set(null)
+        prevSpots = spotsKey
+        activeSpotsAtom.set(spots)
+      }
     })
   }, [editor])
 
@@ -138,6 +154,7 @@ export function usePresentation(editor: Editor) {
       if (editUnlockedAtom.get()) {
         if (e.key === 'PageDown') goToStep(editor, index + 1)
         else if (e.key === 'PageUp') goToStep(editor, index - 1)
+        else if (e.key === 'Escape' && spotToolAtom.get()) spotToolAtom.set(false)
         else return
         e.preventDefault()
         e.stopPropagation()
@@ -177,6 +194,10 @@ export function usePresentation(editor: Editor) {
         case 'K':
           toggleLaser(editor)
           break
+        case 'm':
+        case 'M':
+          toggleSpotTool(editor)
+          break
         case 'n':
         case 'N':
           toggleNarration()
@@ -190,8 +211,10 @@ export function usePresentation(editor: Editor) {
             laserPopoverOpenAtom.set(false)
             break
           }
-          // Premier Échap : quitter le laser ; second : quitter la présentation.
-          if (editor.getCurrentToolId() === 'laser') editor.setCurrentTool('select')
+          // Échap défait d'abord l'outil en cours (calque, laser), puis quitte la présentation.
+          if (spotToolAtom.get()) spotToolAtom.set(false)
+          else if (liveSpotAtom.get()) clearLiveSpot()
+          else if (editor.getCurrentToolId() === 'laser') editor.setCurrentTool('select')
           else exitPresentation()
           break
         default:
@@ -225,7 +248,31 @@ export function recenter() {
 }
 
 export function toggleLaser(editor: Editor) {
-  editor.setCurrentTool(editor.getCurrentToolId() === 'laser' ? 'select' : 'laser')
+  const on = editor.getCurrentToolId() !== 'laser'
+  if (on) spotToolAtom.set(false)
+  editor.setCurrentTool(on ? 'laser' : 'select')
+}
+
+/**
+ * Outil « calque occultant à la volée ». À l'activation, la fenêtre reprend
+ * le calque de l'étape s'il y en a un, pour pouvoir l'ajuster.
+ */
+export function toggleSpotTool(editor: Editor) {
+  const on = !spotToolAtom.get()
+  if (on) {
+    laserPopoverOpenAtom.set(false)
+    if (editor.getCurrentToolId() === 'laser') editor.setCurrentTool('select')
+    if (!liveSpotAtom.get()) {
+      const bounds = boundsOf(editor, activeSpotsAtom.get())
+      if (bounds) liveSpotAtom.set(bounds.toJson())
+    }
+  }
+  spotToolAtom.set(on)
+}
+
+export function clearLiveSpot() {
+  spotToolAtom.set(false)
+  liveSpotAtom.set(null)
 }
 
 export function toggleNarration() {
