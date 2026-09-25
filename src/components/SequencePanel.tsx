@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useValue, type Editor, type TLShapeId } from 'tldraw'
 import { readSequence, writeSequence } from '@/lib/canvas/adapter'
 import {
@@ -25,6 +26,7 @@ import {
 } from '@/lib/sequence/types'
 import { activeStepIdAtom } from '@/lib/presentation/store'
 import { enterPresentation } from './usePresentation'
+import { SyncIndicator } from './SyncIndicator'
 
 const ADDABLE: StepActionType[] = ['show', 'dim', 'hide', 'undim', 'highlight', 'focus']
 
@@ -55,6 +57,12 @@ export function SequencePanel({ editor }: { editor: Editor }) {
   return (
     <aside className="flex h-full w-[380px] shrink-0 flex-col border-l border-zinc-200 bg-zinc-50 text-sm text-zinc-800">
       <header className="flex flex-col gap-2 border-b border-zinc-200 p-3">
+        <div className="flex items-center justify-between">
+          <Link href="/" className="text-xs text-zinc-500 hover:text-zinc-900">
+            ← Mes schémas
+          </Link>
+          <SyncIndicator />
+        </div>
         <input
           className="rounded bg-transparent px-1 text-base font-semibold outline-none focus:bg-white"
           value={seq.title}

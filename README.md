@@ -1,11 +1,34 @@
-# Schémas animés (phase 0)
+# Schémas animés
 
 Présentation progressive de schémas sur un canevas tldraw : chaque étape fait apparaître, atténue, cache ou surligne des objets, déplace la caméra et affiche un texte de narration.
 
+## Démarrage en local
+
+Prérequis : Postgres local (ex. Postgres.app).
+
 ```bash
 pnpm install
+createdb animated_tldraw
+cp .env.example .env.local   # puis renseigner DATABASE_URL, APP_PASSWORD, SESSION_SECRET
+pnpm db:migrate
 pnpm dev
 ```
+
+## Mise en ligne (Vercel + Neon)
+
+1. Créer un projet Neon et copier l'URL de connexion **pooled** (hôte en `-pooler`).
+2. Appliquer le schéma sur Neon : `DATABASE_URL=<url neon> pnpm db:migrate`.
+3. Sur Vercel, définir les variables : `DATABASE_URL`, `APP_PASSWORD`, `SESSION_SECRET` (`openssl rand -base64 48`), `NEXT_PUBLIC_TLDRAW_LICENSE_KEY`.
+4. Optionnel : créer un store Vercel Blob (ajoute `BLOB_READ_WRITE_TOKEN`) pour stocker les images hors du document.
+
+## Sauvegarde
+
+- Chaque document a un cache local (IndexedDB, via `persistenceKey`) : ouverture instantanée, travail hors ligne.
+- Les modifications sont envoyées au serveur ~1 s après la dernière action (`src/lib/sync/cloudSync.ts`), sous forme d'instantané tldraw stocké en `jsonb`.
+- Verrouillage optimiste : si le document a été modifié sur un autre appareil entre-temps, le serveur refuse (409) et un bandeau propose de charger la version en ligne ou de garder la sienne. Les modifications locales écartées sont copiées dans `localStorage` (`backup:<id>`).
+- Au retour sur l'onglet, une version plus récente enregistrée ailleurs est chargée automatiquement.
+
+L'accès est protégé par un mot de passe unique (`APP_PASSWORD`) et un cookie de session signé : suffisant pour un usage personnel, à remplacer par de vrais comptes avant une ouverture au public.
 
 ## Architecture
 

@@ -8,6 +8,6 @@ const Studio = dynamic(() => import('./Studio'), {
   loading: () => <div className="flex h-dvh items-center justify-center text-zinc-400">Chargement…</div>,
 })
 
-export default function StudioLoader() {
-  return <Studio />
+export default function StudioLoader(props: { docId: string; seedDemo: boolean }) {
+  return <Studio {...props} />
 }

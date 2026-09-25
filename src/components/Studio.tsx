@@ -1,19 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Tldraw, useValue, type Editor, type TLComponents } from 'tldraw'
 import 'tldraw/tldraw.css'
-import { readSequence, writeSequence } from '@/lib/canvas/adapter'
-import { seedDemo } from '@/lib/demo'
 import { LaserOverlayUtil } from '@/lib/canvas/laser'
-import { emptySequence } from '@/lib/sequence/types'
-import { editUnlockedAtom, modeAtom } from '@/lib/presentation/store'
+import { activeStepIdAtom, editUnlockedAtom, modeAtom, stepIndexAtom } from '@/lib/presentation/store'
+import { assetStore } from '@/lib/sync/assetStore'
+import { startCloudSync } from '@/lib/sync/cloudSync'
 import { PresShapeWrapper } from './PresShapeWrapper'
 import { StepBadges } from './StepBadges'
 import { SequencePanel } from './SequencePanel'
 import { NarrationPanel, ProgressBar } from './PresenterUI'
 import { usePresentation } from './usePresentation'
 import { QuickAssign } from './QuickAssign'
+import { SyncBanner } from './SyncIndicator'
 
 const overlayUtils = [LaserOverlayUtil]
 
@@ -22,33 +22,39 @@ const components: TLComponents = {
   OnTheCanvas: StepBadges,
 }
 
-function onMount(editor: Editor) {
-  if (readSequence(editor)) return
-  const isEmpty = editor.getCurrentPageShapeIds().size === 0
-  writeSequence(editor, isEmpty ? seedDemo(editor) : emptySequence())
-  editor.zoomToFit()
-}
-
-export default function Studio() {
+export default function Studio({ docId, seedDemo }: { docId: string; seedDemo: boolean }) {
   const [editor, setEditor] = useState<Editor | null>(null)
   const mode = useValue(modeAtom)
   const unlocked = useValue(editUnlockedAtom)
+
+  // Synchronisation avec le serveur, et remise à zéro de l'état de présentation en quittant le document.
+  useEffect(() => {
+    if (!editor) return
+    const stop = startCloudSync(editor, docId, { seedDemo })
+    return () => {
+      stop()
+      modeAtom.set('edit')
+      editUnlockedAtom.set(false)
+      stepIndexAtom.set(-1)
+      activeStepIdAtom.set(null)
+    }
+  }, [editor, docId, seedDemo])
 
   return (
     <div className="studio flex h-dvh w-full overflow-hidden" data-mode={mode} data-unlocked={unlocked}>
       <div className="relative min-w-0 flex-1">
         <Tldraw
-          persistenceKey="animated-tldraw-phase0"
+          // Cache local (IndexedDB) propre à chaque document.
+          persistenceKey={`doc:${docId}`}
+          assets={assetStore}
           components={components}
           overlayUtils={overlayUtils}
           licenseKey={process.env.NEXT_PUBLIC_TLDRAW_LICENSE_KEY}
-          onMount={(e) => {
-            onMount(e)
-            setEditor(e)
-          }}
+          onMount={setEditor}
         />
         {editor && mode === 'present' && <ProgressBar editor={editor} />}
         {editor && mode === 'present' && unlocked && <QuickAssign editor={editor} />}
+        {editor && <SyncBanner />}
       </div>
       {editor && <PresentationHost editor={editor} />}
       {editor && mode === 'edit' && <SequencePanel editor={editor} />}
