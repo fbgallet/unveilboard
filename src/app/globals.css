@@ -36,6 +36,12 @@ body {
   .btn-xs {
     @apply border-zinc-200 bg-white px-2 py-0.5 text-xs hover:bg-amber-50;
   }
+  .btn-ghost {
+    @apply flex items-center gap-1 rounded-md px-2 py-1 text-xs text-zinc-500 transition hover:bg-zinc-200/70 hover:text-zinc-900;
+  }
+  .btn-ghost-on {
+    @apply bg-amber-100 text-amber-800 hover:bg-amber-200 hover:text-amber-900;
+  }
   .pbtn {
     @apply flex h-8 w-8 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200/70 hover:text-stone-900 disabled:opacity-30 disabled:hover:bg-transparent;
   }
@@ -168,6 +174,27 @@ body {
 }
 .qa-btn-primary:hover:not(:disabled) {
   background: #f59e0b;
+}
+.qa-kbd {
+  margin-right: 6px;
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font: 600 10px/14px ui-monospace, monospace;
+  opacity: 0.6;
+}
+
+/* Séquençage rapide (mode édition) : aperçu de l'étape active */
+.quick-sequence,
+.studio[data-mode='edit'] .quick-assign {
+  bottom: 64px;
+}
+.tl-shape.seq-ghost {
+  opacity: 0.15 !important;
+  filter: grayscale(1);
+}
+.tl-shape.seq-pending {
+  filter: drop-shadow(0 0 4px rgb(245 158 11 / 0.9));
 }
 
 /* Réglages du laser */

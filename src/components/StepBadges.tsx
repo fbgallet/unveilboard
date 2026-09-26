@@ -3,7 +3,7 @@
 import { useEditor, useValue, type TLShapeId } from 'tldraw'
 import { readSequence } from '@/lib/canvas/adapter'
 import { appearanceIndex } from '@/lib/sequence/edit'
-import { activeStepIdAtom, modeAtom } from '@/lib/presentation/store'
+import { activeStepIdAtom, modeAtom, stepBadgesVisibleAtom } from '@/lib/presentation/store'
 
 /** Pastilles numérotées sur le canevas, en mode édition : à quelle étape chaque objet apparaît. */
 export function StepBadges() {
@@ -11,7 +11,7 @@ export function StepBadges() {
   const badges = useValue(
     'step badges',
     () => {
-      if (modeAtom.get() !== 'edit') return []
+      if (modeAtom.get() !== 'edit' || !stepBadgesVisibleAtom.get()) return []
       const seq = readSequence(editor)
       if (!seq) return []
       const activeId = activeStepIdAtom.get()

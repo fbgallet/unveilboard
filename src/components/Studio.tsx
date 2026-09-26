@@ -6,7 +6,7 @@ import 'tldraw/tldraw.css'
 import { LaserOverlayUtil } from '@/lib/canvas/laser'
 import { SpotlightShapeUtil } from '@/lib/canvas/spotlight'
 import { isHiddenByFold, registerTreeSideEffects, withBranchesToDelete } from '@/lib/canvas/tree'
-import { activeStepIdAtom, editUnlockedAtom, modeAtom, stepIndexAtom } from '@/lib/presentation/store'
+import { activeStepIdAtom, editUnlockedAtom, modeAtom, quickSequenceAtom, stepIndexAtom } from '@/lib/presentation/store'
 import { assetStore } from '@/lib/sync/assetStore'
 import { startCloudSync } from '@/lib/sync/cloudSync'
 import { PresShapeWrapper } from './PresShapeWrapper'
@@ -14,7 +14,7 @@ import { StepBadges } from './StepBadges'
 import { SequencePanel } from './SequencePanel'
 import { NarrationPanel, ProgressBar } from './PresenterUI'
 import { usePresentation } from './usePresentation'
-import { QuickAssign } from './QuickAssign'
+import { QuickAssign, QuickSequence } from './QuickAssign'
 import { SyncBanner } from './SyncIndicator'
 import { SpotlightOverlay } from './SpotlightOverlay'
 import { FoldBadges, TreeToolbar, useTreeKeyboard } from './TreeTools'
@@ -63,6 +63,7 @@ export default function Studio({ docId, seedDemo }: { docId: string; seedDemo: b
   const [editor, setEditor] = useState<Editor | null>(null)
   const mode = useValue(modeAtom)
   const unlocked = useValue(editUnlockedAtom)
+  const quickSequence = useValue(quickSequenceAtom)
 
   // Synchronisation avec le serveur, et remise à zéro de l'état de présentation en quittant le document.
   useEffect(() => {
@@ -76,6 +77,7 @@ export default function Studio({ docId, seedDemo }: { docId: string; seedDemo: b
       stopTree()
       modeAtom.set('edit')
       editUnlockedAtom.set(false)
+      quickSequenceAtom.set(false)
       stepIndexAtom.set(-1)
       activeStepIdAtom.set(null)
     }
@@ -98,6 +100,7 @@ export default function Studio({ docId, seedDemo }: { docId: string; seedDemo: b
         />
         {editor && mode === 'present' && <ProgressBar editor={editor} />}
         {editor && mode === 'present' && unlocked && <QuickAssign editor={editor} />}
+        {editor && mode === 'edit' && quickSequence && <QuickSequence editor={editor} />}
         {editor && (mode === 'edit' || unlocked) && <TreeToolbar editor={editor} />}
         {editor && <SyncBanner />}
       </div>

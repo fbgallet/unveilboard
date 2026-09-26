@@ -66,6 +66,18 @@ export const foldedBadgesAtom = atom<string[]>('foldedBadges', [])
 /** Étape sélectionnée dans le panneau d'édition. */
 export const activeStepIdAtom = atom<string | null>('activeStepId', null)
 
+/** Pastilles de numéro d'étape sur le canevas (mode édition). */
+export const stepBadgesVisibleAtom = atom<boolean>('stepBadgesVisible', readStoredValue('stepBadgesVisible') !== 'false')
+
+/**
+ * Séquençage rapide (mode édition) : chaque nouvel objet est proposé au rattachement
+ * à l'étape active, ou à une nouvelle étape juste avant / juste après.
+ */
+export const quickSequenceAtom = atom<boolean>('quickSequence', false)
+
+/** Objets créés en séquençage rapide, en attente de rattachement. */
+export const pendingShapesAtom = atom<string[]>('pendingShapes', [])
+
 /**
  * Classes CSS à appliquer à chaque forme pendant la présentation.
  * null hors présentation : les formes s'affichent normalement.

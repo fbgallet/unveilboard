@@ -7,6 +7,7 @@ import { stateOf } from '@/lib/sequence/compute'
 import { applyLaserTiming } from '@/lib/canvas/laser'
 import {
   activeSpotsAtom,
+  activeStepIdAtom,
   editUnlockedAtom,
   foldedBadgesAtom,
   laserPopoverOpenAtom,
@@ -15,6 +16,8 @@ import {
   modeAtom,
   narrationVisibleAtom,
   overviewAtom,
+  pendingShapesAtom,
+  quickSequenceAtom,
   recenterAtom,
   shapeClassesAtom,
   type ShapePresentation,
@@ -56,7 +59,7 @@ export function usePresentation(editor: Editor) {
       if (modeAtom.get() !== 'present') {
         prevIndex = -2
         prevSpots = ''
-        shapeClassesAtom.set(null)
+        shapeClassesAtom.set(quickSequenceAtom.get() ? quickSequencePreview(editor) : null)
         activeSpotsAtom.set([])
         foldedBadgesAtom.set([])
         return
@@ -231,6 +234,33 @@ export function usePresentation(editor: Editor) {
     window.addEventListener('keydown', onKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
   }, [editor])
+}
+
+/**
+ * Séquençage rapide : les objets des étapes suivantes sont estompés (on voit le schéma
+ * tel qu'il est à l'étape active), les objets en attente de rattachement sont signalés.
+ */
+function quickSequencePreview(editor: Editor) {
+  const seq = readSequence(editor)
+  const index = seq ? seq.steps.findIndex((s) => s.id === activeStepIdAtom.get()) : -1
+  const stage = seq ? computeEditorStage(editor, seq, index) : null
+  const pending = new Set(pendingShapesAtom.get())
+  const byId = new Map<string, ShapePresentation>()
+  for (const id of editor.getCurrentPageShapeIds()) {
+    if (pending.has(id)) byId.set(id, { className: 'seq-pending' })
+    else if (stage && stateOf(stage, id).visibility === 'hidden') byId.set(id, { className: 'seq-ghost' })
+  }
+  return { byId, fallback: { className: '' } }
+}
+
+/** Séquençage rapide : l'étape active par défaut est la dernière. */
+export function toggleQuickSequence(editor: Editor) {
+  const on = !quickSequenceAtom.get()
+  if (on) {
+    const steps = readSequence(editor)?.steps ?? []
+    if (!steps.some((s) => s.id === activeStepIdAtom.get())) activeStepIdAtom.set(steps.at(-1)?.id ?? null)
+  }
+  quickSequenceAtom.set(on)
 }
 
 function isTypingTarget(target: EventTarget | null) {

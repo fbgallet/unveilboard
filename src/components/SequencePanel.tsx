@@ -29,17 +29,25 @@ import {
 import {
   SEQUENCE_PANEL_WIDTH,
   activeStepIdAtom,
+  quickSequenceAtom,
   sequencePanelOpenAtom,
   sequencePanelWidthAtom,
+  stepBadgesVisibleAtom,
   storeValue,
 } from '@/lib/presentation/store'
-import { enterPresentation } from './usePresentation'
+import { enterPresentation, toggleQuickSequence } from './usePresentation'
 import { SyncIndicator } from './SyncIndicator'
 import { ResizeHandle } from './ResizeHandle'
 
 const ADDABLE: StepActionType[] = ['show', 'dim', 'hide', 'undim', 'highlight', 'focus']
 /** Proposées seulement si la sélection contient un nœud d'arbre qui a des enfants. */
 const TREE_ACTIONS: StepActionType[] = ['fold', 'unfold']
+
+function toggleStepBadges() {
+  const visible = !stepBadgesVisibleAtom.get()
+  stepBadgesVisibleAtom.set(visible)
+  storeValue('stepBadgesVisible', visible)
+}
 
 function setPanelOpen(open: boolean) {
   sequencePanelOpenAtom.set(open)
@@ -69,6 +77,8 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
   const seq = useValue('sequence', () => readSequence(editor) ?? emptySequence(), [editor])
   const selection = useValue('selection', () => editor.getSelectedShapeIds(), [editor])
   const activeId = useValue(activeStepIdAtom)
+  const quickSequence = useValue(quickSequenceAtom)
+  const badgesVisible = useValue(stepBadgesVisibleAtom)
   const canFold = useValue('can fold', () => selection.some((id) => getTreeIndex(editor).children.has(id)), [editor, selection])
   const appears = appearanceIndex(seq)
 
@@ -143,22 +153,53 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
         </div>
       </header>
 
-      <div className="border-b border-zinc-200 p-3">
-        <p className="mb-2 text-xs text-zinc-500">{selectionHint}</p>
-        <button className="btn w-full" onClick={newStepFromSelection}>
-          + Nouvelle étape{selection.length ? ' (faire apparaître la sélection)' : ''}
-        </button>
-        <button
-          className="btn mt-2 w-full"
-          onClick={addSpotlight}
-          title="Pendant la présentation, tout est flouté sauf ce rectangle. Un nouveau calque remplace le précédent ; « Cacher » le retire."
-        >
-          + Calque occultant{selection.length ? ' autour de la sélection' : ''}
-          {activeIndex >= 0 ? ` (étape ${activeIndex + 1})` : ''}
-        </button>
+      <div className="flex flex-col gap-1.5 border-b border-zinc-200 px-3 py-2">
+        <div className="flex items-center gap-0.5">
+          <button
+            className="btn-ghost"
+            onClick={newStepFromSelection}
+            title={`Nouvelle étape${activeIndex >= 0 ? ` après l'étape ${activeIndex + 1}` : ''}${selection.length ? ', qui fait apparaître la sélection' : ''}`}
+          >
+            <Icon name="plus" />
+            Étape
+          </button>
+          <button
+            className="btn-ghost"
+            onClick={addSpotlight}
+            title={`Calque occultant${selection.length ? ' autour de la sélection' : ''}${activeIndex >= 0 ? `, à l'étape ${activeIndex + 1}` : ''}. Pendant la présentation, tout est flouté sauf ce rectangle ; un nouveau calque remplace le précédent, « Cacher » le retire.`}
+          >
+            <Icon name="spot" />
+            Calque
+          </button>
+          <span className="mx-1 h-4 w-px bg-zinc-200" />
+          <button
+            className={`btn-ghost ${quickSequence ? 'btn-ghost-on' : ''}`}
+            onClick={() => toggleQuickSequence(editor)}
+            aria-pressed={quickSequence}
+            title="Séquençage rapide : chaque objet créé est proposé à l'étape active, ou à une nouvelle étape avant / après (touches 1, 2, 3). Les objets des étapes suivantes sont estompés."
+          >
+            <Icon name="bolt" />
+            Rapide
+          </button>
+          <button
+            className={`btn-ghost ${badgesVisible ? 'btn-ghost-on' : ''}`}
+            onClick={toggleStepBadges}
+            aria-pressed={badgesVisible}
+            title={badgesVisible ? "Masquer les numéros d'étape sur le canevas" : "Afficher les numéros d'étape sur le canevas"}
+          >
+            <Icon name="hash" />
+            Numéros
+          </button>
+        </div>
+        <p className="px-1 text-[11px] text-zinc-400">{selectionHint}</p>
       </div>
 
-      <ol className="flex-1 space-y-2 overflow-y-auto p-3">
+      <ol
+        className="flex-1 space-y-2 overflow-y-auto p-3"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) activeStepIdAtom.set(null)
+        }}
+      >
         {seq.steps.map((step, i) => (
           <StepCard
             key={step.id}
@@ -168,7 +209,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
             active={step.id === activeId}
             selection={selection}
             canFold={canFold}
-            onActivate={() => activeStepIdAtom.set(step.id)}
+            onActivate={() => activeStepIdAtom.set(step.id === activeId ? null : step.id)}
             onChange={(patch) => save(updateStep(seq, step.id, patch))}
             onAdd={(type) => save(addTargets(seq, step.id, type, selection))}
             onRemoveAction={(ai) => save(removeAction(seq, step.id, ai))}
@@ -224,7 +265,12 @@ function StepCard(p: StepCardProps) {
       className={`rounded-lg border bg-white p-2 shadow-sm transition ${
         p.active ? 'border-amber-400 ring-2 ring-amber-200' : 'border-zinc-200 hover:border-zinc-300'
       }`}
-      onClick={p.onActivate}
+      onClick={(e) => {
+        // Sur l'étape active, un clic dans un champ ou un bouton ne la désélectionne pas.
+        if (p.active && (e.target as HTMLElement).closest('input, textarea, select, button')) return
+        p.onActivate()
+      }}
+      title={p.active ? 'Cliquer pour désélectionner' : undefined}
     >
       <div className="flex items-center gap-2">
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-400 text-xs font-bold text-white">
@@ -335,5 +381,25 @@ function IconBtn({
     >
       {children}
     </button>
+  )
+}
+
+const ICONS = {
+  plus: <path d="M8 3.5v9M3.5 8h9" />,
+  spot: (
+    <>
+      <rect x="2.5" y="2.5" width="11" height="11" rx="2" strokeDasharray="2 2" />
+      <rect x="5.5" y="5.5" width="5" height="5" rx="1" />
+    </>
+  ),
+  bolt: <path d="M9 2 4 9h4l-1 5 5-7H8l1-5Z" strokeLinejoin="round" />,
+  hash: <path d="M6 2.5 5 13.5M11 2.5l-1 11M3 6h10.5M2.5 10H13" />,
+}
+
+function Icon({ name }: { name: keyof typeof ICONS }) {
+  return (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+      {ICONS[name]}
+    </svg>
   )
 }
