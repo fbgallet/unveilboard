@@ -1,6 +1,6 @@
 // Stockage « cloud » : les routes /api/documents, adossées à Postgres.
 
-import { StorageError, type DocumentStore, type DocumentSummary, type StoredDocument } from './types'
+import { StorageError, type DocumentStore, type DocumentSummary, type SettingsStore, type StoredDocument } from './types'
 
 async function request(url: string, init?: RequestInit): Promise<Response> {
   let res: Response
@@ -63,5 +63,19 @@ export const cloudStore: DocumentStore = {
     if (res.status === 409) return { ok: false, reason: 'conflict', version: (await res.json()).version }
     if (res.status === 404) return { ok: false, reason: 'not_found' }
     return { ok: true, version: (await json<{ version: number }>(res)).version }
+  },
+}
+
+export const cloudSettings: SettingsStore = {
+  async get<T>(key: string) {
+    return (await json<{ value: T | null }>(await request(`/api/settings/${key}`))).value
+  },
+  async set(key, value) {
+    const res = await request(`/api/settings/${key}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value }),
+    })
+    if (!res.ok) throw new StorageError('server', `Erreur serveur (${res.status}).`)
   },
 }

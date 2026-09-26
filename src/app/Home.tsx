@@ -2,9 +2,9 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { documentStore, forgetLocalCache } from '@/lib/storage'
-import { readTldrFile } from '@/lib/storage/tldrFile'
+import { importTldrFile, pickTldrFile } from '@/lib/storage/tldrFile'
 import type { DocumentSummary, StorageMode } from '@/lib/storage/types'
 import { logout } from './login/actions'
 
@@ -17,7 +17,7 @@ export function Home({ storage }: { storage: StorageMode }) {
   const [docs, setDocs] = useState<DocumentSummary[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const fileInput = useRef<HTMLInputElement>(null)
+  const [dragging, setDragging] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -49,9 +49,13 @@ export function Home({ storage }: { storage: StorageMode }) {
 
   const importFile = (file: File) =>
     run(async () => {
-      const { title, snapshotJson } = await readTldrFile(file)
-      router.push(`/d/${await store.create(title, snapshotJson)}`)
+      router.push(`/d/${await importTldrFile(store, file)}`)
     })
+
+  const chooseFile = () =>
+    void pickTldrFile()
+      .then((file) => file && importFile(file))
+      .catch((e: Error) => setError(e.message))
 
   const remove = (doc: DocumentSummary) => {
     if (!confirm(`Supprimer « ${doc.title} » ? Cette action est définitive.`)) return
@@ -64,7 +68,24 @@ export function Home({ storage }: { storage: StorageMode }) {
   }
 
   return (
-    <main className="min-h-dvh bg-[#fbfaf7]">
+    <main
+      className={`min-h-dvh bg-[#fbfaf7] ${dragging ? 'outline-4 -outline-offset-8 outline-dashed outline-amber-400' : ''}`}
+      // Déposer un fichier .tldr n'importe où sur la page l'importe.
+      onDragOver={(e) => {
+        if (![...e.dataTransfer.items].some((i) => i.kind === 'file')) return
+        e.preventDefault()
+        setDragging(true)
+      }}
+      onDragLeave={(e) => {
+        if (e.currentTarget === e.target) setDragging(false)
+      }}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDragging(false)
+        const file = e.dataTransfer.files[0]
+        if (file) void importFile(file)
+      }}
+    >
       <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
         <header className="flex items-baseline justify-between gap-4">
           <h1 className="font-serif text-4xl text-stone-900">Mes schémas</h1>
@@ -77,8 +98,9 @@ export function Home({ storage }: { storage: StorageMode }) {
 
         {storage === 'local' && (
           <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            Vos schémas sont enregistrés <strong>dans ce navigateur uniquement</strong>. Utilisez « Exporter » (dans un
-            schéma) pour les sauvegarder ou les transférer, et « Importer » pour les rouvrir ailleurs.
+            Vos schémas sont enregistrés <strong>dans ce navigateur uniquement</strong>. Pour les sauvegarder ou les
+            transférer : « Enregistrer sous… » (panneau des étapes, ou menu ☰) dans un schéma, puis « Ouvrir un fichier .tldr »
+            ici, ou glisser le fichier sur cette page.
           </p>
         )}
 
@@ -89,20 +111,9 @@ export function Home({ storage }: { storage: StorageMode }) {
           <button className="btn" disabled={busy} onClick={() => create(true)}>
             Créer l&apos;exemple (la liberté)
           </button>
-          <button className="btn" disabled={busy} onClick={() => fileInput.current?.click()}>
-            Importer un fichier .tldr
+          <button className="btn" disabled={busy} onClick={chooseFile} title="Ou déposez un fichier .tldr sur cette page">
+            Ouvrir un fichier .tldr…
           </button>
-          <input
-            ref={fileInput}
-            type="file"
-            accept=".tldr,application/json"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              e.target.value = ''
-              if (file) void importFile(file)
-            }}
-          />
         </div>
 
         {error && <p className="mt-4 text-sm text-red-600">{error}</p>}

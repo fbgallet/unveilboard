@@ -5,11 +5,13 @@ import { Tldraw, useValue, type Editor, type TLComponents, type TLShape, type TL
 import 'tldraw/tldraw.css'
 import { LaserOverlayUtil } from '@/lib/canvas/laser'
 import { SpotlightShapeUtil } from '@/lib/canvas/spotlight'
-import { isHiddenByFold, registerTreeSideEffects, withBranchesToDelete } from '@/lib/canvas/tree'
+import { registerTreeSideEffects, withBranchesToDelete } from '@/lib/canvas/tree'
+import { registerDetailSideEffects } from '@/lib/canvas/details'
+import { isHiddenInEdit } from '@/lib/canvas/visibility'
 import { activeStepIdAtom, editUnlockedAtom, modeAtom, quickSequenceAtom, stepIndexAtom } from '@/lib/presentation/store'
 import { assetStore } from '@/lib/sync/assetStore'
 import { startDocumentSync } from '@/lib/sync/documentSync'
-import { documentStore } from '@/lib/storage'
+import { documentStore, settingsStore } from '@/lib/storage'
 import type { StorageMode } from '@/lib/storage/types'
 import { PresShapeWrapper } from './PresShapeWrapper'
 import { StepBadges } from './StepBadges'
@@ -19,7 +21,10 @@ import { usePresentation } from './usePresentation'
 import { QuickAssign, QuickSequence } from './QuickAssign'
 import { SyncBanner } from './SyncIndicator'
 import { SpotlightOverlay } from './SpotlightOverlay'
-import { FoldBadges, TreeToolbar, useTreeKeyboard } from './TreeTools'
+import { DetailBadges, FoldBadges, TreeToolbar, useTreeKeyboard } from './TreeTools'
+import { MainMenu } from './FileMenu'
+import { PresetManager, PresetStylePanel } from './PresetTools'
+import { loadPresetSettings } from '@/lib/canvas/presets'
 
 const overlayUtils = [LaserOverlayUtil]
 const shapeUtils = [SpotlightShapeUtil]
@@ -29,6 +34,7 @@ function CanvasBadges() {
     <>
       <StepBadges />
       <FoldBadges />
+      <DetailBadges />
     </>
   )
 }
@@ -37,9 +43,11 @@ const components: TLComponents = {
   ShapeWrapper: PresShapeWrapper,
   OnTheCanvas: CanvasBadges,
   InFrontOfTheCanvas: SpotlightOverlay,
+  MainMenu,
+  StylePanel: PresetStylePanel,
 }
 
-// Supprimer un nœud d'arbre supprime sa branche.
+// Supprimer un nœud d'arbre supprime sa branche ; supprimer une boîte supprime ses détails.
 const overrides: TLUiOverrides = {
   actions(editor, actions) {
     const del = actions['delete']
@@ -56,10 +64,10 @@ const overrides: TLUiOverrides = {
   },
 }
 
-// En édition, une branche repliée est réellement masquée (ni affichée, ni sélectionnable).
+// En édition, une branche ou un détail repliés sont réellement masqués (ni affichés, ni sélectionnables).
 // En présentation, c'est la séquence qui décide (classes CSS).
 const getShapeVisibility = (shape: TLShape, editor: Editor) =>
-  modeAtom.get() === 'edit' && isHiddenByFold(editor, shape) ? 'hidden' : 'inherit'
+  modeAtom.get() === 'edit' && isHiddenInEdit(editor, shape) ? 'hidden' : 'inherit'
 
 export default function Studio({ docId, seedDemo, storage }: { docId: string; seedDemo: boolean; storage: StorageMode }) {
   const [editor, setEditor] = useState<Editor | null>(null)
@@ -74,9 +82,12 @@ export default function Studio({ docId, seedDemo, storage }: { docId: string; se
     if (process.env.NODE_ENV === 'development') Object.assign(window, { editor })
     const stop = startDocumentSync(editor, docId, documentStore(storage), { seedDemo })
     const stopTree = registerTreeSideEffects(editor)
+    const stopDetails = registerDetailSideEffects(editor)
+    void loadPresetSettings(settingsStore(storage))
     return () => {
       stop()
       stopTree()
+      stopDetails()
       modeAtom.set('edit')
       editUnlockedAtom.set(false)
       quickSequenceAtom.set(false)
@@ -105,6 +116,7 @@ export default function Studio({ docId, seedDemo, storage }: { docId: string; se
         {editor && mode === 'edit' && quickSequence && <QuickSequence editor={editor} />}
         {editor && (mode === 'edit' || unlocked) && <TreeToolbar editor={editor} />}
         {editor && <SyncBanner />}
+        {editor && <PresetManager editor={editor} />}
       </div>
       {editor && <PresentationHost editor={editor} />}
       {editor && mode === 'edit' && <SequencePanel editor={editor} />}

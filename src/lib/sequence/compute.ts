@@ -24,6 +24,10 @@ export interface ComputeOptions {
   tree?: Map<ShapeRef, ShapeRef>
   /** Nœuds repliés dans le document (état de départ, modifié par fold / unfold). */
   folded?: Set<ShapeRef>
+  /** Détails : boîte à laquelle chaque détail est rattaché. Un détail suit sa boîte, s'il est déplié. */
+  details?: Map<ShapeRef, ShapeRef>
+  /** Boîtes dont le détail est déplié dans le document (état de départ, modifié par expand / collapse). */
+  expanded?: Set<ShapeRef>
 }
 
 export type Stage = Map<ShapeRef, ShapeState>
@@ -60,6 +64,8 @@ export function computeStage(seq: Sequence, index: number, opts: ComputeOptions 
   const folded = new Set(opts.folded)
   /** Nœuds dépliés à l'étape courante : leurs descendants entrent en fondu. */
   const unfoldedNow = new Set<ShapeRef>()
+  const expanded = new Set(opts.expanded)
+  const expandedNow = new Set<ShapeRef>()
 
   const last = Math.min(index, seq.steps.length - 1)
   for (let i = 0; i <= last; i++) {
@@ -94,6 +100,15 @@ export function computeStage(seq: Sequence, index: number, opts: ComputeOptions 
             if (folded.delete(id) && isCurrent) unfoldedNow.add(id)
           })
           break
+        case 'expand':
+          ids.forEach((id) => {
+            if (!expanded.has(id) && isCurrent) expandedNow.add(id)
+            expanded.add(id)
+          })
+          break
+        case 'collapse':
+          ids.forEach((id) => expanded.delete(id))
+          break
         // highlight et focus sont transitoires : traités après la boucle.
       }
     }
@@ -102,6 +117,7 @@ export function computeStage(seq: Sequence, index: number, opts: ComputeOptions 
   }
 
   if (opts.tree) applyTree(stage, opts.tree, folded, unfoldedNow, managed)
+  if (opts.details) applyDetails(stage, opts.details, expanded, expandedNow, managed)
 
   if (opts.dependencies) {
     for (const [id, deps] of opts.dependencies) {
@@ -160,6 +176,29 @@ function applyTree(
   }
 }
 
+/**
+ * Détails : caché si sa boîte est cachée ou si le détail est replié. Un détail non géré
+ * par la séquence apparaît avec sa boîte ; déplié à l'étape courante, il entre en fondu.
+ */
+function applyDetails(
+  stage: Stage,
+  owner: Map<ShapeRef, ShapeRef>,
+  expanded: Set<ShapeRef>,
+  expandedNow: Set<ShapeRef>,
+  managed: Set<ShapeRef>
+) {
+  for (const [id, box] of owner) {
+    const bs = stage.get(box)
+    const own = stage.get(id) ?? { visibility: 'visible' as const, highlighted: false }
+    if (bs?.visibility === 'hidden' || !expanded.has(box)) {
+      stage.set(id, { ...own, visibility: 'hidden', entering: undefined })
+    } else if (own.visibility !== 'hidden' && !own.entering) {
+      const entering = expandedNow.has(box) ? 'fade' : !managed.has(id) && bs?.entering ? bs.entering : undefined
+      if (entering) stage.set(id, { ...own, entering })
+    }
+  }
+}
+
 function applyTransient(step: Step, stage: Stage, resolve: (r: ShapeRef[]) => ShapeRef[]) {
   const focus = new Set<ShapeRef>()
   for (const action of step.actions) {
@@ -205,7 +244,7 @@ export function stepFocusTargets(step: Step, resolve = identity, stage?: Stage):
   const focus = targets('focus')
   if (focus.length) return focus
   const entering = stage ? [...stage].filter(([, s]) => s.entering && s.visibility !== 'hidden').map(([id]) => id) : []
-  for (const type of ['show', 'unfold', 'highlight'] as const) {
+  for (const type of ['show', 'unfold', 'expand', 'highlight'] as const) {
     const ids = targets(type)
     if (ids.length) return [...new Set([...ids, ...entering])]
   }

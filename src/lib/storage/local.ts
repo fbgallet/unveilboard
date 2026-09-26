@@ -1,12 +1,13 @@
 // Stockage « local » : les documents restent dans ce navigateur (IndexedDB).
-// Deux tables : un index léger (titre, version, date) pour la liste, et les instantanés.
+// Tables : un index léger (titre, version, date) pour la liste, les instantanés, et les réglages communs.
 // Le verrouillage optimiste fonctionne comme côté serveur : il départage deux onglets.
 
-import { StorageError, type DocumentStore, type DocumentSummary, type SaveResult } from './types'
+import { StorageError, type DocumentStore, type DocumentSummary, type SaveResult, type SettingsStore } from './types'
 
 const DB_NAME = 'animated-tldraw'
 const INDEX = 'documents'
 const SNAPSHOTS = 'snapshots'
+const SETTINGS = 'settings'
 
 interface IndexEntry {
   id: string
@@ -19,10 +20,14 @@ let dbPromise: Promise<IDBDatabase> | null = null
 
 function openDb(): Promise<IDBDatabase> {
   dbPromise ??= new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1)
-    req.onupgradeneeded = () => {
-      req.result.createObjectStore(INDEX, { keyPath: 'id' })
-      req.result.createObjectStore(SNAPSHOTS)
+    const req = indexedDB.open(DB_NAME, 2)
+    req.onupgradeneeded = (e) => {
+      // Chaque version ajoute ses tables : une base existante est complétée, pas recréée.
+      if (e.oldVersion < 1) {
+        req.result.createObjectStore(INDEX, { keyPath: 'id' })
+        req.result.createObjectStore(SNAPSHOTS)
+      }
+      if (e.oldVersion < 2) req.result.createObjectStore(SETTINGS)
     }
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => {
@@ -40,17 +45,20 @@ const done = <T>(req: IDBRequest<T>) =>
   })
 
 /** Exécute `fn` dans une transaction et attend qu'elle soit validée. */
-async function transaction<T>(mode: IDBTransactionMode, fn: (index: IDBObjectStore, snapshots: IDBObjectStore) => Promise<T>) {
+async function transaction<T>(
+  mode: IDBTransactionMode,
+  fn: (index: IDBObjectStore, snapshots: IDBObjectStore, settings: IDBObjectStore) => Promise<T>
+) {
   try {
     const db = await openDb()
-    const tx = db.transaction([INDEX, SNAPSHOTS], mode)
+    const tx = db.transaction([INDEX, SNAPSHOTS, SETTINGS], mode)
     const committed = new Promise<void>((resolve, reject) => {
       tx.oncomplete = () => resolve()
       tx.onerror = () => reject(tx.error)
       tx.onabort = () => reject(tx.error)
     })
     committed.catch(() => {}) // évite un rejet non géré si `fn` échoue avant
-    const result = await fn(tx.objectStore(INDEX), tx.objectStore(SNAPSHOTS))
+    const result = await fn(tx.objectStore(INDEX), tx.objectStore(SNAPSHOTS), tx.objectStore(SETTINGS))
     await committed
     return result
   } catch (e) {
@@ -112,6 +120,17 @@ export const localStore: DocumentStore = {
       index.put({ id, title: input.title.trim().slice(0, 200) || 'Sans titre', version, updatedAt: Date.now() } satisfies IndexEntry)
       snapshots.put(input.snapshotJson, id)
       return { ok: true, version }
+    })
+  },
+}
+
+export const localSettings: SettingsStore = {
+  get<T>(key: string) {
+    return transaction('readonly', async (_i, _s, settings) => ((await done(settings.get(key))) as T | undefined) ?? null)
+  },
+  set(key, value) {
+    return transaction('readwrite', async (_i, _s, settings) => {
+      settings.put(value, key)
     })
   },
 }

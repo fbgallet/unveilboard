@@ -15,6 +15,7 @@ import {
   setDirection,
   toggleFold,
 } from '@/lib/canvas/tree'
+import { addDetail, getDetailIndex, isDetailOpen, toggleDetail } from '@/lib/canvas/details'
 import { editUnlockedAtom, foldedBadgesAtom, modeAtom } from '@/lib/presentation/store'
 
 /** Le document est modifiable : mode édition, ou présentation déverrouillée. */
@@ -69,17 +70,19 @@ function isTypingTarget(target: EventTarget | null) {
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
 }
 
-/** Barre contextuelle en édition : une boîte (ou un nœud d'arbre) sélectionnée. */
+/** Barre contextuelle en édition : une boîte (ou un nœud d'arbre) sélectionnée : arbre et détail. */
 export function TreeToolbar({ editor }: { editor: Editor }) {
   const info = useValue(
     'tree toolbar',
     () => {
       const shape = editor.getOnlySelectedShape()
       if (!shape || shape.type !== 'geo' || !editor.isIn('select.idle')) return null
-      if (!isTreeNode(editor, shape.id)) return { id: shape.id, inTree: false as const }
+      const detail = !getDetailIndex(editor).details.has(shape.id) ? 'none' : isDetailOpen(editor, shape.id) ? 'open' : 'closed'
+      if (!isTreeNode(editor, shape.id)) return { id: shape.id, detail, inTree: false as const }
       const root = rootOf(editor, shape.id)
       return {
         id: shape.id,
+        detail,
         inTree: true as const,
         kids: getTreeIndex(editor).children.get(shape.id)?.length ?? 0,
         folded: isFolded(editor, shape.id),
@@ -91,9 +94,21 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
   if (!info) return null
   const id = info.id as TLShapeId
 
+  const detailButton =
+    info.detail === 'none' ? (
+      <button className="qa-btn" onClick={() => addDetail(editor, id)} title="Texte détaillé sous la boîte, qu'on déplie ou replie (aussi pendant la présentation)">
+        + Détail
+      </button>
+    ) : (
+      <button className="qa-btn" onClick={() => toggleDetail(editor, id)} title="Afficher / masquer le détail de la boîte">
+        {info.detail === 'open' ? '▴ Replier le détail' : '▾ Déplier le détail'}
+      </button>
+    )
+
   if (!info.inTree) {
     return (
       <div className="tree-toolbar">
+        {detailButton}
         <span className="tree-hint">
           <kbd>Tab</kbd> commencer un arbre à partir de cette boîte
         </span>
@@ -117,6 +132,7 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
       >
         Réorganiser
       </button>
+      {detailButton}
       <button
         className="qa-btn"
         onClick={() => setDirection(editor, id, info.dir === 'right' ? 'down' : 'right')}
@@ -128,6 +144,40 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
         <kbd>Tab</kbd> enfant · <kbd>Entrée</kbd> frère
       </span>
     </div>
+  )
+}
+
+/** Pastilles « … » sous les boîtes dont le détail est replié (édition : cliquer pour le déplier). */
+export function DetailBadges() {
+  const editor = useEditor()
+  const badges = useValue(
+    'detail badges',
+    () => {
+      if (modeAtom.get() !== 'edit') return []
+      return [...getDetailIndex(editor).details.keys()].flatMap((id) => {
+        if (isDetailOpen(editor, id) || editor.isShapeHidden(id)) return []
+        const b = editor.getShapePageBounds(id)
+        return b ? [{ id, x: b.midX, y: b.maxY }] : []
+      })
+    },
+    [editor]
+  )
+  const zoom = useValue('zoom', () => editor.getZoomLevel(), [editor])
+  return (
+    <>
+      {badges.map((b) => (
+        <button
+          key={b.id}
+          className="fold-badge"
+          style={{ left: b.x, top: b.y, transform: `translate(-50%, -50%) scale(${1 / zoom})` }}
+          title="Déplier le détail"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => toggleDetail(editor, b.id)}
+        >
+          …
+        </button>
+      ))}
+    </>
   )
 }
 

@@ -1,4 +1,4 @@
-import { integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 
 export const documents = pgTable('documents', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -14,3 +14,18 @@ export const documents = pgTable('documents', {
 })
 
 export type DocumentRow = typeof documents.$inferSelect
+
+/**
+ * Réglages communs à tous les documents d'un propriétaire (ex. : préréglages de styles),
+ * sous forme clé → valeur JSON : un nouveau réglage ne demande pas de migration.
+ */
+export const settings = pgTable(
+  'settings',
+  {
+    ownerId: text('owner_id').notNull().default('owner'),
+    key: text('key').notNull(),
+    value: jsonb('value').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.ownerId, t.key] })]
+)

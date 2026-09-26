@@ -1,9 +1,13 @@
-import { cloudStore } from './cloud'
-import { localStore } from './local'
-import type { DocumentStore, StorageMode } from './types'
+import { cloudSettings, cloudStore } from './cloud'
+import { localSettings, localStore } from './local'
+import type { DocumentStore, SettingsStore, StorageMode } from './types'
 
 export function documentStore(mode: StorageMode): DocumentStore {
   return mode === 'cloud' ? cloudStore : localStore
+}
+
+export function settingsStore(mode: StorageMode): SettingsStore {
+  return mode === 'cloud' ? cloudSettings : localSettings
 }
 
 /**

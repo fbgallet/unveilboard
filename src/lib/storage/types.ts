@@ -43,6 +43,12 @@ export interface DocumentStore {
   save(id: string, input: SaveInput): Promise<SaveResult>
 }
 
+/** Réglages communs à tous les documents (ex. : préréglages de styles), clé → valeur JSON. */
+export interface SettingsStore {
+  get<T>(key: string): Promise<T | null>
+  set<T>(key: string, value: T): Promise<void>
+}
+
 /** Erreur de stockage, avec sa nature pour choisir le message et la conduite à tenir. */
 export class StorageError extends Error {
   constructor(

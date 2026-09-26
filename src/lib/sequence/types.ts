@@ -9,7 +9,8 @@ export type Effect = 'fade' | 'draw' | 'rise' | 'none'
 
 /**
  * Actions persistantes (restent actives aux étapes suivantes) :
- *   show, hide, dim, undim, fold, unfold (replier / déplier une branche d'arbre)
+ *   show, hide, dim, undim, fold, unfold (replier / déplier une branche d'arbre),
+ *   expand, collapse (déplier / replier le détail d'une boîte)
  * Actions transitoires (valables uniquement pendant l'étape courante) :
  *   highlight, focus
  */
@@ -20,6 +21,8 @@ export type StepAction =
   | { type: 'undim'; targets: ShapeRef[] }
   | { type: 'fold'; targets: ShapeRef[] }
   | { type: 'unfold'; targets: ShapeRef[] }
+  | { type: 'expand'; targets: ShapeRef[] }
+  | { type: 'collapse'; targets: ShapeRef[] }
   | { type: 'highlight'; targets: ShapeRef[] }
   | { type: 'focus'; targets: ShapeRef[] }
 
@@ -59,6 +62,8 @@ export const ACTION_LABELS: Record<StepActionType, string> = {
   undim: 'Rétablir',
   fold: 'Replier la branche',
   unfold: 'Déplier la branche',
+  expand: 'Déplier le détail',
+  collapse: 'Replier le détail',
   highlight: 'Surligner',
   focus: 'Focus',
 }

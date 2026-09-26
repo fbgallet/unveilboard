@@ -20,6 +20,7 @@ import {
   type TLShapePartial,
 } from 'tldraw'
 import { descendantsOf, hasAncestor, layoutTree, type TreeDirection, type TreeNode, type Vec } from '../tree/layout'
+import { boundsWithDetails, getDetailIndex } from './details'
 
 export interface TreeIndex {
   /** Parent de chaque nœud. */
@@ -115,6 +116,7 @@ export function relayout(editor: Editor, anyNodeId: TLShapeId, opts: { reset?: b
   const { children } = getTreeIndex(editor)
   const dir = directionOf(editor, rootId)
   const ids = [rootId, ...branchOf(editor, rootId)]
+  // Tailles avec les détails (place réservée, qu'ils soient dépliés ou non).
   // Ordre des enfants : celui de leur position actuelle, perpendiculairement à l'arbre.
   const crossCenter = (id: TLShapeId) => {
     const b = editor.getShapePageBounds(id)
@@ -122,7 +124,7 @@ export function relayout(editor: Editor, anyNodeId: TLShapeId, opts: { reset?: b
   }
   const nodes = new Map<string, TreeNode>()
   for (const id of ids) {
-    const b = editor.getShapePageBounds(id)
+    const b = boundsWithDetails(editor, id)
     if (!b) continue
     nodes.set(id, {
       w: b.w,
@@ -131,14 +133,14 @@ export function relayout(editor: Editor, anyNodeId: TLShapeId, opts: { reset?: b
       children: [...(children.get(id) ?? [])].sort((a, b) => crossCenter(a) - crossCenter(b)),
     })
   }
-  const rootBounds = editor.getShapePageBounds(rootId)
+  const rootBounds = boundsWithDetails(editor, rootId)
   if (!rootBounds) return
   const positions = layoutTree(rootId, { x: rootBounds.x, y: rootBounds.y }, nodes, dir)
 
   const updates: TLShapePartial[] = []
   for (const [id, target] of positions) {
     const shape = editor.getShape(id as TLShapeId)
-    const b = editor.getShapePageBounds(id as TLShapeId)
+    const b = boundsWithDetails(editor, id as TLShapeId)
     if (!shape || !b) continue
     const dx = target.x - b.x
     const dy = target.y - b.y
@@ -187,7 +189,7 @@ function createNode(editor: Editor, parentId: TLShapeId, modelId: TLShapeId, nea
   const id = createShapeId()
   const arrowId = createShapeId()
   editor.run(() => {
-    editor.createShape({ id, type: 'geo', x: near.x, y: near.y, props, meta: model?.meta.kind ? { kind: model.meta.kind } : {} })
+    editor.createShape({ id, type: 'geo', x: near.x, y: near.y, props, meta: model?.meta.preset ? { preset: model.meta.preset } : {} })
     editor.createShape({
       id: arrowId,
       type: 'arrow',
@@ -259,9 +261,13 @@ export function setDirection(editor: Editor, id: TLShapeId, dir: TreeDirection) 
 
 // ---------- Effets de bord ----------
 
-/** Supprimer un nœud (touche Suppr, menu) supprime aussi sa branche : ses descendants et leurs flèches. */
+/**
+ * Supprimer un nœud (touche Suppr, menu) supprime aussi sa branche : ses descendants et leurs flèches.
+ * Supprimer une boîte supprime ses détails.
+ */
 export function withBranchesToDelete(editor: Editor, ids: TLShapeId[]): TLShapeId[] {
   const { edge } = getTreeIndex(editor)
+  const { details } = getDetailIndex(editor)
   const all = new Set(ids)
   for (const id of ids) {
     const own = edge.get(id)
@@ -272,6 +278,8 @@ export function withBranchesToDelete(editor: Editor, ids: TLShapeId[]): TLShapeI
       if (e) all.add(e)
     }
   }
+  // Les détails partent avec leur boîte.
+  for (const id of [...all]) for (const d of details.get(id) ?? []) all.add(d)
   return [...all]
 }
 
@@ -283,6 +291,12 @@ export function registerTreeSideEffects(editor: Editor) {
   const cleanups = [
     editor.sideEffects.registerAfterChangeHandler('shape', (prev, next) => {
       if (layingOut || prev.type === 'arrow') return
+      // Le détail d'un nœud change de taille : l'arbre se réorganise.
+      const box = getDetailIndex(editor).owner.get(next.id)
+      if (box && isTreeNode(editor, box)) {
+        if (prev.props !== next.props) queueRelayout(editor, box)
+        return
+      }
       if (!isTreeNode(editor, next.id)) return
       const dx = next.x - prev.x
       const dy = next.y - prev.y

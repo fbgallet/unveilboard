@@ -5,6 +5,7 @@ import { Box, createShapeId, useValue, type Editor, type TLShapeId } from 'tldra
 import { readSequence, writeSequence } from '@/lib/canvas/adapter'
 import { SPOTLIGHT_TYPE } from '@/lib/canvas/spotlight'
 import { getTreeIndex } from '@/lib/canvas/tree'
+import { getDetailIndex } from '@/lib/canvas/details'
 import {
   addStep,
   addTargets,
@@ -37,12 +38,13 @@ import {
 } from '@/lib/presentation/store'
 import { enterPresentation, toggleQuickSequence } from './usePresentation'
 import { SyncIndicator } from './SyncIndicator'
-import { downloadTldr } from '@/lib/storage/tldrFile'
+import { saveTldrAs } from '@/lib/storage/tldrFile'
 import { ResizeHandle } from './ResizeHandle'
 
 const ADDABLE: StepActionType[] = ['show', 'dim', 'hide', 'undim', 'highlight', 'focus']
-/** Proposées seulement si la sélection contient un nœud d'arbre qui a des enfants. */
+/** Proposées seulement si la sélection contient un nœud d'arbre qui a des enfants, ou une boîte à détail. */
 const TREE_ACTIONS: StepActionType[] = ['fold', 'unfold']
+const DETAIL_ACTIONS: StepActionType[] = ['expand', 'collapse']
 
 function toggleStepBadges() {
   const visible = !stepBadgesVisibleAtom.get()
@@ -81,6 +83,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
   const quickSequence = useValue(quickSequenceAtom)
   const badgesVisible = useValue(stepBadgesVisibleAtom)
   const canFold = useValue('can fold', () => selection.some((id) => getTreeIndex(editor).children.has(id)), [editor, selection])
+  const canExpand = useValue('can expand', () => selection.some((id) => getDetailIndex(editor).details.has(id)), [editor, selection])
   const appears = appearanceIndex(seq)
 
   const save = (next: Sequence) => writeSequence(editor, next)
@@ -126,10 +129,10 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
             <SyncIndicator />
             <button
               className="rounded px-1.5 text-xs text-zinc-400 hover:bg-zinc-200 hover:text-zinc-900"
-              onClick={() => void downloadTldr(editor)}
-              title="Télécharger ce schéma (fichier .tldr, séquence comprise) : sauvegarde, transfert, ou ouverture sur tldraw.com"
+              onClick={() => void saveTldrAs(editor).catch((e) => alert(e instanceof Error ? e.message : e))}
+              title="Enregistrer ce schéma dans un fichier .tldr (séquence comprise) : sauvegarde, transfert, ou ouverture sur tldraw.com. Aussi dans le menu ☰."
             >
-              Exporter
+              Enregistrer sous…
             </button>
             <button
               className="rounded px-1.5 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-900"
@@ -217,6 +220,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
             active={step.id === activeId}
             selection={selection}
             canFold={canFold}
+            canExpand={canExpand}
             onActivate={() => activeStepIdAtom.set(step.id === activeId ? null : step.id)}
             onChange={(patch) => save(updateStep(seq, step.id, patch))}
             onAdd={(type) => save(addTargets(seq, step.id, type, selection))}
@@ -255,6 +259,7 @@ interface StepCardProps {
   active: boolean
   selection: TLShapeId[]
   canFold: boolean
+  canExpand: boolean
   onActivate(): void
   onChange(patch: Partial<Step>): void
   onAdd(type: StepActionType): void
@@ -336,7 +341,7 @@ function StepCard(p: StepCardProps) {
       {p.active && (
         <div className="mt-2 space-y-2" onClick={(e) => e.stopPropagation()}>
           <div className="flex flex-wrap gap-1">
-            {(p.canFold ? [...ADDABLE, ...TREE_ACTIONS] : ADDABLE).map((type) => (
+            {[...ADDABLE, ...(p.canFold ? TREE_ACTIONS : []), ...(p.canExpand ? DETAIL_ACTIONS : [])].map((type) => (
               <button
                 key={type}
                 className="btn-xs"

@@ -6,7 +6,7 @@ Présentation progressive de schémas sur un canevas tldraw : chaque étape fait
 
 Le mode dépend de la présence de `DATABASE_URL` :
 
-- **Mode local** (sans `DATABASE_URL`) : aucun serveur de données ni mot de passe. Les schémas sont enregistrés dans le navigateur de chacun (IndexedDB). « Exporter » (dans un schéma) télécharge un fichier `.tldr`, séquence comprise ; « Importer » (sur l'accueil) le rouvre. Idéal pour partager l'app par une simple URL.
+- **Mode local** (sans `DATABASE_URL`) : aucun serveur de données ni mot de passe. Les schémas sont enregistrés dans le navigateur de chacun (IndexedDB). « Enregistrer sous… » (panneau des étapes ou menu ☰ d'un schéma) crée un fichier `.tldr`, séquence comprise ; « Ouvrir un fichier .tldr… » (accueil ou menu ☰), ou un glisser-déposer sur l'accueil, le rouvre comme nouveau schéma. Idéal pour partager l'app par une simple URL.
 - **Mode cloud** (avec `DATABASE_URL`) : les schémas sont enregistrés sur Postgres (Neon), accessibles depuis tous vos appareils, et l'accès est protégé par mot de passe.
 
 ## Démarrage en local
@@ -28,7 +28,7 @@ pnpm dev
 En mode local, seul `NEXT_PUBLIC_TLDRAW_LICENSE_KEY` est nécessaire sur Vercel. En mode cloud :
 
 1. Créer un projet Neon et copier l'URL de connexion **pooled** (hôte en `-pooler`).
-2. Appliquer le schéma sur Neon, **avec l'URL entre guillemets simples** (elle contient des `&`) :
+2. Appliquer le schéma sur Neon (à refaire après chaque nouvelle migration dans `drizzle/`), **avec l'URL entre guillemets simples** (elle contient des `&`) :
    `DATABASE_URL='postgresql://…-pooler…/neondb?sslmode=require' pnpm db:migrate`
 3. Sur Vercel, définir les variables : `DATABASE_URL`, `APP_PASSWORD`, `SESSION_SECRET` (`openssl rand -base64 48`), `NEXT_PUBLIC_TLDRAW_LICENSE_KEY`.
 4. Optionnel : créer un store Vercel Blob (ajoute `BLOB_READ_WRITE_TOKEN`) pour stocker les images hors du document.
@@ -61,6 +61,17 @@ Sélectionner une boîte : <kbd>Tab</kbd> ajoute un enfant (et commence un arbre
 - La mise en page est automatique ; un nœud déplacé à la main garde son décalage (et entraîne sa branche). « Réorganiser » efface les décalages.
 - Replier une branche la masque en édition. L'état replié du document est l'état de départ de la présentation ; les actions « Replier / Déplier la branche » le changent en cours de séquence. Replier ne déplace rien : la place de la branche reste réservée.
 - Supprimer un nœud supprime sa branche (annulable).
+
+## Préréglages de styles
+
+Des styles nommés (Énoncé, Concept, Question… ; soutient, objecte, réfute…), en tête du panneau de styles : un clic les applique aux formes ou aux flèches sélectionnées. Ce ne sont que des styles tldraw ordinaires, plus une marque `meta.preset`.
+
+- Communs à tous les schémas : table `settings` en mode cloud, IndexedDB en mode local. Chaque schéma garde une copie des préréglages qu'il utilise, pour rester lisible ailleurs.
+- Menu ☰ › « Préréglages de styles… » : renommer, réordonner, mettre à jour ou créer d'après la sélection, masquer la palette, revenir aux préréglages de départ.
+
+## Détails dépliables
+
+Sur une boîte sélectionnée, « + Détail » ajoute sous elle un texte qui la suit (position, largeur) et disparaît avec elle. Replié, il est masqué en édition (pastille « … » pour le déplier) ; en présentation, les actions « Déplier / Replier le détail » le font apparaître ou disparaître. Dans un arbre, sa place reste réservée.
 
 ## Raccourcis en présentation
 
