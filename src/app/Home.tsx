@@ -11,6 +11,7 @@ import { useLocale, useT } from '@/i18n/client'
 import { LocaleSwitcher } from '@/components/LocaleSwitcher'
 import { HeroDemo } from '@/components/home/HeroDemo'
 import { Features } from '@/components/home/Features'
+import { Logo } from '@/components/Logo'
 
 const GITHUB_URL = 'https://github.com/fbgallet/unveilboard'
 
@@ -123,7 +124,9 @@ function PublicHome({ docs }: { docs: Documents }) {
   return (
     <>
       <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5 sm:px-6">
-        <span className="font-serif text-xl text-stone-900">Unveilboard</span>
+        <Link href="/" aria-label="Unveilboard">
+          <Logo />
+        </Link>
         <nav className="flex items-center gap-5 text-sm">
           <LocaleSwitcher />
           <a href={GITHUB_URL} className="flex items-center gap-1.5 text-stone-500 hover:text-stone-900">

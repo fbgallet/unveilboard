@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { LogoMark } from './Logo'
 import { Box, createShapeId, useValue, type Editor, type TLShapeId } from 'tldraw'
 import { readSequence, writeSequence } from '@/lib/canvas/adapter'
 import { SPOTLIGHT_TYPE } from '@/lib/canvas/spotlight'
@@ -127,7 +128,8 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
       <ResizeHandle width={sequencePanelWidthAtom} limits={SEQUENCE_PANEL_WIDTH} storageKey="sequencePanelWidth" />
       <header className="flex flex-col gap-2 border-b border-zinc-200 p-3">
         <div className="flex items-center justify-between">
-          <Link href="/" className="text-xs text-zinc-500 hover:text-zinc-900">
+          <Link href="/" className="group flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-900">
+            <LogoMark className="h-5 w-5" />
             {t.panel.back}
           </Link>
           <div className="flex items-center gap-2">

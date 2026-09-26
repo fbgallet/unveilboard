@@ -86,6 +86,8 @@ export default function Studio({
   const mode = useValue(modeAtom)
   const unlocked = useValue(editUnlockedAtom)
   const quickSequence = useValue(quickSequenceAtom)
+  // Le thème choisi dans tldraw (clair, sombre ou système) s'applique aussi à nos panneaux.
+  const dark = useValue('dark mode', () => editor?.user.getIsDarkMode() ?? false, [editor])
 
   // Synchronisation avec le stockage (serveur ou navigateur), et remise à zéro de l'état de présentation en quittant le document.
   useEffect(() => {
@@ -115,7 +117,7 @@ export default function Studio({
   }, [editor, locale])
 
   return (
-    <div className="studio flex h-dvh w-full overflow-hidden" data-mode={mode} data-unlocked={unlocked}>
+    <div className="studio flex h-dvh w-full overflow-hidden" data-mode={mode} data-unlocked={unlocked} data-theme={dark ? 'dark' : 'light'}>
       <div className="relative min-w-0 flex-1">
         <Tldraw
           // Cache local (IndexedDB) propre à chaque document.

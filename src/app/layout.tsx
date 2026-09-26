@@ -21,7 +21,12 @@ const serif = Source_Serif_4({
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getMessages();
-  return { title: "Unveilboard", description: t.meta.description };
+  return {
+    // URL absolue des images de partage. SITE_URL pour une instance auto-hébergée.
+    metadataBase: new URL(process.env.SITE_URL || "https://unveilboard.com"),
+    title: "Unveilboard",
+    description: t.meta.description,
+  };
 }
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {

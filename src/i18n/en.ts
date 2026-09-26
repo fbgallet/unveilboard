@@ -96,7 +96,7 @@ export const en = {
   panel: {
     expand: 'Expand the steps panel',
     sequence: 'Sequence',
-    back: '← My diagrams',
+    back: 'My diagrams',
     saveAs: 'Save as…',
     saveAsHint:
       'Save this diagram to a .tldr file (sequence included): backup, transfer, or opening on tldraw.com. Also in the ☰ menu.',

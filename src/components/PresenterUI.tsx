@@ -45,7 +45,7 @@ export function NarrationPanel({ editor }: { editor: Editor }) {
 
   return (
     <aside
-      className="narration relative flex h-full shrink-0 flex-col border-l border-stone-200 bg-[#fbfaf7] px-10 py-12"
+      className="narration relative flex h-full shrink-0 flex-col border-l border-stone-200 bg-stone-50 px-10 py-12"
       style={{ width }}
     >
       <ResizeHandle

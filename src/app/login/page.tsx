@@ -3,6 +3,7 @@ import { storageMode } from '@/lib/storageMode'
 import { LoginForm } from './LoginForm'
 import { getMessages } from '@/i18n/server'
 import { LocaleSwitcher } from '@/components/LocaleSwitcher'
+import { Logo } from '@/components/Logo'
 
 export default async function LoginPage({ searchParams }: PageProps<'/login'>) {
   // Mode local : pas de connexion.
@@ -12,8 +13,10 @@ export default async function LoginPage({ searchParams }: PageProps<'/login'>) {
   return (
     <main className="flex min-h-dvh items-center justify-center bg-[#fbfaf7] px-4">
       <div className="w-full max-w-sm">
-        <div className="flex items-baseline justify-between">
-          <h1 className="font-serif text-3xl text-stone-900">Unveilboard</h1>
+        <div className="flex items-center justify-between">
+          <h1>
+            <Logo size="lg" />
+          </h1>
           <LocaleSwitcher />
         </div>
         <p className="mt-2 text-sm text-stone-500">{t.login.subtitle}</p>

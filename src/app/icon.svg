@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    @media (prefers-color-scheme: dark) {
+      .tile { fill: #fbfaf7 }
+      .shown { fill: #1c1917 }
+      .link { stroke: #1c1917 }
+      .hidden { stroke: #a8a29e }
+    }
+  </style>
+  <rect class="tile" width="32" height="32" rx="8" fill="#1c1917"/>
+  <path class="link" d="M14 13 9 19" stroke="#fbfaf7" stroke-width="1.5" stroke-linecap="round"/>
+  <path class="hidden" d="M18 13 23 19" stroke="#78716c" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="1 2.25"/>
+  <rect class="shown" x="10" y="7" width="12" height="6" rx="2" fill="#fbfaf7"/>
+  <rect x="4" y="19" width="10" height="6" rx="2" fill="#f59e0b"/>
+  <rect class="hidden" x="18.75" y="19.75" width="8.5" height="4.5" rx="1.5" fill="none" stroke="#78716c" stroke-width="1.5" stroke-dasharray="1.75 1.75"/>
+</svg>

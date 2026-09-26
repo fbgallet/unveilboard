@@ -95,7 +95,7 @@ export const fr: Messages = {
   panel: {
     expand: 'Déplier le panneau des étapes',
     sequence: 'Séquence',
-    back: '← Mes schémas',
+    back: 'Mes schémas',
     saveAs: 'Enregistrer sous…',
     saveAsHint:
       'Enregistrer ce schéma dans un fichier .tldr (séquence comprise) : sauvegarde, transfert, ou ouverture sur tldraw.com. Aussi dans le menu ☰.',

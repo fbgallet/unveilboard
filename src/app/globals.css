@@ -66,6 +66,117 @@ body {
   }
 }
 
+/* ---------- Mode sombre de l'éditeur ---------- */
+
+/* L'interface autour du canevas suit le thème choisi dans tldraw (Studio pose data-theme).
+   Plutôt que de doubler chaque classe d'une variante dark:, on redéfinit la palette Tailwind :
+   gris inversés (le fond clair devient foncé, le texte foncé devient clair), teintes pâles et
+   foncées échangées, tons moyens (accents ambre) inchangés. Les couleurs de globals.css passent
+   par ces mêmes variables. « white » devient la surface des cartes, un cran au-dessus du fond. */
+.studio[data-theme='dark'] {
+  color-scheme: dark;
+  --color-white: oklch(21% 0.006 285.885);
+  /* stone : échelle inversée */
+  --color-stone-50: oklch(14.7% 0.004 49.25);
+  --color-stone-100: oklch(21.6% 0.006 56.043);
+  --color-stone-200: oklch(26.8% 0.007 34.298);
+  --color-stone-300: oklch(37.4% 0.01 67.558);
+  --color-stone-400: oklch(44.4% 0.011 73.639);
+  --color-stone-500: oklch(55.3% 0.013 58.071);
+  --color-stone-600: oklch(70.9% 0.01 56.259);
+  --color-stone-700: oklch(86.9% 0.005 56.366);
+  --color-stone-800: oklch(92.3% 0.003 48.717);
+  --color-stone-900: oklch(97% 0.001 106.424);
+  --color-stone-950: oklch(98.5% 0.001 106.423);
+  /* zinc : échelle inversée */
+  --color-zinc-50: oklch(14.1% 0.005 285.823);
+  --color-zinc-100: oklch(21% 0.006 285.885);
+  --color-zinc-200: oklch(27.4% 0.006 286.033);
+  --color-zinc-300: oklch(37% 0.013 285.805);
+  --color-zinc-400: oklch(44.2% 0.017 285.786);
+  --color-zinc-500: oklch(55.2% 0.016 285.938);
+  --color-zinc-600: oklch(70.5% 0.015 286.067);
+  --color-zinc-700: oklch(87.1% 0.006 286.286);
+  --color-zinc-800: oklch(92% 0.004 286.32);
+  --color-zinc-900: oklch(96.7% 0.001 286.375);
+  --color-zinc-950: oklch(98.5% 0 none);
+  /* slate : échelle inversée */
+  --color-slate-50: oklch(12.9% 0.042 264.695);
+  --color-slate-100: oklch(20.8% 0.042 265.755);
+  --color-slate-200: oklch(27.9% 0.041 260.031);
+  --color-slate-300: oklch(37.2% 0.044 257.287);
+  --color-slate-400: oklch(44.6% 0.043 257.281);
+  --color-slate-500: oklch(55.4% 0.046 257.417);
+  --color-slate-600: oklch(70.4% 0.04 256.788);
+  --color-slate-700: oklch(86.9% 0.022 252.894);
+  --color-slate-800: oklch(92.9% 0.013 255.508);
+  --color-slate-900: oklch(96.8% 0.007 247.896);
+  --color-slate-950: oklch(98.4% 0.003 247.858);
+  /* amber : teintes pâles et foncées échangées, tons moyens gardés */
+  --color-amber-50: oklch(27.9% 0.077 45.635);
+  --color-amber-100: oklch(41.4% 0.112 45.904);
+  --color-amber-200: oklch(47.3% 0.137 46.201);
+  --color-amber-300: oklch(55.5% 0.163 48.998);
+  --color-amber-700: oklch(87.9% 0.169 91.605);
+  --color-amber-800: oklch(92.4% 0.12 95.746);
+  --color-amber-900: oklch(96.2% 0.059 95.617);
+  --color-amber-950: oklch(98.7% 0.022 95.277);
+  /* red : teintes pâles et foncées échangées, tons moyens gardés */
+  --color-red-50: oklch(25.8% 0.092 26.042);
+  --color-red-100: oklch(39.6% 0.141 25.723);
+  --color-red-200: oklch(44.4% 0.177 26.899);
+  --color-red-300: oklch(50.5% 0.213 27.518);
+  --color-red-700: oklch(80.8% 0.114 19.571);
+  --color-red-800: oklch(88.5% 0.062 18.334);
+  --color-red-900: oklch(93.6% 0.032 17.717);
+  --color-red-950: oklch(97.1% 0.013 17.38);
+  /* emerald : teintes pâles et foncées échangées, tons moyens gardés */
+  --color-emerald-50: oklch(26.2% 0.051 172.552);
+  --color-emerald-100: oklch(37.8% 0.077 168.94);
+  --color-emerald-200: oklch(43.2% 0.095 166.913);
+  --color-emerald-300: oklch(50.8% 0.118 165.612);
+  --color-emerald-700: oklch(84.5% 0.143 164.978);
+  --color-emerald-800: oklch(90.5% 0.093 164.15);
+  --color-emerald-900: oklch(95% 0.052 163.051);
+  --color-emerald-950: oklch(97.9% 0.021 166.113);
+  /* violet : teintes pâles et foncées échangées, tons moyens gardés */
+  --color-violet-50: oklch(28.3% 0.141 291.089);
+  --color-violet-100: oklch(38% 0.189 293.745);
+  --color-violet-200: oklch(43.2% 0.232 292.759);
+  --color-violet-300: oklch(49.1% 0.27 292.581);
+  --color-violet-700: oklch(81.1% 0.111 293.571);
+  --color-violet-800: oklch(89.4% 0.057 293.283);
+  --color-violet-900: oklch(94.3% 0.029 294.588);
+  --color-violet-950: oklch(96.9% 0.016 293.756);
+  /* teal : teintes pâles et foncées échangées, tons moyens gardés */
+  --color-teal-50: oklch(27.7% 0.046 192.524);
+  --color-teal-100: oklch(38.6% 0.063 188.416);
+  --color-teal-200: oklch(43.7% 0.078 188.216);
+  --color-teal-300: oklch(51.1% 0.096 186.391);
+  --color-teal-700: oklch(85.5% 0.138 181.071);
+  --color-teal-800: oklch(91% 0.096 180.426);
+  --color-teal-900: oklch(95.3% 0.051 180.801);
+  --color-teal-950: oklch(98.4% 0.014 180.72);
+  /* sky : teintes pâles et foncées échangées, tons moyens gardés */
+  --color-sky-50: oklch(29.3% 0.066 243.157);
+  --color-sky-100: oklch(39.1% 0.09 240.876);
+  --color-sky-200: oklch(44.3% 0.11 240.79);
+  --color-sky-300: oklch(50% 0.134 242.749);
+  --color-sky-700: oklch(82.8% 0.111 230.318);
+  --color-sky-800: oklch(90.1% 0.058 230.902);
+  --color-sky-900: oklch(95.1% 0.026 236.824);
+  --color-sky-950: oklch(97.7% 0.013 236.62);
+  /* cyan : teintes pâles et foncées échangées, tons moyens gardés */
+  --color-cyan-50: oklch(30.2% 0.056 229.695);
+  --color-cyan-100: oklch(39.8% 0.07 227.392);
+  --color-cyan-200: oklch(45% 0.085 224.283);
+  --color-cyan-300: oklch(52% 0.105 223.128);
+  --color-cyan-700: oklch(86.5% 0.127 207.078);
+  --color-cyan-800: oklch(91.7% 0.08 205.041);
+  --color-cyan-900: oklch(95.6% 0.045 203.388);
+  --color-cyan-950: oklch(98.4% 0.019 200.873);
+}
+
 /* ---------- Pastilles d'étape (mode édition) ---------- */
 
 .step-badge {
@@ -88,16 +199,16 @@ body {
   height: 22px;
   padding: 0 6px;
   border-radius: 999px;
-  background: #fff;
-  border: 1.5px solid #a8a29e;
-  color: #57534e;
+  background: var(--color-white);
+  border: 1.5px solid var(--color-stone-400);
+  color: var(--color-stone-600);
   font: 600 11px/19px system-ui, sans-serif;
   pointer-events: auto;
   cursor: pointer;
 }
 .fold-badge:hover:not(:disabled) {
   border-color: #f59e0b;
-  color: #b45309;
+  color: var(--color-amber-700);
 }
 .fold-badge:disabled {
   cursor: default;
@@ -113,23 +224,23 @@ body {
   align-items: center;
   gap: 4px;
   padding: 4px 4px 4px 4px;
-  border: 1px solid #e7e5e4;
+  border: 1px solid var(--color-stone-200);
   border-radius: 12px;
-  background: rgb(255 255 255 / 0.95);
+  background: color-mix(in oklab, var(--color-white) 95%, transparent);
   box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
   font-size: 12px;
-  color: #57534e;
+  color: var(--color-stone-600);
   pointer-events: auto;
 }
 .tree-hint {
   padding: 0 8px;
-  color: #a8a29e;
+  color: var(--color-stone-400);
   white-space: nowrap;
 }
 .tree-hint kbd {
   font: inherit;
-  color: #78716c;
-  border: 1px solid #e7e5e4;
+  color: var(--color-stone-500);
+  border: 1px solid var(--color-stone-200);
   border-radius: 4px;
   padding: 0 4px;
 }
@@ -164,7 +275,7 @@ body {
   transition: background 150ms;
 }
 .qa-btn:hover:not(:disabled) {
-  background: #f5f5f4;
+  background: var(--color-stone-100);
 }
 .qa-btn:disabled {
   opacity: 0.35;
@@ -208,11 +319,11 @@ body {
   justify-content: center;
   margin-left: -4px;
   border-radius: 4px;
-  color: #a8a29e;
+  color: var(--color-stone-400);
 }
 .laser-caret:hover {
-  color: #1c1917;
-  background: rgb(231 229 228 / 0.7);
+  color: var(--color-stone-900);
+  background: color-mix(in oklab, var(--color-stone-200) 70%, transparent);
 }
 .laser-popover {
   position: absolute;
@@ -222,10 +333,10 @@ body {
   width: 240px;
   padding: 12px;
   border-radius: 12px;
-  border: 1px solid #e7e5e4;
-  background: rgb(255 255 255 / 0.97);
+  border: 1px solid var(--color-stone-200);
+  background: color-mix(in oklab, var(--color-white) 97%, transparent);
   box-shadow: 0 10px 30px rgb(0 0 0 / 0.14);
-  color: #44403c;
+  color: var(--color-stone-700);
   animation: pres-rise 160ms ease-out both;
 }
 .lp-preview {
@@ -247,13 +358,13 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #78716c;
+  color: var(--color-stone-500);
 }
 .lp-label span {
   font-weight: 500;
   text-transform: none;
   letter-spacing: 0;
-  color: #44403c;
+  color: var(--color-stone-700);
   font-variant-numeric: tabular-nums;
 }
 .lp-swatch {
@@ -261,12 +372,12 @@ body {
   width: 24px;
   height: 24px;
   border-radius: 999px;
-  border: 2px solid white;
-  outline: 1px solid #d6d3d1;
+  border: 2px solid var(--color-white);
+  outline: 1px solid var(--color-stone-300);
   cursor: pointer;
 }
 .lp-swatch-active {
-  outline: 2px solid #1c1917;
+  outline: 2px solid var(--color-stone-900);
 }
 .lp-custom {
   background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
@@ -285,11 +396,11 @@ body {
 .lp-reset {
   margin-top: 10px;
   font-size: 11px;
-  color: #78716c;
+  color: var(--color-stone-500);
   text-decoration: underline dotted;
 }
 .lp-reset:hover {
-  color: #1c1917;
+  color: var(--color-stone-900);
 }
 
 /* Poignée de redimensionnement du panneau de narration */
@@ -417,7 +528,7 @@ body.is-resizing {
   inset: 0;
   pointer-events: none;
   /* backdrop-filter posé en JS (SpotlightOverlay) : le compilateur CSS ne garderait que la version -webkit-. */
-  background: rgb(250 250 249 / 0.3);
+  background: color-mix(in oklab, var(--color-stone-50) 30%, transparent);
   opacity: 0;
   visibility: hidden;
   transition:
@@ -485,7 +596,7 @@ body.is-resizing {
   height: 7px;
   border-radius: 999px;
   border: 1px solid #f59e0b;
-  background: white;
+  background: var(--color-white);
   opacity: 0;
   transition: opacity 150ms;
 }
@@ -519,11 +630,11 @@ body.is-resizing {
   justify-content: center;
   margin-left: -4px;
   border-radius: 4px;
-  color: #a8a29e;
+  color: var(--color-stone-400);
 }
 .spot-clear:hover {
-  color: #1c1917;
-  background: rgb(231 229 228 / 0.7);
+  color: var(--color-stone-900);
+  background: color-mix(in oklab, var(--color-stone-200) 70%, transparent);
 }
 
 /* Narration : le texte glisse à chaque changement d'étape. */
@@ -532,7 +643,7 @@ body.is-resizing {
 }
 
 .progress {
-  background: linear-gradient(to top, rgb(255 255 255 / 0.95), rgb(255 255 255 / 0));
+  background: linear-gradient(to top, color-mix(in oklab, var(--color-white) 95%, transparent), color-mix(in oklab, var(--color-white) 0%, transparent));
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -573,7 +684,7 @@ body.is-resizing {
 }
 .preset-chip-active {
   border-color: #f59e0b;
-  background: #fffbeb;
+  background: var(--color-amber-50);
 }
 .preset-chip-doc {
   font-style: italic;
@@ -593,10 +704,10 @@ svg.preset-swatch {
   margin-top: 3px;
   padding: 1px 4px;
   font-size: 10px;
-  color: #a1a1aa;
+  color: var(--color-zinc-400);
 }
 .preset-manage:hover {
-  color: #52525b;
+  color: var(--color-zinc-600);
 }
 
 .preset-overlay {
@@ -617,8 +728,8 @@ svg.preset-swatch {
   max-height: calc(100% - 48px);
   padding: 16px;
   border-radius: 12px;
-  background: white;
-  color: #27272a;
+  background: var(--color-white);
+  color: var(--color-zinc-800);
   font-size: 13px;
   box-shadow: 0 12px 40px rgb(0 0 0 / 0.2);
 }
@@ -628,7 +739,7 @@ svg.preset-swatch {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #71717a;
+  color: var(--color-zinc-500);
 }
 .preset-row {
   display: flex;
@@ -638,16 +749,16 @@ svg.preset-swatch {
 .preset-input {
   min-width: 0;
   padding: 2px 6px;
-  border: 1px solid #e4e4e7;
+  border: 1px solid var(--color-zinc-200);
   border-radius: 6px;
   font-size: 12px;
 }
 .preset-icon {
   padding: 0 4px;
-  color: #a1a1aa;
+  color: var(--color-zinc-400);
 }
 .preset-icon:hover {
-  color: #27272a;
+  color: var(--color-zinc-800);
 }
 
 /* ---------- Accueil : aperçu animé ---------- */
