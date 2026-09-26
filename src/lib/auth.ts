@@ -9,7 +9,7 @@ const encoder = new TextEncoder()
 
 function secret() {
   const s = process.env.SESSION_SECRET
-  if (!s || s.length < 32) throw new Error('SESSION_SECRET manquant ou trop court (32 caractères minimum)')
+  if (!s || s.length < 32) throw new Error('SESSION_SECRET is missing or too short (32 characters minimum)')
   return s
 }
 

@@ -12,6 +12,8 @@
 import { atom, getSnapshot, loadSnapshot, type Editor, type TLStoreSnapshot } from 'tldraw'
 import { readSequence, writeSequence } from '../canvas/adapter'
 import { seedDemo } from '../demo'
+import type { DemoName } from '../demoNames'
+import { m } from '@/i18n/client'
 import { emptySequence } from '../sequence/types'
 import { StorageError, type DocumentStore, type StoredDocument } from '../storage/types'
 
@@ -20,6 +22,8 @@ export type SyncState = 'loading' | 'saved' | 'pending' | 'saving' | 'offline' |
 export interface SyncStatus {
   state: SyncState
   message?: string
+  /** Nature de l'erreur, pour proposer la bonne action (ex. : se reconnecter). */
+  kind?: StorageError['kind']
 }
 
 export const syncStatusAtom = atom<SyncStatus>('syncStatus', { state: 'loading' })
@@ -43,9 +47,8 @@ interface LocalMeta {
 const SAVE_DELAY_MS = 1200
 const RETRY_DELAY_MS = 5000
 
-export function startDocumentSync(editor: Editor, docId: string, store: DocumentStore, opts: { seedDemo: boolean }) {
+export function startDocumentSync(editor: Editor, docId: string, store: DocumentStore, opts: { demo: DemoName | null }) {
   storageModeAtom.set(store.mode)
-  const elsewhere = store.mode === 'cloud' ? 'sur un autre appareil' : 'dans un autre onglet'
   const metaKey = `sync:${docId}`
   let meta: LocalMeta = readMeta(metaKey) ?? { version: -1, dirty: false }
   let saveTimer: ReturnType<typeof setTimeout> | undefined
@@ -58,8 +61,8 @@ export function startDocumentSync(editor: Editor, docId: string, store: Document
   let leader = false
   let initialized = false
 
-  const setStatus = (state: SyncState, message?: string) => {
-    if (!disposed) syncStatusAtom.set({ state, message })
+  const setStatus = (state: SyncState, message?: string, kind?: StorageError['kind']) => {
+    if (!disposed) syncStatusAtom.set({ state, message, kind })
   }
   const setMeta = (next: LocalMeta) => {
     meta = next
@@ -85,7 +88,7 @@ export function startDocumentSync(editor: Editor, docId: string, store: Document
 
   async function fetchServer(): Promise<StoredDocument> {
     const doc = await store.load(docId)
-    if (!doc) throw new StorageError('missing', 'Document introuvable.')
+    if (!doc) throw new StorageError('missing', m().errors.notFound)
     return doc
   }
 
@@ -99,7 +102,7 @@ export function startDocumentSync(editor: Editor, docId: string, store: Document
     } catch (e) {
       // Hors ligne : on travaille sur le cache local, la sauvegarde reprendra plus tard.
       ensureSequence()
-      setStatus(stateFor(e), describe(e))
+      setStatus(stateFor(e), describe(e), kindOf(e))
       if (meta.dirty) scheduleRetry()
       return
     }
@@ -108,7 +111,7 @@ export function startDocumentSync(editor: Editor, docId: string, store: Document
     if (!server.snapshotJson) {
       // Document neuf.
       if (!hasLocalContent()) {
-        writeSequence(editor, opts.seedDemo ? seedDemo(editor) : emptySequence())
+        writeSequence(editor, opts.demo ? seedDemo(editor, opts.demo) : emptySequence(m().sequence.defaultTitle))
         editor.zoomToFit()
       }
       setMeta({ version: server.version, dirty: true })
@@ -130,7 +133,7 @@ export function startDocumentSync(editor: Editor, docId: string, store: Document
   }
 
   function ensureSequence() {
-    if (!readSequence(editor)) writeSequence(editor, emptySequence())
+    if (!readSequence(editor)) writeSequence(editor, emptySequence(m().sequence.defaultTitle))
   }
 
   // ---------- Sauvegarde ----------
@@ -164,22 +167,22 @@ export function startDocumentSync(editor: Editor, docId: string, store: Document
     try {
       const result = await store.save(docId, {
         snapshotJson: json,
-        title: readSequence(editor)?.title ?? 'Sans titre',
+        title: readSequence(editor)?.title ?? m().common.untitled,
         baseVersion: meta.version,
         force,
       })
       if (!result.ok && result.reason === 'conflict') {
-        setStatus('conflict', `Ce schéma a été modifié ${elsewhere}.`)
+        setStatus('conflict', m().sync.modifiedElsewhere(store.mode === 'cloud'))
         return
       }
-      if (!result.ok) throw new StorageError('missing', 'Document introuvable.')
+      if (!result.ok) throw new StorageError('missing', m().errors.notFound)
       const { version } = result
       lastSyncedJson = json
       // Des modifications ont pu arriver pendant l'envoi : elles restent à enregistrer.
       setMeta({ version, dirty: saveAgain })
       setStatus(saveAgain ? 'pending' : 'saved')
     } catch (e) {
-      setStatus(stateFor(e), describe(e))
+      setStatus(stateFor(e), describe(e), kindOf(e))
       scheduleRetry()
     } finally {
       saving = false
@@ -255,7 +258,7 @@ export function startDocumentSync(editor: Editor, docId: string, store: Document
         if (server.snapshotJson) applyServer(server.snapshotJson, server.version)
         setStatus('saved')
       } catch (e) {
-        setStatus('offline', describe(e))
+        setStatus('offline', describe(e), kindOf(e))
       }
     },
     overwriteServer() {
@@ -321,7 +324,11 @@ function stateFor(e: unknown): SyncState {
 
 function describe(e: unknown) {
   if (e instanceof StorageError) return e.message
-  return 'Pas de connexion : modifications conservées sur cet appareil.'
+  return m().errors.offline
+}
+
+function kindOf(e: unknown): StorageError['kind'] {
+  return e instanceof StorageError ? e.kind : 'offline'
 }
 
 function readMeta(key: string): LocalMeta | null {

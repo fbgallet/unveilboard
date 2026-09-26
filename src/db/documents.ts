@@ -13,10 +13,10 @@ export async function listDocuments() {
     .orderBy(desc(documents.updatedAt))
 }
 
-export async function createDocument(title = 'Sans titre', snapshot?: unknown) {
+export async function createDocument(title = 'Untitled', snapshot?: unknown) {
   const [row] = await db
     .insert(documents)
-    .values({ title: title.trim().slice(0, 200) || 'Sans titre', ownerId: OWNER, snapshot })
+    .values({ title: title.trim().slice(0, 200) || 'Untitled', ownerId: OWNER, snapshot })
     .returning({ id: documents.id })
   return row.id
 }
@@ -60,7 +60,7 @@ export async function saveDocument(
     .update(documents)
     .set({
       snapshot: input.snapshot,
-      title: input.title.trim().slice(0, 200) || 'Sans titre',
+      title: input.title.trim().slice(0, 200) || 'Untitled',
       version: sql`${documents.version} + 1`,
       updatedAt: sql`now()`,
     })

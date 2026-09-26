@@ -37,34 +37,37 @@ const arrow = (id: string, name: string, style: Preset['style'], label = name): 
   label,
 })
 
-/** Vocabulaire de départ, modifiable : natures des blocs et relations entre eux. */
-export const DEFAULT_PRESETS: Preset[] = [
-  shape('statement', 'Énoncé', { color: 'yellow', fill: 'semi', dash: 'draw' }),
-  shape('concept', 'Concept', { color: 'blue', fill: 'semi', dash: 'draw' }),
-  shape('question', 'Question', { color: 'violet', fill: 'semi', dash: 'draw' }),
-  shape('problem', 'Difficulté', { color: 'red', fill: 'semi', dash: 'draw' }),
-  shape('example', 'Exemple', { color: 'green', fill: 'semi', dash: 'draw' }),
-  shape('quote', 'Citation', { color: 'grey', fill: 'none', dash: 'dashed', font: 'serif' }),
-  arrow('supports', 'soutient', { color: 'green' }),
-  arrow('objects', 'objecte', { color: 'red' }),
-  arrow('refutes', 'réfute', { color: 'orange' }),
-  arrow('presupposes', 'présuppose', { color: 'grey', dash: 'dashed' }),
-  arrow('illustrates', 'illustre', { color: 'green', dash: 'dotted' }),
-  arrow('answers', 'répond à', { color: 'violet' }),
-  arrow('defines', 'définit', { color: 'blue', dash: 'dashed' }),
-  arrow('raises', 'soulève', { color: 'red', dash: 'dashed' }),
-  arrow('distinguishes', 'distingue', { color: 'black', arrowheadStart: 'bar', arrowheadEnd: 'bar' }),
-  arrow('implies', 'implique', { color: 'black' }),
-]
+/** Vocabulaire de départ, modifiable : natures des blocs et relations entre eux. Noms dans la langue de l'interface. */
+export function defaultPresets(names: Record<string, string>): Preset[] {
+  const n = (id: string) => names[id] ?? id
+  return [
+    shape('statement', n('statement'), { color: 'yellow', fill: 'semi', dash: 'draw' }),
+    shape('concept', n('concept'), { color: 'blue', fill: 'semi', dash: 'draw' }),
+    shape('question', n('question'), { color: 'violet', fill: 'semi', dash: 'draw' }),
+    shape('problem', n('problem'), { color: 'red', fill: 'semi', dash: 'draw' }),
+    shape('example', n('example'), { color: 'green', fill: 'semi', dash: 'draw' }),
+    shape('quote', n('quote'), { color: 'grey', fill: 'none', dash: 'dashed', font: 'serif' }),
+    arrow('supports', n('supports'), { color: 'green' }),
+    arrow('objects', n('objects'), { color: 'red' }),
+    arrow('refutes', n('refutes'), { color: 'orange' }),
+    arrow('presupposes', n('presupposes'), { color: 'grey', dash: 'dashed' }),
+    arrow('illustrates', n('illustrates'), { color: 'green', dash: 'dotted' }),
+    arrow('answers', n('answers'), { color: 'violet' }),
+    arrow('defines', n('defines'), { color: 'blue', dash: 'dashed' }),
+    arrow('raises', n('raises'), { color: 'red', dash: 'dashed' }),
+    arrow('distinguishes', n('distinguishes'), { color: 'black', arrowheadStart: 'bar', arrowheadEnd: 'bar' }),
+    arrow('implies', n('implies'), { color: 'black' }),
+  ]
+}
 
-export function defaultPresetSettings(): PresetSettings {
-  return { version: 1, enabled: true, items: DEFAULT_PRESETS.map((p) => ({ ...p, style: { ...p.style } })) }
+export function defaultPresetSettings(names: Record<string, string>): PresetSettings {
+  return { version: 1, enabled: true, items: defaultPresets(names) }
 }
 
 /** Lecture tolérante d'un réglage enregistré (ou absent). */
-export function normalizePresetSettings(raw: unknown): PresetSettings {
+export function normalizePresetSettings(raw: unknown, names: Record<string, string>): PresetSettings {
   const r = raw as Partial<PresetSettings> | null
-  if (!r || !Array.isArray(r.items)) return defaultPresetSettings()
+  if (!r || !Array.isArray(r.items)) return defaultPresetSettings(names)
   return {
     version: 1,
     enabled: r.enabled !== false,
@@ -79,5 +82,5 @@ export function newPresetId(name: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
-  return `${slug || 'prereglage'}-${Math.random().toString(36).slice(2, 6)}`
+  return `${slug || 'preset'}-${Math.random().toString(36).slice(2, 6)}`
 }

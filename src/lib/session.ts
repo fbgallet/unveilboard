@@ -14,6 +14,6 @@ export async function isAuthenticated() {
  * Vérification au plus près des données (le proxy filtre déjà, mais on ne s'y fie pas seul).
  */
 export async function unauthorized() {
-  if (storageMode() === 'local') return NextResponse.json({ error: 'Pas de stockage serveur (mode local)' }, { status: 501 })
-  return (await isAuthenticated()) ? null : NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+  if (storageMode() === 'local') return NextResponse.json({ error: 'No server storage (local mode)' }, { status: 501 })
+  return (await isAuthenticated()) ? null : NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 }

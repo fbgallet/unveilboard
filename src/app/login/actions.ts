@@ -4,10 +4,13 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { SESSION_COOKIE, SESSION_MAX_AGE, checkPassword, createSessionToken } from '@/lib/auth'
 
-export async function login(_prev: string | null, formData: FormData): Promise<string | null> {
+/** Erreur de connexion, traduite par le formulaire. */
+export type LoginError = 'wrongPassword' | 'notConfigured'
+
+export async function login(_prev: LoginError | null, formData: FormData): Promise<LoginError | null> {
   const password = String(formData.get('password') ?? '')
-  if (!process.env.APP_PASSWORD) return 'APP_PASSWORD n’est pas configuré sur le serveur.'
-  if (!(await checkPassword(password))) return 'Mot de passe incorrect.'
+  if (!process.env.APP_PASSWORD) return 'notConfigured'
+  if (!(await checkPassword(password))) return 'wrongPassword'
 
   const store = await cookies()
   store.set(SESSION_COOKIE, await createSessionToken(), {

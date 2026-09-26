@@ -2,83 +2,93 @@
 
 *Show your diagrams step by step. Built with [tldraw](https://tldraw.dev).*
 
-Présentation progressive de schémas sur un canevas tldraw : chaque étape fait apparaître, atténue, cache ou surligne des objets, déplace la caméra et affiche un texte de narration.
+**English** · [Français](README.fr.md)
 
-> Unveilboard n'est pas affilié à tldraw ni approuvé par tldraw Inc. « tldraw » est une marque de tldraw Inc.
+Unveilboard turns a tldraw canvas into a progressive presentation. Instead of showing a whole diagram at once, you reveal it step by step: each step can show, dim, hide or highlight shapes, move the camera, and display a narration text next to the diagram.
 
-## Deux modes de stockage
+It was made for teaching: an audience follows the reasoning more easily when the diagram is built in front of it, and spends less time copying it down.
 
-Le mode dépend de la présence de `DATABASE_URL` :
+**Try it:** [unveilboard.com](https://unveilboard.com). No account needed; your diagrams stay in your browser.
 
-- **Mode local** (sans `DATABASE_URL`) : aucun serveur de données ni mot de passe. Les schémas sont enregistrés dans le navigateur de chacun (IndexedDB). « Enregistrer sous… » (panneau des étapes ou menu ☰ d'un schéma) crée un fichier `.tldr`, séquence comprise ; « Ouvrir un fichier .tldr… » (accueil ou menu ☰), ou un glisser-déposer sur l'accueil, le rouvre comme nouveau schéma. Idéal pour partager l'app par une simple URL.
-- **Mode cloud** (avec `DATABASE_URL`) : les schémas sont enregistrés sur Postgres (Neon), accessibles depuis tous vos appareils, et l'accès est protégé par mot de passe.
+> Unveilboard is not affiliated with, or endorsed by, tldraw Inc. "tldraw" is a trademark of tldraw Inc.
 
-## Démarrage en local
+> The interface is available in English and French (switch with the EN · FR selector on the home page). It follows your browser's language by default.
 
-Mode local : `pnpm install && pnpm dev`, rien d'autre à configurer.
+## Features
 
-Mode cloud, avec un Postgres local (ex. Postgres.app) :
+- **Steps**: show, dim, hide, restore, highlight or focus shapes, with entrance effects (fade, rise, draw).
+- **Camera per step**: follow the new shapes, show the whole diagram, or stay put.
+- **Narration panel**: a text for each step, shown next to the diagram (resizable, can be hidden).
+- **Presentation mode**: keyboard and presentation-remote navigation, overview and recenter, laser pointer (color, width and fade-out delay are configurable), and an "unlocked" mode to edit the diagram during the presentation.
+- **Quick sequencing**: create shapes and add them to the current step, or to a new step before or after it, in one click.
+- **Trees and mind maps** on regular tldraw shapes: <kbd>Tab</kbd> adds a child, <kbd>Enter</kbd> adds a sibling, automatic layout, collapsible branches.
+- **Expandable details** under a box, and **style presets** (e.g. "supports", "objects to") shared by all your diagrams.
+- **Files**: save and open `.tldr` files. The sequence is stored inside the tldraw document, so a `.tldr` file keeps it.
+- **English and French interface**, including tldraw's own menus. Adding a language means adding one file in `src/i18n/`.
+
+## Two storage modes
+
+The mode depends on whether `DATABASE_URL` is set:
+
+- **Local mode** (no `DATABASE_URL`): no database and no password. Diagrams are stored in each visitor's browser (IndexedDB) and can be saved to or opened from `.tldr` files. This is the mode for sharing the app with a simple URL.
+- **Cloud mode** (with `DATABASE_URL`): diagrams are stored in Postgres (e.g. [Neon](https://neon.tech)), available on all your devices, and access is protected by a password. This is meant for a personal instance for now: there are no user accounts yet.
+
+## Running locally
+
+Local mode needs no configuration:
 
 ```bash
 pnpm install
-createdb animated_tldraw
-cp .env.example .env.local   # puis renseigner DATABASE_URL, APP_PASSWORD, SESSION_SECRET
+pnpm dev
+```
+
+If your `.env.local` sets `DATABASE_URL` (cloud mode), `pnpm dev:local` still starts the app in local mode, as on the public instance.
+
+Cloud mode, with a local Postgres:
+
+```bash
+pnpm install
+createdb unveilboard
+cp .env.example .env.local   # then set DATABASE_URL, APP_PASSWORD, SESSION_SECRET
 pnpm db:migrate
 pnpm dev
 ```
 
-## Mise en ligne (Vercel + Neon)
+## Deploying (Vercel)
 
-En mode local, seul `NEXT_PUBLIC_TLDRAW_LICENSE_KEY` est nécessaire sur Vercel. En mode cloud :
+- **Local mode**: import the repository into Vercel and set `NEXT_PUBLIC_TLDRAW_LICENSE_KEY`. That's all.
+- **Cloud mode**:
+  1. Create a Postgres database (e.g. Neon).
+  2. Apply the migrations with the **direct** (non-pooled) connection URL, in single quotes because it contains `&`:
+     `DATABASE_URL='postgresql://…/neondb?sslmode=require' pnpm db:migrate`
+     Run it again whenever a new migration is added in `drizzle/`.
+  3. On Vercel, set `DATABASE_URL` (the **pooled** URL, with `-pooler` in the host), `APP_PASSWORD`, `SESSION_SECRET` (`openssl rand -base64 48`) and `NEXT_PUBLIC_TLDRAW_LICENSE_KEY`.
+  4. Optional: add a Vercel Blob store (`BLOB_READ_WRITE_TOKEN`) to store images outside the document.
 
-1. Créer un projet Neon et copier l'URL de connexion **pooled** (hôte en `-pooler`).
-2. Appliquer le schéma sur Neon (à refaire après chaque nouvelle migration dans `drizzle/`), **avec l'URL entre guillemets simples** (elle contient des `&`) :
-   `DATABASE_URL='postgresql://…-pooler…/neondb?sslmode=require' pnpm db:migrate`
-3. Sur Vercel, définir les variables : `DATABASE_URL`, `APP_PASSWORD`, `SESSION_SECRET` (`openssl rand -base64 48`), `NEXT_PUBLIC_TLDRAW_LICENSE_KEY`.
-4. Optionnel : créer un store Vercel Blob (ajoute `BLOB_READ_WRITE_TOKEN`) pour stocker les images hors du document.
-
-## Sauvegarde
-
-- Le stockage passe par une interface commune, `DocumentStore` (`src/lib/storage/`) : `cloud.ts` (routes `/api/documents`, Postgres) ou `local.ts` (IndexedDB).
-- Chaque document a un cache local (IndexedDB, via `persistenceKey`) : ouverture instantanée, travail hors ligne.
-- Les modifications sont enregistrées ~1 s après la dernière action (`src/lib/sync/documentSync.ts`), sous forme d'instantané tldraw (`jsonb` sur le serveur).
-- Verrouillage optimiste : si le document a été modifié ailleurs entre-temps, l'enregistrement est refusé et un bandeau propose de charger l'autre version ou de garder la sienne. Les modifications locales écartées sont copiées dans `localStorage` (`backup:<id>`).
-- Plusieurs onglets sur le même document : tldraw les synchronise, et un seul d'entre eux (verrou du navigateur) enregistre pour tous. Il n'y a donc pas de conflit entre onglets.
-- Au retour sur l'onglet, une version plus récente enregistrée ailleurs est chargée automatiquement.
-
-En mode cloud, l'accès est protégé par un mot de passe unique (`APP_PASSWORD`) et un cookie de session signé : suffisant pour un usage personnel, à remplacer par de vrais comptes avant une ouverture au public.
+`NEXT_PUBLIC_*` variables are embedded at build time: redeploy after changing them.
 
 ## Architecture
 
-- `src/lib/sequence/` : modèle de séquence et calcul de l'état à une étape donnée. Données pures, sans dépendance à tldraw.
-- `src/lib/canvas/adapter.ts` : seul point de contact entre le moteur de présentation et tldraw (lecture/écriture de la séquence dans `document.meta`, caméra, géométrie).
-- `src/components/usePresentation.ts` : applique l'état calculé (classes CSS sur les formes), pilote la caméra et le clavier.
-- `src/components/PresShapeWrapper.tsx` : enveloppe chaque forme rendue ; le document n'est jamais modifié pendant la présentation.
-- `src/lib/tree/` et `src/lib/canvas/tree.ts` : arbres (cartes mentales) sur des formes tldraw ordinaires, reliées par des flèches marquées `meta.branch`. Sans ce module, le document reste un schéma tldraw normal.
+- `src/lib/sequence/`: the sequence model and the computation of the state at a given step. Pure data, no dependency on tldraw.
+- `src/lib/canvas/adapter.ts`: the only place where the presentation engine touches tldraw (reading and writing the sequence in `document.meta`, camera, geometry).
+- `src/components/usePresentation.ts`: applies the computed state (CSS classes on shapes), drives the camera and the keyboard.
+- `src/components/PresShapeWrapper.tsx`: wraps each rendered shape. The document is never modified during a presentation.
+- `src/lib/storage/`: the `DocumentStore` interface, with `cloud.ts` (Postgres, through `/api/documents`) and `local.ts` (IndexedDB).
+- `src/lib/sync/documentSync.ts`: saves changes about one second after the last edit, with optimistic locking between devices.
+- `src/lib/tree/` and `src/lib/canvas/tree.ts`: trees built on regular tldraw shapes.
 
-La séquence est stockée dans le document tldraw : elle bénéficie de l'annuler/rétablir et de la persistance locale (IndexedDB).
+More details (in French) in [README.fr.md](README.fr.md).
 
-## Arbres
+## Presentation shortcuts
 
-Sélectionner une boîte : <kbd>Tab</kbd> ajoute un enfant (et commence un arbre), <kbd>Entrée</kbd> ajoute un frère. Pendant la saisie d'un nœud, <kbd>Entrée</kbd> valide (<kbd>Maj</kbd>+<kbd>Entrée</kbd> : saut de ligne) et <kbd>Tab</kbd> enchaîne sur un enfant.
+`→` / `Space` / `PageDown` next · `←` / `PageUp` previous · `Home` / `End` · `O` overview · `C` recenter · `K` laser · `N` narration · `F` fullscreen · `Esc` exit (the first `Esc` turns the laser off)
 
-- La mise en page est automatique ; un nœud déplacé à la main garde son décalage (et entraîne sa branche). « Réorganiser » efface les décalages.
-- Replier une branche la masque en édition. L'état replié du document est l'état de départ de la présentation ; les actions « Replier / Déplier la branche » le changent en cours de séquence. Replier ne déplace rien : la place de la branche reste réservée.
-- Supprimer un nœud supprime sa branche (annulable).
+## Contributing
 
-## Préréglages de styles
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Des styles nommés (Énoncé, Concept, Question… ; soutient, objecte, réfute…), en tête du panneau de styles : un clic les applique aux formes ou aux flèches sélectionnées. Ce ne sont que des styles tldraw ordinaires, plus une marque `meta.preset`.
+## License
 
-- Communs à tous les schémas : table `settings` en mode cloud, IndexedDB en mode local. Chaque schéma garde une copie des préréglages qu'il utilise, pour rester lisible ailleurs.
-- Menu ☰ › « Préréglages de styles… » : renommer, réordonner, mettre à jour ou créer d'après la sélection, masquer la palette, revenir aux préréglages de départ.
+Unveilboard's code is released under the [MIT license](LICENSE).
 
-## Détails dépliables
-
-Sur une boîte sélectionnée, « + Détail » ajoute sous elle un texte qui la suit (position, largeur) et disparaît avec elle. Replié, il est masqué en édition (pastille « … » pour le déplier) ; en présentation, les actions « Déplier / Replier le détail » le font apparaître ou disparaître. Dans un arbre, sa place reste réservée.
-
-## Raccourcis en présentation
-
-`→` / `Espace` / `PageDown` suivant · `←` / `PageUp` précédent · `Début` / `Fin` · `O` vue d'ensemble · `C` recentrer · `K` laser · `N` narration · `F` plein écran · `Échap` quitter (le premier Échap désactive le laser)
-
-Le cadenas de la barre de présentation déverrouille le document : l'interface tldraw réapparaît et seules `PageUp` / `PageDown` naviguent entre les étapes.
+It depends on the tldraw SDK, which has its own [license](https://tldraw.dev/community/license): every production deployment needs a tldraw license key. A free hobby license is available for non-commercial use; it displays a "made with tldraw" watermark.

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
+import { I18nProvider } from "@/i18n/client";
+import { getLocale, getMessages } from "@/i18n/server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,18 +19,21 @@ const serif = Source_Serif_4({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Unveilboard",
-  description: "Show your diagrams step by step. Built with tldraw.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getMessages();
+  return { title: "Unveilboard", description: t.meta.description };
+}
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const locale = await getLocale();
   return (
     <html
-      lang="fr"
+      lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} ${serif.variable} h-full antialiased`}
     >
-      <body className="h-full">{children}</body>
+      <body className="h-full">
+        <I18nProvider locale={locale}>{children}</I18nProvider>
+      </body>
     </html>
   );
 }

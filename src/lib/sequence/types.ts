@@ -55,32 +55,6 @@ export interface Sequence {
   steps: Step[]
 }
 
-export const ACTION_LABELS: Record<StepActionType, string> = {
-  show: 'Apparaître',
-  hide: 'Cacher',
-  dim: 'Atténuer',
-  undim: 'Rétablir',
-  fold: 'Replier la branche',
-  unfold: 'Déplier la branche',
-  expand: 'Déplier le détail',
-  collapse: 'Replier le détail',
-  highlight: 'Surligner',
-  focus: 'Focus',
-}
-
-export const CAMERA_LABELS: Record<CameraMode, string> = {
-  follow: 'Suivre',
-  overview: "Vue d'ensemble",
-  keep: 'Ne pas bouger',
-}
-
-export const EFFECT_LABELS: Record<Effect, string> = {
-  fade: 'Fondu',
-  draw: 'Tracé',
-  rise: 'Montée',
-  none: 'Aucun',
-}
-
 /** Version courante du format de séquence. */
 export const SEQUENCE_VERSION = 1
 
@@ -88,6 +62,10 @@ export function newId(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`
 }
 
-export function emptySequence(): Sequence {
-  return { version: SEQUENCE_VERSION, id: newId('seq'), title: 'Nouvelle séquence', steps: [] }
+export function emptySequence(title = 'New sequence'): Sequence {
+  return { version: SEQUENCE_VERSION, id: newId('seq'), title, steps: [] }
 }
+
+// Les libellés (actions, caméra, effets) sont dans src/i18n : t.actions, t.camera, t.effects.
+export const EFFECTS: Effect[] = ['fade', 'draw', 'rise', 'none']
+export const CAMERA_MODES: CameraMode[] = ['follow', 'overview', 'keep']

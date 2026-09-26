@@ -9,7 +9,7 @@ export async function proxy(request: NextRequest) {
   if (ok) return NextResponse.next()
 
   if (request.nextUrl.pathname.startsWith('/api/')) {
-    return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
   const login = new URL('/login', request.url)
   login.searchParams.set('next', request.nextUrl.pathname + request.nextUrl.search)

@@ -25,17 +25,17 @@ export async function PUT(request: Request, ctx: RouteContext<'/api/documents/[i
 
   const body = await request.json().catch(() => null)
   if (!body || typeof body !== 'object' || typeof body.baseVersion !== 'number' || !body.snapshot) {
-    return NextResponse.json({ error: 'Requête invalide' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
   const result = await saveDocument(id, {
     snapshot: body.snapshot,
-    title: typeof body.title === 'string' ? body.title : 'Sans titre',
+    title: typeof body.title === 'string' ? body.title : 'Untitled',
     baseVersion: body.baseVersion,
     force: body.force === true,
   })
   if (result.ok) return NextResponse.json({ version: result.version })
   if (result.reason === 'conflict') {
-    return NextResponse.json({ error: 'Modifié ailleurs', version: result.version }, { status: 409 })
+    return NextResponse.json({ error: 'Modified elsewhere', version: result.version }, { status: 409 })
   }
   return notFound()
 }
@@ -49,5 +49,5 @@ export async function DELETE(_request: Request, ctx: RouteContext<'/api/document
 }
 
 function notFound() {
-  return NextResponse.json({ error: 'Document introuvable' }, { status: 404 })
+  return NextResponse.json({ error: 'Document not found' }, { status: 404 })
 }

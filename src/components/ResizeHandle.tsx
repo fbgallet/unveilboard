@@ -1,6 +1,7 @@
 'use client'
 
 import type { Atom } from 'tldraw'
+import { useT } from '@/i18n/client'
 import { storeValue, type WidthLimits } from '@/lib/presentation/store'
 
 /**
@@ -19,6 +20,7 @@ export function ResizeHandle({
   storageKey: string
   onResized?(): void
 }) {
+  const t = useT()
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     e.preventDefault()
     const handle = e.currentTarget
@@ -48,7 +50,7 @@ export function ResizeHandle({
         storeValue(storageKey, limits.default)
         onResized?.()
       }}
-      title="Glisser pour redimensionner · double-clic pour réinitialiser"
+      title={t.common.resizeHandle}
       role="separator"
       aria-orientation="vertical"
     />

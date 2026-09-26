@@ -1,17 +1,8 @@
 'use client'
 
 import { useValue } from 'tldraw'
+import { useT } from '@/i18n/client'
 import { storageModeAtom, syncControls, syncStatusAtom, type SyncState } from '@/lib/sync/documentSync'
-
-const LABELS: Record<SyncState, string> = {
-  loading: 'Chargement…',
-  saved: 'Enregistré',
-  pending: 'Modifications…',
-  saving: 'Enregistrement…',
-  offline: 'Hors ligne',
-  conflict: 'Conflit',
-  error: 'Erreur',
-}
 
 const DOT: Record<SyncState, string> = {
   loading: 'bg-zinc-300',
@@ -25,19 +16,21 @@ const DOT: Record<SyncState, string> = {
 
 /** Pastille d'état de la sauvegarde (en ligne, ou dans ce navigateur en mode local). */
 export function SyncIndicator() {
+  const t = useT()
   const status = useValue(syncStatusAtom)
   const local = useValue(storageModeAtom) === 'local'
-  const title = status.message ?? (local ? 'Enregistré dans ce navigateur uniquement (mode local)' : 'Enregistré en ligne')
+  const title = status.message ?? (local ? t.sync.savedLocal : t.sync.savedCloud)
   return (
     <span className="sync-indicator inline-flex items-center gap-1.5 text-xs text-zinc-500" title={title} role="status">
       <span className={`h-2 w-2 rounded-full ${DOT[status.state]}`} />
-      {LABELS[status.state]}
+      {t.sync.states[status.state]}
     </span>
   )
 }
 
 /** Bandeau affiché en cas de conflit entre appareils ou d'erreur bloquante. */
 export function SyncBanner() {
+  const t = useT()
   const status = useValue(syncStatusAtom)
   const controls = useValue(syncControls)
   const local = useValue(storageModeAtom) === 'local'
@@ -48,17 +41,17 @@ export function SyncBanner() {
       <span className="text-red-700">{status.message}</span>
       {status.state === 'conflict' && controls && (
         <span className="flex gap-2">
-          <button className="btn-xs" onClick={controls.reloadFromServer} title="Vos modifications locales sont sauvegardées dans ce navigateur avant d'être remplacées">
-            {local ? 'Charger l’autre version' : 'Charger la version en ligne'}
+          <button className="btn-xs" onClick={controls.reloadFromServer} title={t.sync.keepLocalHint}>
+            {local ? t.sync.loadOther : t.sync.loadOnline}
           </button>
           <button className="btn-xs" onClick={controls.overwriteServer}>
-            Garder la mienne
+            {t.sync.keepMine}
           </button>
         </span>
       )}
-      {status.message?.includes('reconnectez') && (
+      {status.kind === 'auth' && (
         <a className="btn-xs" href={`/login?next=${encodeURIComponent(location.pathname)}`}>
-          Se reconnecter
+          {t.sync.reconnect}
         </a>
       )}
     </div>

@@ -1,7 +1,13 @@
 import { createShapeId, toRichText, type Editor, type TLShapeId } from 'tldraw'
 import { SEQUENCE_VERSION, type Sequence } from './sequence/types'
+import type { DemoName } from './demoNames'
 
-// Schéma de démonstration : « La liberté est-elle une illusion ? »
+// Schémas de démonstration : « La liberté est-elle une illusion ? » (français)
+// et « The water cycle » (anglais, volontairement hors philosophie).
+
+export function seedDemo(editor: Editor, name: DemoName): Sequence {
+  return name === 'water' ? seedWaterCycle(editor) : seedLiberty(editor)
+}
 
 const id = (name: string) => createShapeId(`demo-${name}`)
 
@@ -19,15 +25,25 @@ const S = {
   autonomyToSynthesis: id('autonomy-synthesis'),
 }
 
-type Color = 'black' | 'blue' | 'green' | 'red' | 'violet' | 'orange'
+type Color = 'black' | 'blue' | 'light-blue' | 'green' | 'grey' | 'red' | 'violet' | 'orange' | 'yellow'
 
-function box(editor: Editor, shapeId: TLShapeId, x: number, y: number, w: number, h: number, text: string, color: Color) {
+function box(
+  editor: Editor,
+  shapeId: TLShapeId,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  text: string,
+  color: Color,
+  geo: 'rectangle' | 'ellipse' | 'cloud' = 'rectangle'
+) {
   editor.createShape({
     id: shapeId,
     type: 'geo',
     x,
     y,
-    props: { geo: 'rectangle', w, h, richText: toRichText(text), color, fill: 'semi', font: 'sans', size: 'm' },
+    props: { geo, w, h, richText: toRichText(text), color, fill: 'semi', font: 'sans', size: 'm' },
   })
 }
 
@@ -46,7 +62,7 @@ function arrow(editor: Editor, arrowId: TLShapeId, from: TLShapeId, to: TLShapeI
   editor.createBindings([binding('start', from), binding('end', to)])
 }
 
-export function seedDemo(editor: Editor): Sequence {
+function seedLiberty(editor: Editor): Sequence {
   editor.run(() => {
     editor.createShape({
       id: S.title,
@@ -80,7 +96,7 @@ export function seedDemo(editor: Editor): Sequence {
   return {
     version: SEQUENCE_VERSION,
     id: 'seq_demo',
-    title: 'La liberté est-elle une illusion ?',
+    title: 'Démo : La liberté est-elle une illusion ?',
     steps: [
       {
         id: 'st_1',
@@ -150,6 +166,123 @@ export function seedDemo(editor: Editor): Sequence {
         actions: [{ type: 'undim', targets: [S.absence, S.qToAbsence] }],
         camera: { mode: 'overview' },
         narration: 'Reprenons le chemin parcouru, de l’intuition commune à sa critique.',
+      },
+    ],
+  }
+}
+
+const W = {
+  title: id('water-title'),
+  ocean: id('water-ocean'),
+  sun: id('water-sun'),
+  vapour: id('water-vapour'),
+  clouds: id('water-clouds'),
+  land: id('water-land'),
+  sunToOcean: id('water-sun-ocean'),
+  evaporation: id('water-evaporation'),
+  condensation: id('water-condensation'),
+  precipitation: id('water-precipitation'),
+  runoff: id('water-runoff'),
+}
+
+function seedWaterCycle(editor: Editor): Sequence {
+  editor.run(() => {
+    editor.createShape({
+      id: W.title,
+      type: 'text',
+      x: -420,
+      y: -330,
+      props: { richText: toRichText('The water cycle'), size: 'xl', font: 'serif', autoSize: true },
+    })
+    box(editor, W.ocean, -520, 260, 320, 110, 'Oceans, lakes and seas', 'blue')
+    box(editor, W.sun, -900, 80, 180, 110, 'Sun', 'yellow', 'ellipse')
+    box(editor, W.vapour, -520, -120, 320, 110, 'Water vapour rises', 'light-blue')
+    box(editor, W.clouds, 160, -140, 320, 150, 'Clouds', 'grey', 'cloud')
+    box(editor, W.land, 160, 260, 320, 110, 'Land: rivers, soil, groundwater', 'green')
+
+    arrow(editor, W.sunToOcean, W.sun, W.ocean, 'orange', 'heats', 'dashed')
+    arrow(editor, W.evaporation, W.ocean, W.vapour, 'blue', 'evaporation')
+    arrow(editor, W.condensation, W.vapour, W.clouds, 'grey', 'condensation')
+    arrow(editor, W.precipitation, W.clouds, W.land, 'blue', 'precipitation')
+    arrow(editor, W.runoff, W.land, W.ocean, 'green', 'runoff')
+  })
+
+  return {
+    version: SEQUENCE_VERSION,
+    id: 'seq_demo_water',
+    title: 'Demo: The water cycle',
+    steps: [
+      {
+        id: 'st_1',
+        title: 'Where is the water?',
+        actions: [{ type: 'show', targets: [W.title, W.ocean], effect: 'fade' }],
+        camera: { mode: 'follow' },
+        narration:
+          'Most of the water on Earth is in the **oceans**. But it does not stay there: it is constantly on the move.',
+      },
+      {
+        id: 'st_2',
+        title: 'The sun',
+        actions: [
+          { type: 'show', targets: [W.sun], effect: 'rise' },
+          { type: 'show', targets: [W.sunToOcean], effect: 'draw' },
+        ],
+        camera: { mode: 'follow' },
+        narration: 'Energy from the **sun** heats the surface of the water.',
+      },
+      {
+        id: 'st_3',
+        title: 'Evaporation',
+        actions: [
+          { type: 'show', targets: [W.vapour], effect: 'rise' },
+          { type: 'show', targets: [W.evaporation], effect: 'draw' },
+        ],
+        camera: { mode: 'follow' },
+        narration: 'Warm water **evaporates**: it turns into invisible water vapour and rises into the air.',
+      },
+      {
+        id: 'st_4',
+        title: 'Condensation',
+        actions: [
+          { type: 'show', targets: [W.clouds], effect: 'fade' },
+          { type: 'show', targets: [W.condensation], effect: 'draw' },
+          { type: 'dim', targets: [W.sun, W.sunToOcean] },
+          { type: 'focus', targets: [W.vapour, W.clouds, W.condensation] },
+        ],
+        camera: { mode: 'follow' },
+        narration: 'Higher up, the air is colder. The vapour **condenses** into tiny droplets, and clouds form.',
+      },
+      {
+        id: 'st_5',
+        title: 'Precipitation',
+        actions: [
+          { type: 'show', targets: [W.land], effect: 'rise' },
+          { type: 'show', targets: [W.precipitation], effect: 'draw' },
+        ],
+        camera: { mode: 'follow' },
+        narration: 'When the droplets grow too heavy, they fall as **rain or snow**.',
+      },
+      {
+        id: 'st_6',
+        title: 'Back to the sea',
+        actions: [
+          { type: 'show', targets: [W.runoff], effect: 'draw' },
+          { type: 'highlight', targets: [W.ocean] },
+        ],
+        camera: { mode: 'overview' },
+        narration:
+          'Water flows through rivers and underground, back to the oceans. And the **cycle** starts again.',
+      },
+      {
+        id: 'st_7',
+        title: 'The whole cycle',
+        actions: [
+          { type: 'undim', targets: [W.sun, W.sunToOcean] },
+          { type: 'highlight', targets: [W.evaporation, W.condensation, W.precipitation, W.runoff] },
+        ],
+        camera: { mode: 'overview' },
+        narration:
+          'Four stages, one loop: evaporation, condensation, precipitation, runoff. The same water keeps travelling, again and again.',
       },
     ],
   }

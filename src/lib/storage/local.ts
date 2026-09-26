@@ -2,6 +2,7 @@
 // Tables : un index léger (titre, version, date) pour la liste, les instantanés, et les réglages communs.
 // Le verrouillage optimiste fonctionne comme côté serveur : il départage deux onglets.
 
+import { m } from '@/i18n/client'
 import { StorageError, type DocumentStore, type DocumentSummary, type SaveResult, type SettingsStore } from './types'
 
 const DB_NAME = 'animated-tldraw'
@@ -63,7 +64,7 @@ async function transaction<T>(
     return result
   } catch (e) {
     const quota = e instanceof DOMException && e.name === 'QuotaExceededError'
-    throw new StorageError('storage', quota ? 'Espace de stockage du navigateur plein.' : 'Stockage du navigateur indisponible.')
+    throw new StorageError('storage', quota ? m().errors.storageFull : m().errors.storageUnavailable)
   }
 }
 
@@ -117,7 +118,7 @@ export const localStore: DocumentStore = {
       if (!entry) return { ok: false, reason: 'not_found' }
       if (!input.force && entry.version !== input.baseVersion) return { ok: false, reason: 'conflict', version: entry.version }
       const version = entry.version + 1
-      index.put({ id, title: input.title.trim().slice(0, 200) || 'Sans titre', version, updatedAt: Date.now() } satisfies IndexEntry)
+      index.put({ id, title: input.title.trim().slice(0, 200) || m().common.untitled, version, updatedAt: Date.now() } satisfies IndexEntry)
       snapshots.put(input.snapshotJson, id)
       return { ok: true, version }
     })

@@ -15,8 +15,8 @@ export async function POST(request: Request) {
   const denied = await unauthorized()
   if (denied) return denied
   const body = await request.json().catch(() => null)
-  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Requête invalide' }, { status: 400 })
-  const title = typeof body.title === 'string' ? body.title : 'Sans titre'
+  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  const title = typeof body.title === 'string' ? body.title : 'Untitled'
   const snapshot = body.snapshot && typeof body.snapshot === 'object' ? body.snapshot : undefined
   return NextResponse.json({ id: await createDocument(title, snapshot) }, { status: 201 })
 }

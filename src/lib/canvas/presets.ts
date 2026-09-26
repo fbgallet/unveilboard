@@ -2,6 +2,7 @@
 // Les préréglages sont communs (SettingsStore) ; chaque document garde aussi une copie
 // de ceux qu'il utilise (document.meta.presets), pour rester lisible ailleurs.
 
+import { m } from '@/i18n/client'
 import {
   ArrowShapeArrowheadEndStyle,
   ArrowShapeArrowheadStartStyle,
@@ -44,7 +45,7 @@ const STYLE_PROPS: Record<StyleKey, StyleProp<string>> = {
 
 // ---------- Persistance des préréglages communs ----------
 
-export const presetSettingsAtom = atom<PresetSettings>('presetSettings', defaultPresetSettings())
+export const presetSettingsAtom = atom<PresetSettings>('presetSettings', defaultPresetSettings(m().presetDefaults))
 /** Erreur de la dernière sauvegarde (affichée dans le gestionnaire). */
 export const presetErrorAtom = atom<string | null>('presetError', null)
 
@@ -54,10 +55,10 @@ const CACHE_KEY = 'presets-cache'
 export async function loadPresetSettings(store: SettingsStore) {
   try {
     const value = await store.get(PRESETS_SETTING_KEY)
-    presetSettingsAtom.set(normalizePresetSettings(value))
+    presetSettingsAtom.set(normalizePresetSettings(value, m().presetDefaults))
     writeCache(presetSettingsAtom.get())
   } catch {
-    presetSettingsAtom.set(normalizePresetSettings(readCache()))
+    presetSettingsAtom.set(normalizePresetSettings(readCache(), m().presetDefaults))
   }
 }
 
@@ -68,7 +69,7 @@ export async function savePresetSettings(store: SettingsStore, next: PresetSetti
     await store.set(PRESETS_SETTING_KEY, next)
     presetErrorAtom.set(null)
   } catch (e) {
-    presetErrorAtom.set(e instanceof Error ? e.message : 'Enregistrement impossible.')
+    presetErrorAtom.set(e instanceof Error ? e.message : m().presets.saveFailed)
   }
 }
 

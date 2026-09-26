@@ -17,6 +17,7 @@ import {
 } from '@/lib/canvas/tree'
 import { addDetail, getDetailIndex, isDetailOpen, toggleDetail } from '@/lib/canvas/details'
 import { editUnlockedAtom, foldedBadgesAtom, modeAtom } from '@/lib/presentation/store'
+import { useT } from '@/i18n/client'
 
 /** Le document est modifiable : mode édition, ou présentation déverrouillée. */
 const canEdit = () => modeAtom.get() === 'edit' || editUnlockedAtom.get()
@@ -72,6 +73,7 @@ function isTypingTarget(target: EventTarget | null) {
 
 /** Barre contextuelle en édition : une boîte (ou un nœud d'arbre) sélectionnée : arbre et détail. */
 export function TreeToolbar({ editor }: { editor: Editor }) {
+  const t = useT()
   const info = useValue(
     'tree toolbar',
     () => {
@@ -96,12 +98,12 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
 
   const detailButton =
     info.detail === 'none' ? (
-      <button className="qa-btn" onClick={() => addDetail(editor, id)} title="Texte détaillé sous la boîte, qu'on déplie ou replie (aussi pendant la présentation)">
-        + Détail
+      <button className="qa-btn" onClick={() => addDetail(editor, id)} title={t.tree.addDetailHint}>
+        {t.tree.addDetail}
       </button>
     ) : (
-      <button className="qa-btn" onClick={() => toggleDetail(editor, id)} title="Afficher / masquer le détail de la boîte">
-        {info.detail === 'open' ? '▴ Replier le détail' : '▾ Déplier le détail'}
+      <button className="qa-btn" onClick={() => toggleDetail(editor, id)} title={t.tree.toggleDetailHint}>
+        {info.detail === 'open' ? t.tree.collapseDetail : t.tree.expandDetail}
       </button>
     )
 
@@ -110,7 +112,7 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
       <div className="tree-toolbar">
         {detailButton}
         <span className="tree-hint">
-          <kbd>Tab</kbd> commencer un arbre à partir de cette boîte
+          <kbd>Tab</kbd> {t.tree.startTree}
         </span>
       </div>
     )
@@ -118,8 +120,8 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
   return (
     <div className="tree-toolbar">
       {info.kids > 0 && (
-        <button className="qa-btn" onClick={() => toggleFold(editor, id)} title="Masquer / afficher les descendants">
-          {info.folded ? `▸ Déplier (${info.kids})` : '▾ Replier'}
+        <button className="qa-btn" onClick={() => toggleFold(editor, id)} title={t.tree.toggleFoldHint}>
+          {info.folded ? t.tree.unfoldCount(info.kids) : t.tree.fold}
         </button>
       )}
       <button
@@ -128,20 +130,20 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
           editor.markHistoryStoppingPoint('réorganiser')
           relayout(editor, id, { reset: true })
         }}
-        title="Remettre chaque nœud à sa place calculée (annule les déplacements manuels)"
+        title={t.tree.relayoutHint}
       >
-        Réorganiser
+        {t.tree.relayout}
       </button>
       {detailButton}
       <button
         className="qa-btn"
         onClick={() => setDirection(editor, id, info.dir === 'right' ? 'down' : 'right')}
-        title="Déployer l'arbre vers la droite ou vers le bas"
+        title={t.tree.directionHint}
       >
-        {info.dir === 'right' ? '→ Vers la droite' : '↓ Vers le bas'}
+        {info.dir === 'right' ? t.tree.right : t.tree.down}
       </button>
       <span className="tree-hint">
-        <kbd>Tab</kbd> enfant · <kbd>Entrée</kbd> frère
+        <kbd>Tab</kbd> {t.tree.child} · <kbd>{t.tree.enter}</kbd> {t.tree.sibling}
       </span>
     </div>
   )
@@ -149,6 +151,7 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
 
 /** Pastilles « … » sous les boîtes dont le détail est replié (édition : cliquer pour le déplier). */
 export function DetailBadges() {
+  const t = useT()
   const editor = useEditor()
   const badges = useValue(
     'detail badges',
@@ -170,7 +173,7 @@ export function DetailBadges() {
           key={b.id}
           className="fold-badge"
           style={{ left: b.x, top: b.y, transform: `translate(-50%, -50%) scale(${1 / zoom})` }}
-          title="Déplier le détail"
+          title={t.tree.expandDetailBadge}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => toggleDetail(editor, b.id)}
         >
@@ -183,6 +186,7 @@ export function DetailBadges() {
 
 /** Pastilles « +n » sur les nœuds repliés (en édition : cliquer pour déplier). */
 export function FoldBadges() {
+  const t = useT()
   const editor = useEditor()
   const badges = useValue(
     'fold badges',
@@ -213,7 +217,7 @@ export function FoldBadges() {
           className="fold-badge"
           style={{ left: b.x, top: b.y, transform: `translate(-50%, -50%) scale(${1 / zoom})` }}
           disabled={presenting}
-          title={presenting ? undefined : 'Déplier la branche'}
+          title={presenting ? undefined : t.tree.expandBranch}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => toggleFold(editor, b.id)}
         >

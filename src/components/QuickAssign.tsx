@@ -5,6 +5,7 @@ import { useValue, type Editor, type TLShapeId } from 'tldraw'
 import { readSequence, writeSequence } from '@/lib/canvas/adapter'
 import { addStep, addTargets, appearanceIndex } from '@/lib/sequence/edit'
 import { emptySequence, type Sequence } from '@/lib/sequence/types'
+import { useT } from '@/i18n/client'
 import { activeStepIdAtom, pendingShapesAtom, quickSequenceAtom, stepIndexAtom } from '@/lib/presentation/store'
 
 /**
@@ -37,6 +38,7 @@ export function QuickAssign({ editor }: { editor: Editor }) {
  * d'un clic (ou 1 / 2 / 3) à l'étape active, ou à une nouvelle étape avant / après.
  */
 export function QuickSequence({ editor }: { editor: Editor }) {
+  const t = useT()
   usePendingShapes(editor)
   const stored = useValue('sequence', () => readSequence(editor), [editor])
   const seq = stored ?? emptySequence()
@@ -48,24 +50,24 @@ export function QuickSequence({ editor }: { editor: Editor }) {
   const goTo = (i: number) => activeStepIdAtom.set(seq.steps[i]?.id ?? null)
   const nav = (
     <span className="flex items-center gap-0.5 text-stone-500">
-      <button className="qa-btn px-1.5" disabled={index <= 0} onClick={() => goTo(index - 1)} title="Étape précédente">
+      <button className="qa-btn px-1.5" disabled={index <= 0} onClick={() => goTo(index - 1)} title={t.quick.previousStep}>
         ‹
       </button>
       <span className="min-w-[4.5rem] text-center whitespace-nowrap">
-        {seq.steps.length ? `Étape ${index + 1} / ${seq.steps.length}` : 'Aucune étape'}
+        {seq.steps.length ? t.quick.stepOf(index + 1, seq.steps.length) : t.quick.noSteps}
       </span>
       <button
         className="qa-btn px-1.5"
         disabled={index >= seq.steps.length - 1}
         onClick={() => goTo(index + 1)}
-        title="Étape suivante"
+        title={t.quick.nextStep}
       >
         ›
       </button>
     </span>
   )
   const quit = (
-    <button className="qa-btn text-stone-400" onClick={() => quickSequenceAtom.set(false)} title="Quitter le séquençage rapide">
+    <button className="qa-btn text-stone-400" onClick={() => quickSequenceAtom.set(false)} title={t.quick.quit}>
       ✕
     </button>
   )
@@ -73,9 +75,9 @@ export function QuickSequence({ editor }: { editor: Editor }) {
   if (!pending.length || isBusy) {
     return (
       <div className="quick-assign quick-sequence pointer-events-auto absolute left-1/2 z-[600] flex -translate-x-1/2 items-center gap-2 rounded-xl border border-amber-300 bg-white/95 p-1 pl-3 text-xs text-stone-500 shadow-lg backdrop-blur">
-        <span className="font-medium text-amber-700">Séquençage rapide</span>
+        <span className="font-medium text-amber-700">{t.quick.title}</span>
         {nav}
-        <span className="whitespace-nowrap text-stone-400">Créez un objet pour le placer dans la séquence</span>
+        <span className="whitespace-nowrap text-stone-400">{t.quick.createHint}</span>
         {quit}
       </div>
     )
@@ -98,9 +100,9 @@ export function QuickSequence({ editor }: { editor: Editor }) {
           <button
             className="qa-btn text-stone-400"
             onClick={() => pendingShapesAtom.set([])}
-            title="Laisser ces objets hors séquence (visibles dès le début)"
+            title={t.quick.ignoreHint}
           >
-            Ignorer
+            {t.quick.ignore}
           </button>
           {quit}
         </>
@@ -126,6 +128,7 @@ interface AssignBarProps {
 }
 
 function AssignBar({ editor, seq, index, targets, onAssigned, shortcuts, className = '', before, extra }: AssignBarProps) {
+  const t = useT()
   const current = seq.steps[index]
   const appears = appearanceIndex(seq)
   const already = [...new Set(targets.map((id) => appears.get(id)).filter((n) => n !== undefined))]
@@ -142,7 +145,7 @@ function AssignBar({ editor, seq, index, targets, onAssigned, shortcuts, classNa
   // Nouvelle étape à la position `at`, qui fait apparaître les objets.
   const insertAt = (at: number, thenShow: number) => {
     const [next] = addStep(seq, at, {
-      title: 'Nouvelle étape',
+      title: t.step.newTitle,
       actions: [{ type: 'show', targets, effect: 'fade' }],
     })
     save(next, thenShow)
@@ -171,7 +174,7 @@ function AssignBar({ editor, seq, index, targets, onAssigned, shortcuts, classNa
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
   }, [shortcuts])
 
-  const count = `${targets.length} objet${targets.length > 1 ? 's' : ''}`
+  const count = t.common.objects(targets.length)
   const key = (k: string) => (shortcuts ? <kbd className="qa-kbd">{k}</kbd> : null)
 
   return (
@@ -182,32 +185,34 @@ function AssignBar({ editor, seq, index, targets, onAssigned, shortcuts, classNa
       <span className="mr-1 whitespace-nowrap">
         {count}
         {already.length > 0 && (
-          <span className="text-stone-400"> · déjà à l&apos;étape {already.join(', ')}</span>
+          <span className="text-stone-400">{t.quick.alreadyAt(already.join(', '))}</span>
         )}
       </span>
       <button
         className="qa-btn"
         disabled={index < 0}
         onClick={insertBefore}
-        title="Créer une étape intermédiaire, juste avant l'étape courante"
+        title={t.quick.newBeforeHint}
       >
-        {key('1')}← Nouvelle étape avant
+        {key('1')}
+        {t.quick.newBefore}
       </button>
       <button
         className="qa-btn qa-btn-primary"
         disabled={!current}
         onClick={addToCurrent}
-        title="Faire apparaître ces objets à l'étape courante"
+        title={t.quick.addToStepHint}
       >
-        {key('2')}Ajouter à l&apos;étape {index + 1}
+        {key('2')}
+        {t.quick.addToStep(index + 1)}
       </button>
       <button
         className="qa-btn"
         onClick={insertAfter}
-        title="Créer une étape juste après l'étape courante, et y aller"
+        title={t.quick.newAfterHint}
       >
         {key('3')}
-        {seq.steps.length ? 'Nouvelle étape après →' : 'Première étape →'}
+        {seq.steps.length ? t.quick.newAfter : t.quick.firstStep}
       </button>
       {extra}
     </div>

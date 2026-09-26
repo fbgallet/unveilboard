@@ -14,6 +14,7 @@ import {
 import { defaultPresetSettings, newPresetId, type Preset, type PresetSettings, type PresetTarget } from '@/lib/presets/presets'
 import { settingsStore } from '@/lib/storage'
 import { storageModeAtom } from '@/lib/sync/documentSync'
+import { useT } from '@/i18n/client'
 
 export const presetManagerOpenAtom = atom<boolean>('presetManagerOpen', false)
 
@@ -31,6 +32,7 @@ export function PresetStylePanel(props: TLUiStylePanelProps) {
 }
 
 function PresetPalette() {
+  const t = useT()
   const editor = useEditor()
   const view = useValue(
     'preset palette',
@@ -59,7 +61,7 @@ function PresetPalette() {
             key={p.id}
             className={`preset-chip ${view.active === p.id ? 'preset-chip-active' : ''} ${view.docOnly.has(p.id) ? 'preset-chip-doc' : ''}`}
             onClick={() => applyPreset(editor, p)}
-            title={view.docOnly.has(p.id) ? `${p.name} (préréglage de ce schéma)` : p.name}
+            title={view.docOnly.has(p.id) ? t.presets.docOnly(p.name) : p.name}
           >
             <Swatch editor={editor} preset={p} />
             {p.name}
@@ -67,7 +69,7 @@ function PresetPalette() {
         ))}
       </div>
       <button className="preset-manage" onClick={() => presetManagerOpenAtom.set(true)}>
-        Gérer les préréglages…
+        {t.presets.manage}
       </button>
     </div>
   )
@@ -98,6 +100,7 @@ function Swatch({ editor, preset }: { editor: Editor; preset: Preset }) {
 
 /** Gestionnaire des préréglages communs : renommer, mettre à jour d'après la sélection, ajouter, supprimer. */
 export function PresetManager({ editor }: { editor: Editor }) {
+  const t = useT()
   const open = useValue(presetManagerOpenAtom)
   const settings = useValue(presetSettingsAtom)
   const error = useValue(presetErrorAtom)
@@ -120,7 +123,7 @@ export function PresetManager({ editor }: { editor: Editor }) {
   const update = (id: string, patch: Partial<Preset>) =>
     save({ ...settings, items: items.map((p) => (p.id === id ? { ...p, ...patch } : p)) })
   const remove = (p: Preset) => {
-    if (confirm(`Supprimer le préréglage « ${p.name} » ? Les formes déjà stylées ne changent pas.`))
+    if (confirm(t.presets.confirmDelete(p.name)))
       save({ ...settings, items: items.filter((x) => x.id !== p.id) })
   }
   const move = (id: string, delta: -1 | 1) => {
@@ -133,7 +136,7 @@ export function PresetManager({ editor }: { editor: Editor }) {
   }
   const create = (target: PresetTarget) => {
     const style = styleFromSelection(editor, target)
-    const name = style && prompt(target === 'arrow' ? 'Nom de la relation (ex. : « conduit à ») :' : 'Nom du préréglage (ex. : « Thèse ») :')
+    const name = style && prompt(target === 'arrow' ? t.presets.promptArrow : t.presets.promptShape)
     if (!style || !name?.trim()) return
     const preset: Preset = { id: newPresetId(name), name: name.trim(), target, style, ...(target === 'arrow' && { label: name.trim() }) }
     save({ ...settings, items: [...items, preset] })
@@ -152,15 +155,15 @@ export function PresetManager({ editor }: { editor: Editor }) {
               <input
                 className="preset-input flex-1"
                 defaultValue={p.name}
-                aria-label="Nom"
+                aria-label={t.presets.name}
                 onBlur={(e) => e.target.value.trim() && e.target.value !== p.name && update(p.id, { name: e.target.value.trim() })}
               />
               {target === 'arrow' && (
                 <input
                   className="preset-input w-28"
                   defaultValue={p.label ?? ''}
-                  placeholder="(sans étiquette)"
-                  title="Étiquette posée sur une flèche encore vide"
+                  placeholder={t.presets.noLabel}
+                  title={t.presets.labelHint}
                   onBlur={(e) => e.target.value !== (p.label ?? '') && update(p.id, { label: e.target.value.trim() || undefined })}
                 />
               )}
@@ -168,47 +171,46 @@ export function PresetManager({ editor }: { editor: Editor }) {
                 className="btn-xs"
                 disabled={!selection[target]}
                 onClick={() => update(p.id, { style: styleFromSelection(editor, target)! })}
-                title="Reprendre le style de la sélection (les formes déjà stylées ne changent pas)"
+                title={t.presets.fromSelectionHint}
               >
-                ← sélection
+                {t.presets.fromSelection}
               </button>
-              <button className="preset-icon" onClick={() => move(p.id, -1)} title="Monter">↑</button>
-              <button className="preset-icon" onClick={() => move(p.id, 1)} title="Descendre">↓</button>
-              <button className="preset-icon" onClick={() => remove(p)} title="Supprimer">✕</button>
+              <button className="preset-icon" onClick={() => move(p.id, -1)} title={t.common.moveUp}>↑</button>
+              <button className="preset-icon" onClick={() => move(p.id, 1)} title={t.common.moveDown}>↓</button>
+              <button className="preset-icon" onClick={() => remove(p)} title={t.common.delete}>✕</button>
             </li>
           ))}
       </ul>
       <button className="btn-xs mt-2" disabled={!selection[target]} onClick={() => create(target)}>
-        + Nouveau, d&apos;après {target === 'arrow' ? 'la flèche sélectionnée' : 'la forme sélectionnée'}
+        {target === 'arrow' ? t.presets.newFromArrow : t.presets.newFromShape}
       </button>
     </section>
   )
 
   return (
     <div className="preset-overlay" onPointerDown={(e) => e.target === e.currentTarget && presetManagerOpenAtom.set(false)}>
-      <div className="preset-dialog" role="dialog" aria-label="Préréglages de styles">
+      <div className="preset-dialog" role="dialog" aria-label={t.presets.title}>
         <header className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Préréglages de styles</h2>
-          <button className="preset-icon" onClick={() => presetManagerOpenAtom.set(false)} aria-label="Fermer">✕</button>
+          <h2 className="text-base font-semibold">{t.presets.title}</h2>
+          <button className="preset-icon" onClick={() => presetManagerOpenAtom.set(false)} aria-label={t.common.close}>✕</button>
         </header>
         <p className="text-xs text-zinc-500">
-          Communs à tous vos schémas. Pour créer ou modifier un préréglage, stylez une forme avec le panneau de styles,
-          sélectionnez-la, puis « d&apos;après la sélection ».
+          {t.presets.intro}
         </p>
-        {error && <p className="text-xs text-red-600">Préréglages non enregistrés : {error}</p>}
+        {error && <p className="text-xs text-red-600">{t.presets.notSaved(error)}</p>}
         <div className="grid gap-4 overflow-y-auto">
-          {group('shape', 'Formes')}
-          {group('arrow', 'Relations (flèches)')}
+          {group('shape', t.presets.shapes)}
+          {group('arrow', t.presets.arrows)}
           {fromDoc.length > 0 && (
             <section>
-              <h3 className="preset-group-title">Présents dans ce schéma seulement</h3>
+              <h3 className="preset-group-title">{t.presets.docOnlyTitle}</h3>
               <ul className="space-y-1">
                 {fromDoc.map((p) => (
                   <li key={p.id} className="preset-row">
                     <Swatch editor={editor} preset={p} />
                     <span className="flex-1">{p.name}</span>
                     <button className="btn-xs" onClick={() => save({ ...settings, items: [...items, p] })}>
-                      Ajouter à mes préréglages
+                      {t.presets.addToMine}
                     </button>
                   </li>
                 ))}
@@ -219,13 +221,13 @@ export function PresetManager({ editor }: { editor: Editor }) {
         <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200 pt-3 text-xs">
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={settings.enabled} onChange={(e) => save({ ...settings, enabled: e.target.checked })} />
-            Afficher les préréglages dans le panneau de styles
+            {t.presets.showInPanel}
           </label>
           <button
             className="btn-xs"
-            onClick={() => confirm('Remplacer tous vos préréglages par ceux de départ ?') && save(defaultPresetSettings())}
+            onClick={() => confirm(t.presets.confirmReset) && save(defaultPresetSettings(t.presetDefaults))}
           >
-            Rétablir les préréglages de départ
+            {t.presets.reset}
           </button>
         </footer>
       </div>

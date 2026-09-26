@@ -17,9 +17,8 @@ import {
   updateStep,
 } from '@/lib/sequence/edit'
 import {
-  ACTION_LABELS,
-  CAMERA_LABELS,
-  EFFECT_LABELS,
+  CAMERA_MODES,
+  EFFECTS,
   emptySequence,
   type CameraMode,
   type Effect,
@@ -38,8 +37,9 @@ import {
 } from '@/lib/presentation/store'
 import { enterPresentation, toggleQuickSequence } from './usePresentation'
 import { SyncIndicator } from './SyncIndicator'
-import { saveTldrAs } from '@/lib/storage/tldrFile'
+import { saveTldrAs } from '@/lib/storage/tldrSave'
 import { ResizeHandle } from './ResizeHandle'
+import { useT } from '@/i18n/client'
 
 const ADDABLE: StepActionType[] = ['show', 'dim', 'hide', 'undim', 'highlight', 'focus']
 /** Proposées seulement si la sélection contient un nœud d'arbre qui a des enfants, ou une boîte à détail. */
@@ -58,6 +58,7 @@ function setPanelOpen(open: boolean) {
 }
 
 export function SequencePanel({ editor }: { editor: Editor }) {
+  const t = useT()
   const open = useValue(sequencePanelOpenAtom)
   const width = useValue(sequencePanelWidthAtom)
   if (!open) {
@@ -65,11 +66,11 @@ export function SequencePanel({ editor }: { editor: Editor }) {
       <button
         className="flex h-full w-9 shrink-0 flex-col items-center gap-3 border-l border-zinc-200 bg-zinc-50 pt-3 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
         onClick={() => setPanelOpen(true)}
-        title="Déplier le panneau des étapes"
-        aria-label="Déplier le panneau des étapes"
+        title={t.panel.expand}
+        aria-label={t.panel.expand}
       >
         <span aria-hidden="true">«</span>
-        <span className="text-xs font-medium [writing-mode:vertical-rl]">Séquence</span>
+        <span className="text-xs font-medium [writing-mode:vertical-rl]">{t.panel.sequence}</span>
       </button>
     )
   }
@@ -77,6 +78,7 @@ export function SequencePanel({ editor }: { editor: Editor }) {
 }
 
 function SequencePanelContent({ editor, width }: { editor: Editor; width: number }) {
+  const t = useT()
   const seq = useValue('sequence', () => readSequence(editor) ?? emptySequence(), [editor])
   const selection = useValue('selection', () => editor.getSelectedShapeIds(), [editor])
   const activeId = useValue(activeStepIdAtom)
@@ -91,6 +93,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
 
   function newStepFromSelection() {
     const [next, step] = addStep(seq, activeIndex >= 0 ? activeIndex + 1 : seq.steps.length, {
+      title: t.step.defaultTitle(seq.steps.length + 1),
       actions: selection.length ? [{ type: 'show', targets: selection, effect: 'fade' }] : [],
     })
     save(next)
@@ -109,10 +112,12 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
 
   const selectionHint =
     selection.length === 1 && appears.has(selection[0])
-      ? `Cet objet apparaît à l'étape ${appears.get(selection[0])}.`
+      ? t.panel.appearsAtStep(appears.get(selection[0])!)
       : selection.length
-        ? `${selection.length} objet${selection.length > 1 ? 's' : ''} sélectionné${selection.length > 1 ? 's' : ''}.`
-        : 'Sélectionnez des objets sur le canevas pour les ajouter à une étape.'
+        ? t.panel.selected(selection.length)
+        : t.panel.selectHint
+
+  const k = t.panel.shortcuts
 
   return (
     <aside
@@ -123,22 +128,22 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
       <header className="flex flex-col gap-2 border-b border-zinc-200 p-3">
         <div className="flex items-center justify-between">
           <Link href="/" className="text-xs text-zinc-500 hover:text-zinc-900">
-            ← Mes schémas
+            {t.panel.back}
           </Link>
           <div className="flex items-center gap-2">
             <SyncIndicator />
             <button
               className="rounded px-1.5 text-xs text-zinc-400 hover:bg-zinc-200 hover:text-zinc-900"
               onClick={() => void saveTldrAs(editor).catch((e) => alert(e instanceof Error ? e.message : e))}
-              title="Enregistrer ce schéma dans un fichier .tldr (séquence comprise) : sauvegarde, transfert, ou ouverture sur tldraw.com. Aussi dans le menu ☰."
+              title={t.panel.saveAsHint}
             >
-              Enregistrer sous…
+              {t.panel.saveAs}
             </button>
             <button
               className="rounded px-1.5 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-900"
               onClick={() => setPanelOpen(false)}
-              title="Replier le panneau"
-              aria-label="Replier le panneau"
+              title={t.panel.collapse}
+              aria-label={t.panel.collapse}
             >
               »
             </button>
@@ -151,15 +156,15 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
         />
         <div className="flex gap-2">
           <button className="btn-primary flex-1" onClick={() => enterPresentation(-1)} disabled={!seq.steps.length}>
-            ▶ Présenter
+            {t.panel.present}
           </button>
           <button
             className="btn"
             onClick={() => enterPresentation(activeIndex)}
             disabled={activeIndex < 0}
-            title="Présenter à partir de l'étape sélectionnée"
+            title={t.panel.presentFromStepHint}
           >
-            ▶ Depuis l&apos;étape
+            {t.panel.presentFromStep}
           </button>
         </div>
       </header>
@@ -169,37 +174,37 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
           <button
             className="btn-ghost"
             onClick={newStepFromSelection}
-            title={`Nouvelle étape${activeIndex >= 0 ? ` après l'étape ${activeIndex + 1}` : ''}${selection.length ? ', qui fait apparaître la sélection' : ''}`}
+            title={t.panel.newStepHint(activeIndex >= 0 ? activeIndex + 1 : null, selection.length > 0)}
           >
             <Icon name="plus" />
-            Étape
+            {t.panel.step}
           </button>
           <button
             className="btn-ghost"
             onClick={addSpotlight}
-            title={`Calque occultant${selection.length ? ' autour de la sélection' : ''}${activeIndex >= 0 ? `, à l'étape ${activeIndex + 1}` : ''}. Pendant la présentation, tout est flouté sauf ce rectangle ; un nouveau calque remplace le précédent, « Cacher » le retire.`}
+            title={t.panel.spotlightHint(selection.length > 0, activeIndex >= 0 ? activeIndex + 1 : null)}
           >
             <Icon name="spot" />
-            Calque
+            {t.panel.spotlight}
           </button>
           <span className="mx-1 h-4 w-px bg-zinc-200" />
           <button
             className={`btn-ghost ${quickSequence ? 'btn-ghost-on' : ''}`}
             onClick={() => toggleQuickSequence(editor)}
             aria-pressed={quickSequence}
-            title="Séquençage rapide : chaque objet créé est proposé à l'étape active, ou à une nouvelle étape avant / après (touches 1, 2, 3). Les objets des étapes suivantes sont estompés."
+            title={t.panel.quickHint}
           >
             <Icon name="bolt" />
-            Rapide
+            {t.panel.quick}
           </button>
           <button
             className={`btn-ghost ${badgesVisible ? 'btn-ghost-on' : ''}`}
             onClick={toggleStepBadges}
             aria-pressed={badgesVisible}
-            title={badgesVisible ? "Masquer les numéros d'étape sur le canevas" : "Afficher les numéros d'étape sur le canevas"}
+            title={badgesVisible ? t.panel.hideNumbers : t.panel.showNumbers}
           >
             <Icon name="hash" />
-            Numéros
+            {t.panel.numbers}
           </button>
         </div>
         <p className="px-1 text-[11px] text-zinc-400">{selectionHint}</p>
@@ -238,15 +243,15 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
         ))}
         {!seq.steps.length && (
           <li className="rounded border border-dashed border-zinc-300 p-4 text-center text-zinc-500">
-            Aucune étape. Sélectionnez des objets puis « Nouvelle étape ».
+            {t.panel.noSteps}
           </li>
         )}
       </ol>
 
       <footer className="border-t border-zinc-200 p-3 text-[11px] leading-relaxed text-zinc-500">
-        En présentation : <kbd>→</kbd>/<kbd>Espace</kbd> suivant · <kbd>←</kbd> précédent · <kbd>O</kbd> vue
-        d&apos;ensemble · <kbd>C</kbd> recentrer · <kbd>K</kbd> laser · <kbd>M</kbd> calque occultant · <kbd>N</kbd> narration · <kbd>F</kbd> plein écran ·{' '}
-        <kbd>Échap</kbd> quitter
+        {k.intro} <kbd>→</kbd>/<kbd>{k.space}</kbd> {k.next} · <kbd>←</kbd> {k.previous} · <kbd>O</kbd> {k.overview} ·{' '}
+        <kbd>C</kbd> {k.recenter} · <kbd>K</kbd> {k.laser} · <kbd>M</kbd> {k.mask} · <kbd>N</kbd> {k.narration} ·{' '}
+        <kbd>F</kbd> {k.fullscreen} · <kbd>{k.esc}</kbd> {k.exit}
       </footer>
     </aside>
   )
@@ -272,6 +277,7 @@ interface StepCardProps {
 }
 
 function StepCard(p: StepCardProps) {
+  const t = useT()
   const { step } = p
   return (
     <li
@@ -283,7 +289,7 @@ function StepCard(p: StepCardProps) {
         if (p.active && (e.target as HTMLElement).closest('input, textarea, select, button')) return
         p.onActivate()
       }}
-      title={p.active ? 'Cliquer pour désélectionner' : undefined}
+      title={p.active ? t.step.deselect : undefined}
     >
       <div className="flex items-center gap-2">
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-400 text-xs font-bold text-white">
@@ -295,26 +301,26 @@ function StepCard(p: StepCardProps) {
           onChange={(e) => p.onChange({ title: e.target.value })}
         />
         <div className="flex shrink-0 text-zinc-400">
-          <IconBtn title="Monter" disabled={p.index === 0} onClick={() => p.onMove(-1)}>↑</IconBtn>
-          <IconBtn title="Descendre" disabled={p.index === p.count - 1} onClick={() => p.onMove(1)}>↓</IconBtn>
-          <IconBtn title="Présenter depuis cette étape" onClick={p.onPresent}>▶</IconBtn>
-          <IconBtn title="Supprimer l'étape" onClick={p.onDelete}>✕</IconBtn>
+          <IconBtn title={t.common.moveUp} disabled={p.index === 0} onClick={() => p.onMove(-1)}>↑</IconBtn>
+          <IconBtn title={t.common.moveDown} disabled={p.index === p.count - 1} onClick={() => p.onMove(1)}>↓</IconBtn>
+          <IconBtn title={t.step.presentFrom} onClick={p.onPresent}>▶</IconBtn>
+          <IconBtn title={t.step.delete} onClick={p.onDelete}>✕</IconBtn>
         </div>
       </div>
 
       <ul className="mt-2 space-y-1">
         {step.actions.map((action, ai) => (
           <li key={ai} className="flex items-center gap-2 rounded bg-zinc-50 px-2 py-1 text-xs">
-            <span className={`pill pill-${action.type}`}>{ACTION_LABELS[action.type]}</span>
+            <span className={`pill pill-${action.type}`}>{t.actions[action.type]}</span>
             <button
               className="text-zinc-500 underline decoration-dotted hover:text-zinc-800"
               onClick={(e) => {
                 e.stopPropagation()
                 p.onSelectTargets(action.targets)
               }}
-              title="Sélectionner ces objets sur le canevas"
+              title={t.step.selectTargets}
             >
-              {action.targets.length} objet{action.targets.length > 1 ? 's' : ''}
+              {t.common.objects(action.targets.length)}
             </button>
             {action.type === 'show' && (
               <select
@@ -322,14 +328,14 @@ function StepCard(p: StepCardProps) {
                 value={action.effect ?? 'fade'}
                 onChange={(e) => p.onEffect(ai, e.target.value as Effect)}
               >
-                {Object.entries(EFFECT_LABELS).map(([k, label]) => (
-                  <option key={k} value={k}>{label}</option>
+                {EFFECTS.map((k) => (
+                  <option key={k} value={k}>{t.effects[k]}</option>
                 ))}
               </select>
             )}
             <IconBtn
               className={action.type === 'show' ? '' : 'ml-auto'}
-              title="Retirer l'action"
+              title={t.step.removeAction}
               onClick={() => p.onRemoveAction(ai)}
             >
               ✕
@@ -347,27 +353,27 @@ function StepCard(p: StepCardProps) {
                 className="btn-xs"
                 disabled={!p.selection.length}
                 onClick={() => p.onAdd(type)}
-                title={p.selection.length ? `Ajouter la sélection : ${ACTION_LABELS[type]}` : 'Sélectionnez des objets'}
+                title={p.selection.length ? t.step.addSelection(t.actions[type]) : t.step.selectObjects}
               >
-                + {ACTION_LABELS[type]}
+                + {t.actions[type]}
               </button>
             ))}
           </div>
           <label className="flex items-center gap-2 text-xs text-zinc-600">
-            Caméra
+            {t.step.camera}
             <select
               className="rounded border border-zinc-200 bg-white px-1 py-0.5"
               value={step.camera.mode}
               onChange={(e) => p.onChange({ camera: { ...step.camera, mode: e.target.value as CameraMode } })}
             >
-              {Object.entries(CAMERA_LABELS).map(([k, label]) => (
-                <option key={k} value={k}>{label}</option>
+              {CAMERA_MODES.map((k) => (
+                <option key={k} value={k}>{t.camera[k]}</option>
               ))}
             </select>
           </label>
           <textarea
             className="h-28 w-full resize-y rounded border border-zinc-200 p-2 text-xs outline-none focus:border-amber-400"
-            placeholder="Narration affichée à la classe (**gras**, *italique*, > citation)"
+            placeholder={t.step.narrationPlaceholder}
             value={step.narration}
             onChange={(e) => p.onChange({ narration: e.target.value })}
           />

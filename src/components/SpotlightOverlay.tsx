@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
+import { useT } from '@/i18n/client'
 import { react, useEditor, usePassThroughWheelEvents, useValue, type Editor, type TLShapeId } from 'tldraw'
 import {
   activeSpotsAtom,
@@ -147,6 +148,7 @@ const MIN_SIZE = 12
  * glisser la fenêtre la déplace ; les poignées la redimensionnent.
  */
 function LiveSpotEditor() {
+  const t = useT()
   const editor = useEditor()
   const active = useValue(spotToolAtom)
   const live = useValue(liveSpotAtom)
@@ -215,7 +217,7 @@ function LiveSpotEditor() {
 
   return (
     <div ref={ref} className="spot-editor" onPointerDown={startCreate}>
-      {!live && <div className="spot-hint">Tracez la zone à garder lisible · Échap pour terminer</div>}
+      {!live && <div className="spot-hint">{t.spotlight.hint}</div>}
       {frame && (
         <div
           className="spot-frame"

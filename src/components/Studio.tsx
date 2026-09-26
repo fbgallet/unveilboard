@@ -1,5 +1,7 @@
 'use client'
 
+import { useLocale } from '@/i18n/client'
+import type { DemoName } from '@/lib/demoNames'
 import { useEffect, useState } from 'react'
 import { Tldraw, useValue, type Editor, type TLComponents, type TLShape, type TLUiOverrides } from 'tldraw'
 import 'tldraw/tldraw.css'
@@ -69,7 +71,7 @@ const overrides: TLUiOverrides = {
 const getShapeVisibility = (shape: TLShape, editor: Editor) =>
   modeAtom.get() === 'edit' && isHiddenInEdit(editor, shape) ? 'hidden' : 'inherit'
 
-export default function Studio({ docId, seedDemo, storage }: { docId: string; seedDemo: boolean; storage: StorageMode }) {
+export default function Studio({ docId, demo, storage }: { docId: string; demo: DemoName | null; storage: StorageMode }) {
   const [editor, setEditor] = useState<Editor | null>(null)
   const mode = useValue(modeAtom)
   const unlocked = useValue(editUnlockedAtom)
@@ -80,7 +82,7 @@ export default function Studio({ docId, seedDemo, storage }: { docId: string; se
     if (!editor) return
     // En développement : l'éditeur est accessible depuis la console et les tests Playwright.
     if (process.env.NODE_ENV === 'development') Object.assign(window, { editor })
-    const stop = startDocumentSync(editor, docId, documentStore(storage), { seedDemo })
+    const stop = startDocumentSync(editor, docId, documentStore(storage), { demo })
     const stopTree = registerTreeSideEffects(editor)
     const stopDetails = registerDetailSideEffects(editor)
     void loadPresetSettings(settingsStore(storage))
@@ -94,7 +96,13 @@ export default function Studio({ docId, seedDemo, storage }: { docId: string; se
       stepIndexAtom.set(-1)
       activeStepIdAtom.set(null)
     }
-  }, [editor, docId, seedDemo, storage])
+  }, [editor, docId, demo, storage])
+
+  // L'interface de tldraw (menus, outils) suit la langue de l'app.
+  const [locale] = useLocale()
+  useEffect(() => {
+    editor?.user.updateUserPreferences({ locale })
+  }, [editor, locale])
 
   return (
     <div className="studio flex h-dvh w-full overflow-hidden" data-mode={mode} data-unlocked={unlocked}>

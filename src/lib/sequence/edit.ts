@@ -6,7 +6,7 @@ import { newId, type Sequence, type ShapeRef, type Step, type StepActionType } f
 export function addStep(seq: Sequence, at: number = seq.steps.length, init: Partial<Step> = {}): [Sequence, Step] {
   const step: Step = {
     id: newId('st'),
-    title: `Étape ${seq.steps.length + 1}`,
+    title: `Step ${seq.steps.length + 1}`,
     actions: [],
     camera: { mode: 'follow' },
     narration: '',

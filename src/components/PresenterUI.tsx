@@ -32,8 +32,10 @@ import {
   toggleUnlocked,
 } from './usePresentation'
 import { ResizeHandle } from './ResizeHandle'
+import { useLocale, useT } from '@/i18n/client'
 
 export function NarrationPanel({ editor }: { editor: Editor }) {
+  const t = useT()
   const seq = useValue('sequence', () => readSequence(editor), [editor])
   const index = useValue(stepIndexAtom)
   const visible = useValue(narrationVisibleAtom)
@@ -55,8 +57,8 @@ export function NarrationPanel({ editor }: { editor: Editor }) {
       <button
         className="pbtn absolute right-3 top-3"
         onClick={toggleNarration}
-        title="Masquer la narration (N)"
-        aria-label="Masquer la narration"
+        title={t.presenter.hideNarration}
+        aria-label={t.presenter.hideNarrationLabel}
       >
         <Icon name="close" />
       </button>
@@ -79,6 +81,7 @@ export function NarrationPanel({ editor }: { editor: Editor }) {
 }
 
 export function ProgressBar({ editor }: { editor: Editor }) {
+  const t = useT()
   const seq = useValue('sequence', () => readSequence(editor), [editor])
   const index = useValue(stepIndexAtom)
   const overview = useValue(overviewAtom)
@@ -90,7 +93,7 @@ export function ProgressBar({ editor }: { editor: Editor }) {
 
   return (
     <div className="progress pointer-events-auto absolute inset-x-0 bottom-0 z-[500] flex items-center gap-3 py-2 pl-16 pr-44 text-xs text-stone-500">
-      <ToolBtn onClick={() => goToStep(editor, index - 1)} disabled={index < 0} title="Précédent (←)" icon="prev" />
+      <ToolBtn onClick={() => goToStep(editor, index - 1)} disabled={index < 0} title={t.presenter.previous} icon="prev" />
       <div className="flex flex-1 items-center gap-1">
         {seq.steps.map((s, i) => (
           <button
@@ -109,30 +112,32 @@ export function ProgressBar({ editor }: { editor: Editor }) {
       <ToolBtn
         onClick={() => goToStep(editor, index + 1)}
         disabled={index >= total - 1}
-        title="Suivant (→, Espace)"
+        title={t.presenter.next}
         icon="next"
       />
 
       <div className="tools flex items-center gap-0.5 border-l border-stone-200 pl-2">
-        <ToolBtn onClick={toggleOverview} active={overview} title="Vue d'ensemble (O)" icon="overview" />
-        <ToolBtn onClick={recenter} title="Recentrer sur l'étape (C)" icon="recenter" />
+        <ToolBtn onClick={toggleOverview} active={overview} title={t.presenter.overview} icon="overview" />
+        <ToolBtn onClick={recenter} title={t.presenter.recenter} icon="recenter" />
         <LaserControl editor={editor} active={laser} />
         <SpotControl editor={editor} />
         <ToolBtn
           onClick={toggleUnlocked}
           active={unlocked}
-          title={unlocked ? 'Reverrouiller le document' : 'Déverrouiller : modifier le schéma pendant la présentation'}
+          title={unlocked ? t.presenter.lock : t.presenter.unlock}
           icon={unlocked ? 'unlocked' : 'locked'}
         />
-        <ToolBtn onClick={toggleNarration} active={narration} title="Narration (N)" icon="panel" />
-        <ToolBtn onClick={toggleFullscreen} title="Plein écran (F)" icon="fullscreen" />
-        <ToolBtn onClick={exitPresentation} title="Quitter la présentation (Échap)" icon="close" />
+        <ToolBtn onClick={toggleNarration} active={narration} title={t.presenter.narration} icon="panel" />
+        <ToolBtn onClick={toggleFullscreen} title={t.presenter.fullscreen} icon="fullscreen" />
+        <ToolBtn onClick={exitPresentation} title={t.presenter.exit} icon="close" />
       </div>
     </div>
   )
 }
 
 function LaserControl({ editor, active }: { editor: Editor; active: boolean }) {
+  const t = useT()
+  const [locale] = useLocale()
   const open = useValue(laserPopoverOpenAtom)
   const settings = useValue(laserSettingsAtom)
   const ref = useRef<HTMLDivElement>(null)
@@ -149,12 +154,12 @@ function LaserControl({ editor, active }: { editor: Editor; active: boolean }) {
 
   return (
     <div ref={ref} className="relative flex items-center">
-      <ToolBtn onClick={() => toggleLaser(editor)} active={active} title="Pointeur laser (K)" icon="laser" />
+      <ToolBtn onClick={() => toggleLaser(editor)} active={active} title={t.laser.pointer} icon="laser" />
       <button
         className={`laser-caret ${open ? 'text-stone-900' : ''}`}
         onClick={() => laserPopoverOpenAtom.set(!open)}
-        title="Réglages du laser"
-        aria-label="Réglages du laser"
+        title={t.laser.settings}
+        aria-label={t.laser.settings}
         aria-expanded={open}
       >
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
@@ -163,10 +168,10 @@ function LaserControl({ editor, active }: { editor: Editor; active: boolean }) {
       </button>
 
       {open && (
-        <div className="laser-popover" role="dialog" aria-label="Réglages du laser">
+        <div className="laser-popover" role="dialog" aria-label={t.laser.settings}>
           <LaserPreview color={settings.color} width={settings.width} />
 
-          <p className="lp-label">Couleur</p>
+          <p className="lp-label">{t.laser.color}</p>
           <div className="flex gap-1.5">
             {LASER_COLORS.map((c) => (
               <button
@@ -174,21 +179,21 @@ function LaserControl({ editor, active }: { editor: Editor; active: boolean }) {
                 className={`lp-swatch ${settings.color === c ? 'lp-swatch-active' : ''}`}
                 style={{ background: c, boxShadow: `0 0 8px ${c}` }}
                 onClick={() => updateLaserSettings({ color: c })}
-                aria-label={`Couleur ${c}`}
+                aria-label={t.laser.colorValue(c)}
               />
             ))}
-            <label className="lp-swatch lp-custom" title="Autre couleur">
+            <label className="lp-swatch lp-custom" title={t.laser.otherColor}>
               <input
                 type="color"
                 value={settings.color}
                 onChange={(e) => updateLaserSettings({ color: e.target.value })}
-                aria-label="Couleur personnalisée"
+                aria-label={t.laser.customColor}
               />
             </label>
           </div>
 
           <p className="lp-label">
-            Épaisseur <span>{settings.width} px</span>
+            {t.laser.width} <span>{settings.width} px</span>
           </p>
           <input
             type="range"
@@ -201,7 +206,7 @@ function LaserControl({ editor, active }: { editor: Editor; active: boolean }) {
           />
 
           <p className="lp-label">
-            Effacement après <span>{(settings.delayMs / 1000).toLocaleString('fr-FR')} s</span>
+            {t.laser.fadeAfter} <span>{(settings.delayMs / 1000).toLocaleString(locale)} s</span>
           </p>
           <input
             type="range"
@@ -214,7 +219,7 @@ function LaserControl({ editor, active }: { editor: Editor; active: boolean }) {
           />
 
           <button className="lp-reset" onClick={() => updateLaserSettings(DEFAULT_LASER)}>
-            Réinitialiser
+            {t.laser.reset}
           </button>
         </div>
       )}
@@ -224,6 +229,7 @@ function LaserControl({ editor, active }: { editor: Editor; active: boolean }) {
 
 /** Calque occultant à la volée, avec un bouton pour le retirer quand il est posé. */
 function SpotControl({ editor }: { editor: Editor }) {
+  const t = useT()
   const tool = useValue(spotToolAtom)
   const live = useValue(liveSpotAtom)
   return (
@@ -231,11 +237,11 @@ function SpotControl({ editor }: { editor: Editor }) {
       <ToolBtn
         onClick={() => toggleSpotTool(editor)}
         active={tool || !!live}
-        title={tool ? 'Terminer le réglage du calque (M)' : 'Calque occultant : tracer la zone à garder lisible (M)'}
+        title={tool ? t.spotlight.finish : t.spotlight.draw}
         icon="spot"
       />
       {live && (
-        <button className="spot-clear" onClick={clearLiveSpot} title="Retirer le calque (Échap)" aria-label="Retirer le calque">
+        <button className="spot-clear" onClick={clearLiveSpot} title={t.spotlight.remove} aria-label={t.spotlight.removeLabel}>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
             <path d="M18 6 6 18M6 6l12 12" />
           </svg>

@@ -9,7 +9,7 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/settings/[k
   const denied = await unauthorized()
   if (denied) return denied
   const { key } = await ctx.params
-  if (!KEY.test(key)) return NextResponse.json({ error: 'Clé invalide' }, { status: 400 })
+  if (!KEY.test(key)) return NextResponse.json({ error: 'Invalid key' }, { status: 400 })
   return NextResponse.json({ value: await getSetting(key) })
 }
 
@@ -18,10 +18,10 @@ export async function PUT(request: Request, ctx: RouteContext<'/api/settings/[ke
   const denied = await unauthorized()
   if (denied) return denied
   const { key } = await ctx.params
-  if (!KEY.test(key)) return NextResponse.json({ error: 'Clé invalide' }, { status: 400 })
+  if (!KEY.test(key)) return NextResponse.json({ error: 'Invalid key' }, { status: 400 })
   const body = await request.json().catch(() => null)
   if (!body || typeof body !== 'object' || !('value' in body)) {
-    return NextResponse.json({ error: 'Requête invalide' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
   await putSetting(key, body.value)
   return new NextResponse(null, { status: 204 })

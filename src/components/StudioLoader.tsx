@@ -2,13 +2,20 @@
 
 import dynamic from 'next/dynamic'
 import type { StorageMode } from '@/lib/storage/types'
+import type { DemoName } from '@/lib/demoNames'
+import { useT } from '@/i18n/client'
 
 // tldraw dépend du DOM : pas de rendu serveur.
 const Studio = dynamic(() => import('./Studio'), {
   ssr: false,
-  loading: () => <div className="flex h-dvh items-center justify-center text-zinc-400">Chargement…</div>,
+  loading: () => <Loading />,
 })
 
-export default function StudioLoader(props: { docId: string; seedDemo: boolean; storage: StorageMode }) {
+export default function StudioLoader(props: { docId: string; demo: DemoName | null; storage: StorageMode }) {
   return <Studio {...props} />
+}
+
+function Loading() {
+  const t = useT()
+  return <div className="flex h-dvh items-center justify-center text-zinc-400">{t.common.loading}</div>
 }

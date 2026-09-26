@@ -14,6 +14,7 @@ import {
   type TLShape,
 } from 'tldraw'
 import { editUnlockedAtom, modeAtom } from '../presentation/store'
+import { useT } from '@/i18n/client'
 
 export const SPOTLIGHT_TYPE = 'spotlight'
 
@@ -68,13 +69,14 @@ export class SpotlightShapeUtil extends ShapeUtil<SpotlightShape> {
 }
 
 function SpotlightFrame({ w, h }: { w: number; h: number }) {
+  const t = useT()
   const presenting = useValue(modeAtom) === 'present'
   const unlocked = useValue(editUnlockedAtom)
   // En présentation verrouillée, seul le flou autour du cadre est visible.
   if (presenting && !unlocked) return null
   return (
     <HTMLContainer className={`spotlight-frame ${presenting ? 'spotlight-frame-live' : ''}`} style={{ width: w, height: h }}>
-      {!presenting && <span className="spotlight-label">Calque occultant</span>}
+      {!presenting && <span className="spotlight-label">{t.spotlight.shapeLabel}</span>}
     </HTMLContainer>
   )
 }
