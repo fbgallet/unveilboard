@@ -1,9 +1,12 @@
-import { atom } from 'tldraw'
+import { atom, type TLScribble } from 'tldraw'
 
 export type Mode = 'edit' | 'present'
 
 /** Mode courant de l'application. */
 export const modeAtom = atom<Mode>('mode', 'edit')
+
+/** Début de la présentation en cours (chronomètre de la vue présentateur). */
+export const presentationStartedAtAtom = atom<number>('presentationStartedAt', 0)
 
 /** Index de la dernière étape appliquée (-1 = avant la première étape). */
 export const stepIndexAtom = atom<number>('stepIndex', -1)
@@ -141,6 +144,10 @@ export const DEFAULT_LASER: LaserSettings = { color: '#ff2a2a', width: 5, delayM
 
 export const laserSettingsAtom = atom<LaserSettings>('laserSettings', readStored('laserSettings', DEFAULT_LASER))
 export const laserPopoverOpenAtom = atom<boolean>('laserPopoverOpen', false)
+/** Menu « ⋯ » de la barre de présentation ouvert (Échap le referme au lieu de quitter). */
+export const moreMenuOpenAtom = atom<boolean>('moreMenuOpen', false)
+/** Traces laser du présentateur, recopiées dans la fenêtre public du double affichage. */
+export const remoteScribblesAtom = atom<TLScribble[]>('remoteScribbles', [])
 
 export function updateLaserSettings(patch: Partial<LaserSettings>) {
   const next = { ...laserSettingsAtom.get(), ...patch }

@@ -29,9 +29,12 @@ import {
   toggleOpenedNote,
   legendVisibleAtom,
   viewerAtom,
+  presentationStartedAtAtom,
+  moreMenuOpenAtom,
 } from '@/lib/presentation/store'
 
 export function enterPresentation(fromIndex = -1) {
+  presentationStartedAtAtom.set(Date.now())
   stepIndexAtom.set(fromIndex)
   overviewAtom.set(false)
   modeAtom.set('present')
@@ -39,6 +42,7 @@ export function enterPresentation(fromIndex = -1) {
 
 export function exitPresentation() {
   laserPopoverOpenAtom.set(false)
+  moreMenuOpenAtom.set(false)
   clearLiveSpot()
   modeAtom.set('edit')
   editUnlockedAtom.set(false)
@@ -52,8 +56,11 @@ export function goToStep(editor: Editor, index: number) {
   stepIndexAtom.set(Math.max(-1, Math.min(index, seq.steps.length - 1)))
 }
 
-/** Branche le moteur de présentation sur l'éditeur : classes CSS, caméra, clavier. */
-export function usePresentation(editor: Editor) {
+/**
+ * Branche le moteur de présentation sur l'éditeur : classes CSS, caméra, clavier.
+ * keyboard: false pour la fenêtre public du double affichage, qui renvoie ses touches au présentateur.
+ */
+export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?: boolean } = {}) {
   const savedCamera = useRef<TLCamera | null>(null)
 
   // Notes d'objets : double-clic sur un objet visible qui en a une ; refermées à chaque étape.
@@ -177,11 +184,27 @@ export function usePresentation(editor: Editor) {
     })
   }, [editor])
 
+  // Fenêtre redimensionnée (téléphone tourné, panneau replié par le navigateur) : on recadre l'étape.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const onResize = () => {
+      if (modeAtom.get() !== 'present') return
+      clearTimeout(timer)
+      timer = setTimeout(recenterAfterResize, 150)
+    }
+    window.addEventListener('resize', onResize)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [])
+
   // 4. Durée d'affichage du laser, appliquée dès que le réglage change.
   useEffect(() => react('laser timing', () => applyLaserTiming(editor, laserSettingsAtom.get())), [editor])
 
   // 5. Clavier (compatible avec les télécommandes de présentation : PageUp / PageDown).
   useEffect(() => {
+    if (!keyboard) return
     function onKeyDown(e: KeyboardEvent) {
       if (modeAtom.get() !== 'present') return
       if (e.metaKey || e.ctrlKey || e.altKey) return
@@ -259,8 +282,9 @@ export function usePresentation(editor: Editor) {
           toggleFullscreen()
           break
         case 'Escape':
-          if (laserPopoverOpenAtom.get()) {
+          if (laserPopoverOpenAtom.get() || moreMenuOpenAtom.get()) {
             laserPopoverOpenAtom.set(false)
+            moreMenuOpenAtom.set(false)
             break
           }
           // Échap défait d'abord l'outil en cours (calque, laser), puis quitte la présentation.
@@ -279,7 +303,7 @@ export function usePresentation(editor: Editor) {
     }
     window.addEventListener('keydown', onKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
-  }, [editor])
+  }, [editor, keyboard])
 }
 
 /**

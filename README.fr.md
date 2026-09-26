@@ -27,7 +27,25 @@ L'interface existe en anglais et en français (sélecteur EN · FR sur l'accueil
   - la clé de gestion (mise à jour, dépublication) reste dans le navigateur de l'auteur, jamais dans le document.
 - **Signalement** : le lecteur d'un lien publié a un bouton « Signaler » ; le formulaire envoie un e-mail à `REPORT_EMAIL` via Resend (`RESEND_API_KEY`), sans que l'adresse ne quitte le serveur. Pour retirer un partage public : supprimer la clé `share:<id>` dans la console Upstash.
 
+- **QR code** : à côté d'un lien court publié, le bouton « QR code » l'affiche en grand, sur toute la fenêtre, pour le projeter : les élèves ouvrent la présentation sur leur téléphone. Toujours noir sur blanc, même en mode sombre, pour rester lisible à travers un projecteur. Le lien contenant le schéma est trop long pour un QR code.
+
 L'adresse IP vient de l'en-tête `X-Forwarded-For` : derrière Vercel, elle ne peut pas être falsifiée ; en auto-hébergement, placer l'app derrière un proxy qui le pose. Détails dans `.env.example`.
+
+## En classe : double affichage
+
+Pendant la présentation, le bouton « Projeter » (écran, dans la barre du bas) ouvre une **fenêtre public** pour le projecteur. Sur Chrome et Edge, elle se place d'elle-même sur le second écran (le navigateur demande l'autorisation une fois) ; ailleurs, on la glisse sur le projecteur. Un clic sur « Plein écran » (ou F) la passe en plein écran.
+
+- Le projecteur montre le schéma seul ; la narration s'y affiche à la demande (case « Narration au projecteur »).
+- Il suit l'écran du présentateur : étapes, vue d'ensemble et recentrage, laser, calque occultant tracé à la main, notes ouvertes, légende, et les retouches faites en mode déverrouillé.
+- L'écran du présentateur devient une vue présentateur : chronomètre (cliquer pour remettre à zéro), étape suivante, narration et notes.
+- Une touche pressée dans la fenêtre public (télécommande de présentation, clavier) agit comme si elle l'était chez le présentateur, sauf F.
+- Aucun serveur : les deux fenêtres, dans le même navigateur, se parlent par un `BroadcastChannel`, et partagent le document par le cache local de tldraw (`src/lib/presentation/screen.ts`, page `/d/<id>/screen`).
+
+**Télécommande sur téléphone.** Pendant la présentation, le bouton téléphone affiche un QR code : scanné, il fait du téléphone une télécommande (précédent, suivant, vue d'ensemble, recentrer) qui montre aussi la narration de l'étape, l'étape suivante et un chronomètre, et garde l'écran allumé. Les deux appareils se connectent directement (WebRTC) : le service public de PeerJS ne sert qu'à les mettre en relation, et rien ne passe par le serveur du site. L'identifiant de l'ordinateur, aléatoire, est dans le fragment de l'adresse (`/r#…`) : c'est lui qui donne la main.
+
+La connexion directe peut échouer sur certains réseaux (Wi-Fi d'établissement qui isole les appareils, 5G derrière un partage d'adresse, filtrage de l'UDP) : l'app le dit, et indique sinon le chemin obtenu (même réseau local, ou à travers Internet). Le plus sûr en classe : connecter l'ordinateur au partage de connexion du téléphone. Un relais de secours (HTTPS, via Upstash) pourra s'ajouter si les échecs sont fréquents.
+
+Sur téléphone, en portrait, la narration passe sous le schéma ; en paysage, elle reste à côté, plus étroite.
 
 ## Mode sombre
 

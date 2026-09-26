@@ -1,7 +1,7 @@
 // Rendu « laser » des traces du pointeur laser tldraw, et réglage de leur durée.
 
 import { ScribbleOverlayUtil, type Editor, type TLScribble, type VecModel } from 'tldraw'
-import { laserSettingsAtom, type LaserSettings } from '../presentation/store'
+import { laserSettingsAtom, remoteScribblesAtom, type LaserSettings } from '../presentation/store'
 
 type ScribbleOverlays = Parameters<ScribbleOverlayUtil['render']>[1]
 
@@ -13,6 +13,21 @@ const TLDRAW_LASER_OPACITY = 0.7
  * Même type que l'util par défaut : tldraw le substitue automatiquement.
  */
 export class LaserOverlayUtil extends ScribbleOverlayUtil {
+  // Traces venues du présentateur (double affichage) : dessinées comme les traces locales.
+  // Elles ne passent pas par l'état de l'instance, que le gestionnaire de traces de tldraw réécrit.
+  override isActive() {
+    return super.isActive() || remoteScribblesAtom.get().length > 0
+  }
+
+  override getOverlays() {
+    const remote = remoteScribblesAtom.get().map((scribble) => ({
+      id: `scribble:remote:${scribble.id}`,
+      type: 'scribble' as const,
+      props: { scribble },
+    }))
+    return [...super.getOverlays(), ...remote]
+  }
+
   override render(ctx: CanvasRenderingContext2D, overlays: ScribbleOverlays): void {
     const others = overlays.filter((o) => o.props.scribble.color !== 'laser')
     if (others.length) super.render(ctx, others)

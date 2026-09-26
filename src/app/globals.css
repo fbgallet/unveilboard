@@ -453,6 +453,43 @@ body {
   color: var(--color-stone-900);
 }
 
+/* Menu « ⋯ » de la barre de présentation */
+.more-menu {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 260px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--color-stone-200);
+  background: color-mix(in oklab, var(--color-white) 97%, transparent);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.14);
+  color: var(--color-stone-700);
+  font-size: 13px;
+  animation: pres-rise 160ms ease-out both;
+}
+.more-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+.more-item:hover {
+  background: var(--color-stone-100);
+}
+.more-item svg {
+  flex-shrink: 0;
+  color: var(--color-stone-500);
+}
+.more-item-active svg {
+  color: var(--color-amber-600);
+}
+
 /* Poignée de redimensionnement du panneau de narration */
 .resize-handle {
   position: absolute;
@@ -485,7 +522,8 @@ body.is-resizing {
 }
 .progress:hover .tools,
 .progress .tools:focus-within,
-.progress .tools:has(.laser-popover) {
+.progress .tools:has(.laser-popover),
+.progress .tools:has(.more-menu) {
   opacity: 1;
 }
 
@@ -685,6 +723,92 @@ body.is-resizing {
 .spot-clear:hover {
   color: var(--color-stone-900);
   background: color-mix(in oklab, var(--color-stone-200) 70%, transparent);
+}
+
+/* ---------- QR code du lien court ---------- */
+
+.qr-code svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.remote-qr {
+  width: 220px;
+  padding: 8px;
+  border-radius: 8px;
+  background: #fff;
+}
+.qr-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2vh;
+  padding: 4vh 4vw;
+  background: #fff;
+  color: #1c1917;
+  cursor: pointer;
+}
+.qr-overlay-title {
+  font: 400 clamp(20px, 4vh, 44px) / 1.2 var(--font-serif-display), Georgia, serif;
+  text-align: center;
+}
+.qr-overlay-code {
+  width: min(70vh, 80vw);
+}
+.qr-overlay-url {
+  font: 500 clamp(16px, 3vh, 32px) / 1.2 var(--font-geist-mono), monospace;
+  word-break: break-all;
+  text-align: center;
+}
+
+/* ---------- Double affichage : fenêtre public ---------- */
+
+/* Au projecteur, rien ne se commande à la souris : la narration n'a pas de boutons, et le pointeur
+   disparaît (les traces du laser du présentateur, elles, s'affichent). */
+.screen-view .narration .pbtn {
+  display: none;
+}
+.screen-view .tl-container,
+.screen-view .tl-canvas {
+  cursor: none !important;
+}
+
+/* ---------- Petits écrans (présentation, lien partagé) ---------- */
+
+/* Écran en portrait (téléphone, tablette) : la narration passe sous le schéma, sur une hauteur bornée qui défile. */
+@media (orientation: portrait) and (max-width: 1024px) {
+  .studio[data-mode='present'] {
+    flex-direction: column;
+  }
+  .studio[data-mode='present'] .narration {
+    width: 100% !important;
+    height: 38dvh;
+    padding: 16px 20px 20px;
+    border-left: 0;
+    border-top: 1px solid var(--color-stone-200);
+    font-size: 13px;
+  }
+  .studio[data-mode='present'] .narration .resize-handle {
+    display: none;
+  }
+  .studio[data-mode='present'] .narration-body {
+    margin-top: 10px;
+  }
+}
+/* Téléphone en paysage : la narration reste à côté, plus étroite et plus petite. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .studio[data-mode='present'] .narration {
+    width: min(40vw, 360px) !important;
+    padding: 16px 20px;
+    font-size: 13px;
+  }
+  .studio[data-mode='present'] .narration-body {
+    margin-top: 10px;
+  }
 }
 
 /* Narration : le texte glisse à chaque changement d'étape. */

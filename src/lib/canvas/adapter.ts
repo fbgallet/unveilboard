@@ -138,11 +138,20 @@ export function moveCamera(
   if (!bounds) bounds = boundsOf(editor, visibleShapeIds(editor, stage))
   if (!bounds) return
 
-  editor.zoomToBounds(bounds, {
-    inset: cam.padding,
-    targetZoom: mode === 'overview' ? 1 : cam.maxZoom,
-    animation: { duration: 700, easing: easeInOutCubic },
-  })
+  // Cadrage calculé ici plutôt que par zoomToBounds : la marge suit la taille de l'écran (téléphone)
+  // et la barre de progression, posée sur le bas du canevas, ne doit rien masquer.
+  const viewport = editor.getViewportScreenBounds()
+  const height = Math.max(viewport.h - PROGRESS_BAR_HEIGHT, 1)
+  const inset = Math.min(cam.padding, Math.round(Math.min(viewport.w, height) * 0.12))
+  const fit = Math.min((viewport.w - 2 * inset) / Math.max(bounds.w, 1), (height - 2 * inset) / Math.max(bounds.h, 1))
+  const z = Math.max(0.05, Math.min(fit, mode === 'overview' ? 1 : cam.maxZoom))
+  editor.setCamera(
+    { x: viewport.w / 2 / z - bounds.midX, y: height / 2 / z - bounds.midY, z },
+    { animation: { duration: 700, easing: easeInOutCubic } }
+  )
 }
+
+/** Hauteur de la barre de progression (PresenterUI), en bas du canevas pendant la présentation. */
+const PROGRESS_BAR_HEIGHT = 48
 
 const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)

@@ -200,7 +200,53 @@ export const en = {
     showNote: 'Show the note (or double-click the object)',
     closeNote: 'Close the note',
     fullscreen: 'Fullscreen (F)',
+    more: 'More',
     exit: 'Exit the presentation (Esc)',
+  },
+
+  screen: {
+    project: 'Project on a second screen (audience window)',
+    fullscreen: 'Fullscreen (F)',
+    waiting: 'Waiting for the presentation…',
+    connected: 'Audience screen connected',
+    narrationOnScreen: 'Narration on the screen',
+    next: 'Next',
+    lastStep: 'Last step',
+    timerHint: 'Time since the start of the presentation (click to reset)',
+    popupBlocked: 'The browser blocked the audience window. Allow pop-ups for this site, then try again.',
+  },
+
+  remote: {
+    button: 'Phone remote',
+    intro:
+      'Scan this code with your phone: it becomes a remote, with the narration, the next step and a timer. The two devices connect directly: nothing goes through this site’s server.',
+    starting: 'Preparing the connection…',
+    waiting: 'Waiting for the phone…',
+    connecting: 'Connecting…',
+    connected: 'Phone connected',
+    kinds: {
+      local: 'direct connection, same local network',
+      internet: 'direct connection through the Internet',
+      relay: 'connection through a relay',
+      unknown: 'direct connection',
+    } as Record<string, string>,
+    failed: 'The direct connection failed on this network.',
+    failedHint:
+      'School Wi-Fi and mobile networks often block direct connections between devices. Try connecting the computer to your phone’s hotspot, or use the keyboard or a USB presentation remote.',
+    failedService: 'The connection service cannot be reached. Check the Internet connection, then try again.',
+    retry: 'Try again',
+    stop: 'Disconnect',
+    phoneConnecting: 'Connecting to the computer…',
+    phoneNotPresenting: 'The presentation is not running on the computer.',
+    phoneInvalid: 'This link is incomplete. Scan the QR code again.',
+    phoneGone: 'The computer is no longer waiting for a phone. Scan the new QR code.',
+    previous: 'Previous',
+    next: 'Next',
+    overview: 'Overview',
+    recenter: 'Recenter',
+    nextStep: 'Next',
+    lastStep: 'Last step',
+    beforeStart: 'Before the first step',
   },
 
   laser: {
@@ -411,6 +457,9 @@ export const en = {
     confirmUnpublish: 'Unpublish? The link will stop working.',
     publishedAt: (date: string) => `Published ${date}`,
     notSaved: 'The latest changes are not saved yet. Try again in a moment.',
+    qr: 'QR code',
+    qrHint: 'Show a large QR code of the short link, to project for students',
+    qrClose: 'Click or press Esc to close',
     publicTitle: 'Short link',
     publicIntro:
       'A short link to a copy of the diagram, kept 30 days after the last publication. Only the diagram and its texts are published: clickable links and embedded images are removed, images from the web are kept.',

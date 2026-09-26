@@ -1,6 +1,6 @@
 'use client'
 
-import { useLocale } from '@/i18n/client'
+import { useLocale, useT } from '@/i18n/client'
 import type { DemoName } from '@/lib/demoNames'
 import { useEffect, useState } from 'react'
 import { Tldraw, useValue, type Editor, type TLComponents, type TLShape, type TLUiOverrides } from 'tldraw'
@@ -27,6 +27,11 @@ import { FoldBadges, RelationPicker, TreeToolbar, useTreeKeyboard } from './Tree
 import { MainMenu } from './FileMenu'
 import { PresetManager, PresetStylePanel } from './PresetTools'
 import { ShareDialog, shareDialogOpenAtom } from './ShareDialog'
+import { ScreenControls } from './ScreenControls'
+import { useScreenPresenter } from './useScreenPresenter'
+import { openScreen } from '@/lib/presentation/screen'
+import { remoteDialogOpenAtom, startRemote, stopRemote } from '@/lib/remote/host'
+import { RemoteDialog } from './RemoteDialog'
 import { loadPresetSettings, registerPresetSideEffects } from '@/lib/canvas/presets'
 
 const overlayUtils = [LaserOverlayUtil]
@@ -86,6 +91,7 @@ export default function Studio({
   /** Instance publique : publication d'un lien court ouverte à tous (partages publics). */
   publicSharing: boolean
 }) {
+  const t = useT()
   const [editor, setEditor] = useState<Editor | null>(null)
   const mode = useValue(modeAtom)
   const unlocked = useValue(editUnlockedAtom)
@@ -116,6 +122,8 @@ export default function Studio({
       stepIndexAtom.set(-1)
       activeStepIdAtom.set(null)
       shareDialogOpenAtom.set(false)
+      remoteDialogOpenAtom.set(false)
+      stopRemote()
     }
   }, [editor, docId, demo, storage])
 
@@ -140,7 +148,18 @@ export default function Studio({
           licenseKey={licenseKey}
           onMount={setEditor}
         />
-        {editor && mode === 'present' && <ProgressBar editor={editor} />}
+        {editor && mode === 'present' && (
+          <ProgressBar
+            editor={editor}
+            onProject={() => {
+              if (!openScreen(docId)) alert(t.screen.popupBlocked)
+            }}
+            onRemote={() => {
+              void startRemote(editor)
+              remoteDialogOpenAtom.set(true)
+            }}
+          />
+        )}
         {editor && mode === 'present' && <Legend editor={editor} />}
         {editor && mode === 'present' && unlocked && <QuickAssign editor={editor} />}
         {editor && mode === 'edit' && quickSequence && <QuickSequence editor={editor} />}
@@ -149,16 +168,18 @@ export default function Studio({
         {editor && <SyncBanner />}
         {editor && <PresetManager editor={editor} />}
         {editor && <ShareDialog editor={editor} docId={docId} publicSharing={publicSharing} />}
+        {editor && <RemoteDialog editor={editor} />}
       </div>
-      {editor && <PresentationHost editor={editor} />}
+      {editor && <PresentationHost editor={editor} docId={docId} />}
       {editor && mode === 'edit' && <SequencePanel editor={editor} />}
-      {editor && mode === 'present' && <NarrationPanel editor={editor} />}
+      {editor && mode === 'present' && <NarrationPanel editor={editor} top={<ScreenControls editor={editor} />} />}
     </div>
   )
 }
 
-function PresentationHost({ editor }: { editor: Editor }) {
+function PresentationHost({ editor, docId }: { editor: Editor; docId: string }) {
   usePresentation(editor)
+  useScreenPresenter(editor, docId)
   useTreeKeyboard(editor)
   return null
 }

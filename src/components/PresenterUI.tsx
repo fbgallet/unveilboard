@@ -27,6 +27,7 @@ import {
   overviewAtom,
   stepIndexAtom,
   viewerAtom,
+  moreMenuOpenAtom,
 } from '@/lib/presentation/store'
 import {
   clearLiveSpot,
@@ -42,9 +43,13 @@ import {
   toggleUnlocked,
 } from './usePresentation'
 import { ResizeHandle } from './ResizeHandle'
+import { Markdownish } from './Markdownish'
+import { screenConnectedAtom } from '@/lib/presentation/screen'
+import { remoteStatusAtom } from '@/lib/remote/host'
 import { useLocale, useT } from '@/i18n/client'
 
-export function NarrationPanel({ editor }: { editor: Editor }) {
+/** top : bloc affiché en tête du panneau (contrôles du double affichage, chez le présentateur). */
+export function NarrationPanel({ editor, top }: { editor: Editor; top?: ReactNode }) {
   const t = useT()
   const seq = useValue('sequence', () => readSequence(editor), [editor])
   const index = useValue(stepIndexAtom)
@@ -77,12 +82,14 @@ export function NarrationPanel({ editor }: { editor: Editor }) {
           <Icon name="close" />
         </button>
       </div>
-      <p className="text-xs font-medium uppercase tracking-[0.2em] text-stone-400">{seq.title}</p>
+      {top}
+      <p className="pr-24 text-xs font-medium uppercase tracking-[0.2em] text-stone-400">{seq.title}</p>
       {/* key : relance l'animation d'entrée du texte à chaque étape */}
       <div
         key={step?.id ?? 'start'}
         className="narration-body mt-8 flex-1 overflow-y-auto"
-        style={{ fontSize: `${scale / 100}rem` }}
+        // em : relatif au panneau, dont la taille de base diminue sur petit écran (globals.css).
+        style={{ fontSize: `${scale / 100}em` }}
       >
         {/* Tailles en em : elles suivent le réglage de taille du texte. */}
         {step ? (
@@ -101,7 +108,11 @@ export function NarrationPanel({ editor }: { editor: Editor }) {
   )
 }
 
-export function ProgressBar({ editor }: { editor: Editor }) {
+/**
+ * onProject : ouvre la fenêtre public du double affichage ; onRemote : appaire un téléphone.
+ * Absents dans le lecteur d'un lien partagé.
+ */
+export function ProgressBar({ editor, onProject, onRemote }: { editor: Editor; onProject?: () => void; onRemote?: () => void }) {
   const t = useT()
   const seq = useValue('sequence', () => readSequence(editor), [editor])
   const index = useValue(stepIndexAtom)
@@ -109,12 +120,14 @@ export function ProgressBar({ editor }: { editor: Editor }) {
   const narration = useValue(narrationVisibleAtom)
   const unlocked = useValue(editUnlockedAtom)
   const viewer = useValue(viewerAtom)
+  const screenConnected = useValue(screenConnectedAtom)
+  const remoteConnected = useValue('remote connected', () => remoteStatusAtom.get().state === 'connected', [])
   const laser = useValue('laser', () => editor.getCurrentToolId() === 'laser', [editor])
   if (!seq) return null
   const total = seq.steps.length
 
   return (
-    <div className="progress pointer-events-auto absolute inset-x-0 bottom-0 z-[500] flex items-center gap-3 py-2 pl-16 pr-44 text-xs text-stone-500">
+    <div className="progress pointer-events-auto absolute inset-x-0 bottom-0 z-[500] flex items-center gap-2 py-2 pl-2 pr-32 text-xs text-stone-500 md:gap-3 md:pl-16 md:pr-44">
       <ToolBtn onClick={() => goToStep(editor, index - 1)} disabled={index < 0} title={t.presenter.previous} icon="prev" />
       <div className="flex flex-1 items-center gap-1">
         {seq.steps.map((s, i) => (
@@ -128,7 +141,7 @@ export function ProgressBar({ editor }: { editor: Editor }) {
           />
         ))}
       </div>
-      <span className="tabular-nums">
+      <span className="whitespace-nowrap tabular-nums">
         {Math.max(index + 1, 0)} / {total}
       </span>
       <ToolBtn
@@ -140,21 +153,84 @@ export function ProgressBar({ editor }: { editor: Editor }) {
 
       <div className="tools flex items-center gap-0.5 border-l border-stone-200 pl-2">
         <ToolBtn onClick={toggleOverview} active={overview} title={t.presenter.overview} icon="overview" />
-        <ToolBtn onClick={recenter} title={t.presenter.recenter} icon="recenter" />
-        <LaserControl editor={editor} active={laser} />
-        <SpotControl editor={editor} />
-        {!viewer && (
-          <ToolBtn
-            onClick={toggleUnlocked}
-            active={unlocked}
-            title={unlocked ? t.presenter.lock : t.presenter.unlock}
-            icon={unlocked ? 'unlocked' : 'locked'}
-          />
-        )}
+        {/* Laser et calque : pensés pour la souris, retirés sur petit écran. */}
+        <span className="flex items-center gap-0.5 max-md:hidden">
+          <LaserControl editor={editor} active={laser} />
+          <SpotControl editor={editor} />
+        </span>
         <ToolBtn onClick={toggleNarration} active={narration} title={t.presenter.narration} icon="panel" />
         <ToolBtn onClick={toggleFullscreen} title={t.presenter.fullscreen} icon="fullscreen" />
+        {/* Actions moins fréquentes : recentrer, déverrouiller, projeter, télécommande. */}
+        <MoreMenu
+          items={[
+            { label: t.presenter.recenter, icon: 'recenter', onClick: recenter },
+            ...(viewer
+              ? []
+              : [
+                  {
+                    label: unlocked ? t.presenter.lock : t.presenter.unlock,
+                    icon: (unlocked ? 'unlocked' : 'locked') as IconName,
+                    onClick: toggleUnlocked,
+                    active: unlocked,
+                  },
+                ]),
+            ...(onProject ? [{ label: t.screen.project, icon: 'screen' as IconName, onClick: onProject, active: screenConnected, desktopOnly: true }] : []),
+            ...(onRemote ? [{ label: t.remote.button, icon: 'phone' as IconName, onClick: onRemote, active: remoteConnected, desktopOnly: true }] : []),
+          ]}
+        />
         {!viewer && <ToolBtn onClick={exitPresentation} title={t.presenter.exit} icon="close" />}
       </div>
+    </div>
+  )
+}
+
+interface MoreItem {
+  label: string
+  icon: IconName
+  onClick(): void
+  active?: boolean
+  /** Sans objet sur petit écran (second écran, téléphone). */
+  desktopOnly?: boolean
+}
+
+/** Menu « ⋯ » de la barre de présentation. Échap le referme sans quitter la présentation (usePresentation). */
+function MoreMenu({ items }: { items: MoreItem[] }) {
+  const t = useT()
+  const open = useValue(moreMenuOpenAtom)
+  const setOpen = (value: boolean) => moreMenuOpenAtom.set(value)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Fermeture au clic extérieur.
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) moreMenuOpenAtom.set(false)
+    }
+    window.addEventListener('pointerdown', onDown, { capture: true })
+    return () => window.removeEventListener('pointerdown', onDown, { capture: true })
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative flex items-center">
+      <ToolBtn onClick={() => setOpen(!open)} active={open || items.some((i) => i.active)} title={t.presenter.more} icon="more" />
+      {open && (
+        <div className="more-menu" role="menu" aria-label={t.presenter.more}>
+          {items.map((item) => (
+            <button
+              key={item.label}
+              role="menuitem"
+              className={`more-item ${item.active ? 'more-item-active' : ''} ${item.desktopOnly ? 'max-md:hidden' : ''}`}
+              onClick={() => {
+                setOpen(false)
+                item.onClick()
+              }}
+            >
+              <Icon name={item.icon} />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -316,6 +392,9 @@ function ToolBtn({
 type IconName =
   | 'prev'
   | 'next'
+  | 'screen'
+  | 'phone'
+  | 'more'
   | 'overview'
   | 'recenter'
   | 'laser'
@@ -328,6 +407,9 @@ type IconName =
 
 const ICONS: Record<IconName, ReactNode> = {
   prev: <path d="m15 18-6-6 6-6" />,
+  screen: <path d="M3 4h18v12H3zM8 20h8M12 16v4" />,
+  more: <path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth="3" />,
+  phone: <path d="M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM11 18h2" />,
   next: <path d="m9 18 6-6-6-6" />,
   overview: (
     <>
@@ -395,32 +477,6 @@ function Icon({ name }: { name: IconName }) {
 }
 
 /** Rendu minimal : paragraphes, > citations, **gras**, *italique*. */
-function Markdownish({ text }: { text: string }) {
-  const blocks = text.split(/\n\s*\n/).filter((b) => b.trim())
-  return (
-    <>
-      {blocks.map((block, i) =>
-        block.startsWith('>') ? (
-          <blockquote key={i} className="border-l-4 border-amber-400 pl-4 font-serif italic text-stone-800">
-            {inline(block.replace(/^>\s?/gm, ''))}
-          </blockquote>
-        ) : (
-          <p key={i}>{inline(block)}</p>
-        )
-      )}
-    </>
-  )
-}
-
-function inline(text: string): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**'))
-      return <strong key={i} className="font-semibold text-stone-900">{part.slice(2, -2)}</strong>
-    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) return <em key={i}>{part.slice(1, -1)}</em>
-    return <Fragment key={i}>{part}</Fragment>
-  })
-}
-
 /** Texte d'une forme (première ligne), pour titrer sa note. */
 function shapeLabel(editor: Editor, shape: TLShape) {
   const richText = (shape.props as { richText?: TLRichText }).richText

@@ -199,7 +199,53 @@ export const fr: Messages = {
     showNote: 'Afficher la note (ou double-clic sur l’objet)',
     closeNote: 'Refermer la note',
     fullscreen: 'Plein écran (F)',
+    more: 'Plus',
     exit: 'Quitter la présentation (Échap)',
+  },
+
+  screen: {
+    project: 'Projeter sur un second écran (fenêtre public)',
+    fullscreen: 'Plein écran (F)',
+    waiting: 'En attente de la présentation…',
+    connected: 'Écran public connecté',
+    narrationOnScreen: 'Narration au projecteur',
+    next: 'Ensuite',
+    lastStep: 'Dernière étape',
+    timerHint: 'Temps écoulé depuis le début de la présentation (cliquer pour remettre à zéro)',
+    popupBlocked: 'Le navigateur a bloqué la fenêtre public. Autorisez les fenêtres pop-up pour ce site, puis réessayez.',
+  },
+
+  remote: {
+    button: 'Télécommande (téléphone)',
+    intro:
+      'Scannez ce code avec votre téléphone : il devient une télécommande, avec la narration, l’étape suivante et un chronomètre. Les deux appareils se connectent directement : rien ne passe par le serveur de ce site.',
+    starting: 'Préparation de la connexion…',
+    waiting: 'En attente du téléphone…',
+    connecting: 'Connexion…',
+    connected: 'Téléphone connecté',
+    kinds: {
+      local: 'connexion directe, même réseau local',
+      internet: 'connexion directe à travers Internet',
+      relay: 'connexion par un relais',
+      unknown: 'connexion directe',
+    },
+    failed: 'La connexion directe a échoué sur ce réseau.',
+    failedHint:
+      'Les Wi-Fi d’établissement et les réseaux mobiles bloquent souvent les connexions directes entre appareils. Essayez de connecter l’ordinateur au partage de connexion du téléphone, ou utilisez le clavier ou une télécommande USB.',
+    failedService: 'Le service de mise en relation est injoignable. Vérifiez la connexion Internet, puis réessayez.',
+    retry: 'Réessayer',
+    stop: 'Déconnecter',
+    phoneConnecting: 'Connexion à l’ordinateur…',
+    phoneNotPresenting: 'La présentation n’est pas lancée sur l’ordinateur.',
+    phoneInvalid: 'Ce lien est incomplet. Scannez à nouveau le QR code.',
+    phoneGone: 'L’ordinateur n’attend plus de téléphone. Scannez le nouveau QR code.',
+    previous: 'Précédent',
+    next: 'Suivant',
+    overview: 'Vue d’ensemble',
+    recenter: 'Recentrer',
+    nextStep: 'Ensuite',
+    lastStep: 'Dernière étape',
+    beforeStart: 'Avant la première étape',
   },
 
   laser: {
@@ -409,6 +455,9 @@ export const fr: Messages = {
     confirmUnpublish: 'Dépublier ? Le lien ne fonctionnera plus.',
     publishedAt: (date: string) => `Publié le ${date}`,
     notSaved: 'Les dernières modifications ne sont pas encore enregistrées. Réessayez dans un instant.',
+    qr: 'QR code',
+    qrHint: 'Afficher en grand le QR code du lien court, à projeter pour les élèves',
+    qrClose: 'Cliquer ou appuyer sur Échap pour fermer',
     publicTitle: 'Lien court',
     publicIntro:
       'Un lien court vers une copie du schéma, gardée 30 jours après la dernière publication. Seuls le schéma et ses textes sont publiés : les liens cliquables et les images intégrées sont retirés, les images du web sont gardées.',

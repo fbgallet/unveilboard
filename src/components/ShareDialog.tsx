@@ -5,6 +5,8 @@ import { atom, getSnapshot, useValue, type Editor } from 'tldraw'
 import { useLocale, useT } from '@/i18n/client'
 import { encodeShare, LONG_LINK_CHARS, withoutEmbeddedImages } from '@/lib/share/link'
 import { settingsStore } from '@/lib/storage'
+import { QrOverlay } from './QrCode'
+import { readSequence } from '@/lib/canvas/adapter'
 import { storageModeAtom, syncStatusAtom } from '@/lib/sync/documentSync'
 
 export const shareDialogOpenAtom = atom<boolean>('shareDialogOpen', false)
@@ -40,6 +42,7 @@ export function ShareDialog({ editor, docId, publicSharing }: { editor: Editor; 
             backend={backend}
             title={cloud ? t.share.publishTitle : t.share.publicTitle}
             intro={cloud ? t.share.publishIntro : t.share.publicIntro}
+            docTitle={readSequence(editor)?.title}
           />
         )}
       </div>
@@ -164,12 +167,24 @@ function publicBackend(docId: string, editor: Editor): PublishBackend {
   }
 }
 
-function PublishSection({ backend, title, intro }: { backend: PublishBackend; title: string; intro: string }) {
+function PublishSection({
+  backend,
+  title,
+  intro,
+  docTitle,
+}: {
+  backend: PublishBackend
+  title: string
+  intro: string
+  /** Titre de la présentation, affiché au-dessus du QR code en grand. */
+  docTitle?: string
+}) {
   const t = useT()
   const [locale] = useLocale()
   const [share, setShare] = useState<PublishedShare | null | undefined>(undefined)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [qrOpen, setQrOpen] = useState(false)
   const describe = (e: unknown) =>
     e instanceof ShareError
       ? e.message === 'not_saved'
@@ -220,7 +235,7 @@ function PublishSection({ backend, title, intro }: { backend: PublishBackend; ti
       <p className="text-zinc-500">{intro}</p>
       {share && (
         <>
-          <CopyField value={`${location.origin}/p/${share.id}`} />
+          <CopyField value={`${location.origin}/p/${share.id}`} onQr={() => setQrOpen(true)} />
           <p className="text-xs text-zinc-500">
             {t.share.publishedAt(fmt.format(new Date(share.publishedAt)))}
             {share.expiresAt && <> · {t.share.expiresAt(day.format(new Date(share.expiresAt)))}</>}
@@ -240,11 +255,14 @@ function PublishSection({ backend, title, intro }: { backend: PublishBackend; ti
         </div>
       )}
       {error && <p className="text-red-600">{error}</p>}
+      {qrOpen && share && (
+        <QrOverlay value={`${location.origin}/p/${share.id}`} title={docTitle} onClose={() => setQrOpen(false)} />
+      )}
     </section>
   )
 }
 
-function CopyField({ value }: { value: string }) {
+function CopyField({ value, onQr }: { value: string; onQr?: () => void }) {
   const t = useT()
   const [copied, setCopied] = useState(false)
   async function copy() {
@@ -258,6 +276,11 @@ function CopyField({ value }: { value: string }) {
       <button className="btn" onClick={() => void copy().catch(() => {})}>
         {copied ? t.share.copied : t.share.copy}
       </button>
+      {onQr && (
+        <button className="btn" onClick={onQr} title={t.share.qrHint}>
+          {t.share.qr}
+        </button>
+      )}
     </div>
   )
 }
