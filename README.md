@@ -21,8 +21,9 @@ It was made for teaching: an audience follows the reasoning more easily when the
 - **Narration panel**: a text for each step, shown next to the diagram (resizable, can be hidden).
 - **Presentation mode**: keyboard and presentation-remote navigation, overview and recenter, laser pointer (color, width and fade-out delay are configurable), and an "unlocked" mode to edit the diagram during the presentation.
 - **Quick sequencing**: create shapes and add them to the current step, or to a new step before or after it, in one click.
-- **Trees and mind maps** on regular tldraw shapes: <kbd>Tab</kbd> adds a child, <kbd>Enter</kbd> adds a sibling, automatic layout, collapsible branches.
-- **Expandable details** under a box, and **style presets** (e.g. "supports", "objects to") shared by all your diagrams.
+- **Trees and mind maps** on regular tldraw shapes: <kbd>Tab</kbd> adds a child, <kbd>Enter</kbd> adds a sibling, automatic layout in any direction or on both sides, collapsible branches.
+- **Argument maps**: natures for shapes (statement, fundamental belief, concept, question, problem, example, quote), each with its geometry and a label (with author and descriptive/normative modality), and typed relations for arrows (supports, objects, refutes, answers, explains, implies, presupposes…). In an argument tree, <kbd>Tab</kbd> offers a relation that styles and orients the branch; the shape tells the nature, the color tells the function (justification, objection, explanation…). Presets are editable and shared by all your diagrams; <kbd>L</kbd> shows a legend while presenting.
+- **Object notes**: the longer text about a shape is written in the side panel and shown in the narration panel on double-click, or at a given step.
 - **Files**: save and open `.tldr` files. The sequence is stored inside the tldraw document, so a `.tldr` file keeps it.
 - **English and French interface**, including tldraw's own menus. Adding a language means adding one file in `src/i18n/`.
 
@@ -81,7 +82,7 @@ More details (in French) in [README.fr.md](README.fr.md).
 
 ## Presentation shortcuts
 
-`→` / `Space` / `PageDown` next · `←` / `PageUp` previous · `Home` / `End` · `O` overview · `C` recenter · `K` laser · `N` narration · `F` fullscreen · `Esc` exit (the first `Esc` turns the laser off)
+`→` / `Space` / `PageDown` next · `←` / `PageUp` previous · `Home` / `End` · `O` overview · `C` recenter · `K` laser · `N` narration · `+` / `−` / `0` narration text size · `L` legend · `F` fullscreen · `Esc` exit (the first `Esc` turns the laser off)
 
 ## Contributing
 

@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { react, type Editor, type TLCamera } from 'tldraw'
+import { react, type Editor, type TLCamera, type TLEventInfo } from 'tldraw'
 import { activeSpotlights, boundsOf, computeEditorStage, drawClip, moveCamera, readSequence } from '@/lib/canvas/adapter'
 import { stateOf } from '@/lib/sequence/compute'
+import { noteOf } from '@/lib/canvas/notes'
 import { applyLaserTiming } from '@/lib/canvas/laser'
 import {
   activeSpotsAtom,
@@ -23,6 +24,10 @@ import {
   type ShapePresentation,
   spotToolAtom,
   stepIndexAtom,
+  changeNarrationScale,
+  openedNotesAtom,
+  toggleOpenedNote,
+  legendVisibleAtom,
 } from '@/lib/presentation/store'
 
 export function enterPresentation(fromIndex = -1) {
@@ -49,6 +54,32 @@ export function goToStep(editor: Editor, index: number) {
 /** Branche le moteur de présentation sur l'éditeur : classes CSS, caméra, clavier. */
 export function usePresentation(editor: Editor) {
   const savedCamera = useRef<TLCamera | null>(null)
+
+  // Notes d'objets : double-clic sur un objet visible qui en a une ; refermées à chaque étape.
+  useEffect(() => {
+    const stopReset = react('reset notes', () => {
+      stepIndexAtom.get()
+      modeAtom.get()
+      openedNotesAtom.set([])
+    })
+    const onEvent = (info: TLEventInfo) => {
+      if (modeAtom.get() !== 'present' || info.name !== 'double_click' || info.type !== 'click' || info.phase !== 'up') return
+      // tldraw ne résout pas la forme visée pour un double-clic : on cherche, sous le pointeur,
+      // l'objet le plus haut qui a une note et que la séquence n'a pas caché.
+      const classes = shapeClassesAtom.get()
+      const hidden = (id: string) => !!classes && (classes.byId.get(id) ?? classes.fallback).className.includes('pres-hidden')
+      const shape = editor
+        .getShapesAtPoint(editor.inputs.getCurrentPagePoint(), { hitInside: true, margin: 4 })
+        .reverse()
+        .find((s) => !hidden(s.id) && noteOf(s))
+      if (shape) toggleOpenedNote(shape.id)
+    }
+    editor.on('event', onEvent)
+    return () => {
+      stopReset()
+      editor.off('event', onEvent)
+    }
+  }, [editor])
 
   // 1. Classes CSS de chaque forme, recalculées dès que la séquence, l'étape ou le document change.
   useEffect(() => {
@@ -207,6 +238,20 @@ export function usePresentation(editor: Editor) {
         case 'n':
         case 'N':
           toggleNarration()
+          break
+        case 'l':
+        case 'L':
+          legendVisibleAtom.set(!legendVisibleAtom.get())
+          break
+        case '+':
+        case '=':
+          changeNarrationScale(1)
+          break
+        case '-':
+          changeNarrationScale(-1)
+          break
+        case '0':
+          changeNarrationScale(null)
           break
         case 'f':
         case 'F':

@@ -1,9 +1,20 @@
 'use client'
 
-import { atom, DefaultStylePanel, DefaultStylePanelContent, useEditor, useValue, type Editor, type TLUiStylePanelProps } from 'tldraw'
+import {
+  atom,
+  DefaultStylePanel,
+  DefaultStylePanelContent,
+  useEditor,
+  useValue,
+  type Editor,
+  type TLShapeId,
+  type TLUiStylePanelProps,
+} from 'tldraw'
 import {
   applyPreset,
+  armedPresetAtom,
   documentPresets,
+  presetById,
   presetErrorAtom,
   presetSettingsAtom,
   savePresetSettings,
@@ -11,7 +22,16 @@ import {
   styleFromSelection,
   swatchColor,
 } from '@/lib/canvas/presets'
-import { defaultPresetSettings, newPresetId, type Preset, type PresetSettings, type PresetTarget } from '@/lib/presets/presets'
+import {
+  MODAL_NATURES,
+  MODALITIES,
+  PRESET_GEOS,
+  defaultPresetSettings,
+  newPresetId,
+  type Preset,
+  type PresetSettings,
+  type PresetTarget,
+} from '@/lib/presets/presets'
 import { settingsStore } from '@/lib/storage'
 import { storageModeAtom } from '@/lib/sync/documentSync'
 import { useT } from '@/i18n/client'
@@ -47,7 +67,8 @@ function PresetPalette() {
       return {
         items: [...common, ...fromDoc].filter((p) => targets.has(p.target)),
         docOnly: new Set(fromDoc.map((p) => p.id)),
-        active: selectedPresetId(editor),
+        active: selectedPresetId(editor) ?? armedPresetAtom.get(),
+        armed: presetById(editor, armedPresetAtom.get() ?? undefined)?.name,
       }
     },
     [editor]
@@ -68,6 +89,7 @@ function PresetPalette() {
           </button>
         ))}
       </div>
+      {view.armed && <p className="preset-armed">{t.presets.armed(view.armed)}</p>}
       <button className="preset-manage" onClick={() => presetManagerOpenAtom.set(true)}>
         {t.presets.manage}
       </button>
@@ -86,15 +108,22 @@ function Swatch({ editor, preset }: { editor: Editor; preset: Preset }) {
       </svg>
     )
   }
+  const fill = preset.style.fill && preset.style.fill !== 'none' ? `color-mix(in srgb, ${color} 22%, transparent)` : 'none'
+  const dash = preset.style.dash === 'dashed' ? '2.5 1.5' : preset.style.dash === 'dotted' ? '0.8 1.4' : undefined
+  const stroke = preset.style.dash === 'none' ? 'none' : color
+  const common = { fill, stroke, strokeWidth: 1.4, strokeDasharray: dash }
+  const outline = {
+    oval: <rect x="1" y="1" width="14" height="8" rx="4" {...common} />,
+    ellipse: <ellipse cx="8" cy="5" rx="7" ry="4" {...common} />,
+    diamond: <path d="M8 0.8 L15 5 L8 9.2 L1 5 Z" {...common} />,
+    hexagon: <path d="M4 1 L12 1 L15 5 L12 9 L4 9 L1 5 Z" {...common} />,
+    cloud: <path d="M4 9 A3 3 0 0 1 3.5 3.5 A3.5 3.5 0 0 1 10 2.5 A3 3 0 0 1 12.5 9 Z" {...common} />,
+  }[preset.style.geo ?? ''] ?? <rect x="1" y="1" width="14" height="8" rx="1.5" {...common} />
   return (
-    <span
-      className="preset-swatch"
-      style={{
-        borderColor: color,
-        borderStyle: preset.style.dash === 'dashed' ? 'dashed' : 'solid',
-        background: preset.style.fill && preset.style.fill !== 'none' ? `color-mix(in srgb, ${color} 22%, white)` : 'white',
-      }}
-    />
+    <svg className="preset-swatch preset-swatch-shape" viewBox="0 0 16 10" aria-hidden>
+      {outline}
+      {preset.style.dash === 'none' && <text x="8" y="8.2" fontSize="8" textAnchor="middle" fill={color} fontFamily="serif">«»</text>}
+    </svg>
   )
 }
 
@@ -158,6 +187,54 @@ export function PresetManager({ editor }: { editor: Editor }) {
                 aria-label={t.presets.name}
                 onBlur={(e) => e.target.value.trim() && e.target.value !== p.name && update(p.id, { name: e.target.value.trim() })}
               />
+              {target === 'shape' && (
+                <>
+                  <select
+                    className="preset-input"
+                    value={p.style.geo ?? ''}
+                    aria-label={t.presets.geometry}
+                    title={t.presets.geometry}
+                    onChange={(e) => update(p.id, { style: { ...p.style, geo: e.target.value || undefined } })}
+                  >
+                    <option value="">—</option>
+                    {PRESET_GEOS.map((g) => (
+                      <option key={g} value={g}>{t.presets.geos[g]}</option>
+                    ))}
+                  </select>
+                  <label className="flex items-center gap-1 text-[11px] text-zinc-500" title={t.presets.tagHint}>
+                    <input type="checkbox" checked={p.tag !== false} onChange={(e) => update(p.id, { tag: e.target.checked })} />
+                    {t.presets.tag}
+                  </label>
+                </>
+              )}
+              {target === 'arrow' && (
+                <>
+                  <select
+                    className="preset-input"
+                    value={p.towardChild ? 'child' : 'parent'}
+                    aria-label={t.presets.treeDirection}
+                    title={t.presets.treeDirection}
+                    onChange={(e) => update(p.id, { towardChild: e.target.value === 'child' || undefined })}
+                  >
+                    <option value="parent">{t.presets.towardParent}</option>
+                    <option value="child">{t.presets.towardChild}</option>
+                  </select>
+                  <select
+                    className="preset-input"
+                    value={p.childNature ?? ''}
+                    aria-label={t.presets.childNature}
+                    title={t.presets.childNature}
+                    onChange={(e) => update(p.id, { childNature: e.target.value || undefined })}
+                  >
+                    <option value="">—</option>
+                    {items
+                      .filter((n) => n.target === 'shape')
+                      .map((n) => (
+                        <option key={n.id} value={n.id}>{n.name}</option>
+                      ))}
+                  </select>
+                </>
+              )}
               {target === 'arrow' && (
                 <input
                   className="preset-input w-28"
@@ -223,14 +300,70 @@ export function PresetManager({ editor }: { editor: Editor }) {
             <input type="checkbox" checked={settings.enabled} onChange={(e) => save({ ...settings, enabled: e.target.checked })} />
             {t.presets.showInPanel}
           </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={settings.showTags} onChange={(e) => save({ ...settings, showTags: e.target.checked })} />
+            {t.presets.showTags}
+          </label>
           <button
             className="btn-xs"
-            onClick={() => confirm(t.presets.confirmReset) && save(defaultPresetSettings(t.presetDefaults))}
+            onClick={() => confirm(t.presets.confirmReset) && save(defaultPresetSettings(t.presetDefaults, t.presetRoles))}
           >
             {t.presets.reset}
           </button>
         </footer>
       </div>
+    </div>
+  )
+}
+
+/** Auteur et modalité d'une forme dotée d'une nature (affichés dans son étiquette). */
+export function NatureFields({ editor, id }: { editor: Editor; id: TLShapeId }) {
+  const t = useT()
+  const info = useValue(
+    'nature fields',
+    () => {
+      const shape = editor.getShape(id)
+      const preset = presetById(editor, shape?.meta.preset as string | undefined)
+      if (!shape || !preset || preset.target !== 'shape') return null
+      return {
+        name: preset.name,
+        statement: MODAL_NATURES.includes(preset.id),
+        author: typeof shape.meta.author === 'string' ? shape.meta.author : '',
+        modality: typeof shape.meta.modality === 'string' ? shape.meta.modality : '',
+      }
+    },
+    [editor, id]
+  )
+  if (!info) return null
+  const setMeta = (patch: Record<string, string | null>) => {
+    const shape = editor.getShape(id)
+    if (shape) editor.updateShape({ id, type: shape.type, meta: { ...shape.meta, ...patch } })
+  }
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-2 px-1 text-[11px] text-zinc-500">
+      <span className="font-semibold uppercase tracking-wide">{info.name}</span>
+      <input
+        className="preset-input min-w-0 flex-1"
+        value={info.author}
+        placeholder={t.presets.authorPlaceholder}
+        aria-label={t.presets.author}
+        title={t.presets.author}
+        onChange={(e) => setMeta({ author: e.target.value || null })}
+      />
+      {info.statement && (
+        <select
+          className="preset-input"
+          value={info.modality}
+          aria-label={t.presets.modality}
+          title={t.presets.modality}
+          onChange={(e) => setMeta({ modality: e.target.value || null })}
+        >
+          <option value="">{t.presets.noModality}</option>
+          {MODALITIES.map((m) => (
+            <option key={m} value={m}>{t.presets.modalities[m]}</option>
+          ))}
+        </select>
+      )}
     </div>
   )
 }

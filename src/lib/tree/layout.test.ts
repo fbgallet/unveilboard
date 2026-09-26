@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { descendantsOf, hasAncestor, layoutTree, type TreeNode } from './layout'
+import { descendantsOf, hasAncestor, layoutTree, lighterSide, type TreeNode } from './layout'
 
 const node = (children: string[] = [], w = 100, h = 40, offset = { x: 0, y: 0 }): TreeNode => ({ w, h, offset, children })
 const gaps = { main: 50, cross: 10 }
@@ -29,6 +29,26 @@ describe('layoutTree', () => {
     expect(pos.get('a1')!.x).toBeLessThan(pos.get('a2')!.x)
   })
 
+  it('vers la gauche et vers le haut : miroirs de la droite et du bas', () => {
+    const right = layoutTree('r', { x: 0, y: 0 }, nodes, 'right', gaps)
+    const left = layoutTree('r', { x: 0, y: 0 }, nodes, 'left', gaps)
+    // Miroir autour de la racine (largeur 100) : x_gauche = 100 − (x_droite + 100) = −x_droite.
+    expect(left.get('a1')).toEqual({ x: -right.get('a1')!.x, y: right.get('a1')!.y })
+    const up = layoutTree('r', { x: 0, y: 0 }, nodes, 'up', gaps)
+    expect(up.get('a1')!.y).toBe(-2 * (40 + 50))
+  })
+
+  it('des deux côtés : chaque côté est centré sur la racine, ses descendants suivent son sens', () => {
+    const both = new Map(nodes)
+    both.set('a', { ...nodes.get('a')!, side: 'left' })
+    const pos = layoutTree('r', { x: 0, y: 0 }, both, 'both', gaps)
+    // b seul à droite : centré sur la racine (y = 0) ; a et ses enfants à gauche.
+    expect(pos.get('b')).toEqual({ x: 150, y: 0 })
+    expect(pos.get('a')).toEqual({ x: -150, y: 0 })
+    expect(pos.get('a1')!.x).toBe(-300)
+    expect(pos.get('a1')!.y).toBe(20 - 45)
+  })
+
   it('un décalage manuel est conservé et entraîne le sous-arbre', () => {
     const moved = new Map(nodes)
     moved.set('a', node(['a1', 'a2'], 100, 40, { x: 20, y: -30 }))
@@ -45,6 +65,14 @@ describe('layoutTree', () => {
       ['a', node(['r'])],
     ])
     expect(layoutTree('r', { x: 0, y: 0 }, cyclic, 'right', gaps).size).toBe(1)
+  })
+})
+
+describe('lighterSide', () => {
+  it('choisit le côté le moins chargé, la droite à égalité', () => {
+    expect(lighterSide([])).toBe('right')
+    expect(lighterSide([{ side: 'right', size: 40 }])).toBe('left')
+    expect(lighterSide([{ side: 'right', size: 40 }, { side: 'left', size: 90 }])).toBe('right')
   })
 })
 

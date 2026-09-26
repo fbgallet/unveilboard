@@ -6,7 +6,8 @@ import { Box, createShapeId, useValue, type Editor, type TLShapeId } from 'tldra
 import { readSequence, writeSequence } from '@/lib/canvas/adapter'
 import { SPOTLIGHT_TYPE } from '@/lib/canvas/spotlight'
 import { getTreeIndex } from '@/lib/canvas/tree'
-import { getDetailIndex } from '@/lib/canvas/details'
+import { noteOf, setNote } from '@/lib/canvas/notes'
+import { NatureFields } from './PresetTools'
 import {
   addStep,
   addTargets,
@@ -45,7 +46,7 @@ import { useT } from '@/i18n/client'
 const ADDABLE: StepActionType[] = ['show', 'dim', 'hide', 'undim', 'highlight', 'focus']
 /** Proposées seulement si la sélection contient un nœud d'arbre qui a des enfants, ou une boîte à détail. */
 const TREE_ACTIONS: StepActionType[] = ['fold', 'unfold']
-const DETAIL_ACTIONS: StepActionType[] = ['expand', 'collapse']
+const NOTE_ACTIONS: StepActionType[] = ['note']
 
 function toggleStepBadges() {
   const visible = !stepBadgesVisibleAtom.get()
@@ -86,7 +87,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
   const quickSequence = useValue(quickSequenceAtom)
   const badgesVisible = useValue(stepBadgesVisibleAtom)
   const canFold = useValue('can fold', () => selection.some((id) => getTreeIndex(editor).children.has(id)), [editor, selection])
-  const canExpand = useValue('can expand', () => selection.some((id) => getDetailIndex(editor).details.has(id)), [editor, selection])
+  const canNote = useValue('can note', () => selection.some((id) => !!noteOf(editor.getShape(id))), [editor, selection])
   const appears = appearanceIndex(seq)
 
   const save = (next: Sequence) => writeSequence(editor, next)
@@ -210,6 +211,8 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
           </button>
         </div>
         <p className="px-1 text-[11px] text-zinc-400">{selectionHint}</p>
+        {selection.length === 1 && <NatureFields editor={editor} id={selection[0]} />}
+        {selection.length === 1 && <NoteEditor editor={editor} id={selection[0]} />}
       </div>
 
       <ol
@@ -227,7 +230,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
             active={step.id === activeId}
             selection={selection}
             canFold={canFold}
-            canExpand={canExpand}
+            canNote={canNote}
             onActivate={() => activeStepIdAtom.set(step.id === activeId ? null : step.id)}
             onChange={(patch) => save(updateStep(seq, step.id, patch))}
             onAdd={(type) => save(addTargets(seq, step.id, type, selection))}
@@ -252,7 +255,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
 
       <footer className="border-t border-zinc-200 p-3 text-[11px] leading-relaxed text-zinc-500">
         {k.intro} <kbd>→</kbd>/<kbd>{k.space}</kbd> {k.next} · <kbd>←</kbd> {k.previous} · <kbd>O</kbd> {k.overview} ·{' '}
-        <kbd>C</kbd> {k.recenter} · <kbd>K</kbd> {k.laser} · <kbd>M</kbd> {k.mask} · <kbd>N</kbd> {k.narration} ·{' '}
+        <kbd>C</kbd> {k.recenter} · <kbd>K</kbd> {k.laser} · <kbd>M</kbd> {k.mask} · <kbd>N</kbd> {k.narration} · <kbd>+</kbd>/<kbd>−</kbd> {k.textSize} · <kbd>L</kbd> {k.legend} ·{' '}
         <kbd>F</kbd> {k.fullscreen} · <kbd>{k.esc}</kbd> {k.exit}
       </footer>
     </aside>
@@ -266,7 +269,7 @@ interface StepCardProps {
   active: boolean
   selection: TLShapeId[]
   canFold: boolean
-  canExpand: boolean
+  canNote: boolean
   onActivate(): void
   onChange(patch: Partial<Step>): void
   onAdd(type: StepActionType): void
@@ -349,7 +352,7 @@ function StepCard(p: StepCardProps) {
       {p.active && (
         <div className="mt-2 space-y-2" onClick={(e) => e.stopPropagation()}>
           <div className="flex flex-wrap gap-1">
-            {[...ADDABLE, ...(p.canFold ? TREE_ACTIONS : []), ...(p.canExpand ? DETAIL_ACTIONS : [])].map((type) => (
+            {[...ADDABLE, ...(p.canFold ? TREE_ACTIONS : []), ...(p.canNote ? NOTE_ACTIONS : [])].map((type) => (
               <button
                 key={type}
                 className="btn-xs"
@@ -422,5 +425,23 @@ function Icon({ name }: { name: keyof typeof ICONS }) {
     <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
       {ICONS[name]}
     </svg>
+  )
+}
+
+/** Note de l'objet sélectionné : affichée dans le panneau de narration pendant la présentation. */
+function NoteEditor({ editor, id }: { editor: Editor; id: TLShapeId }) {
+  const t = useT()
+  const note = useValue('note', () => noteOf(editor.getShape(id)), [editor, id])
+  return (
+    <label className="mt-1 flex flex-col gap-1 px-1 text-[11px] text-zinc-500">
+      {t.panel.note}
+      <textarea
+        className="min-h-16 resize-y rounded border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-800 outline-none focus:border-amber-400"
+        rows={note ? 4 : 2}
+        value={note}
+        placeholder={t.panel.notePlaceholder}
+        onChange={(e) => setNote(editor, id, e.target.value)}
+      />
+    </label>
   )
 }

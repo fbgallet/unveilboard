@@ -7,7 +7,6 @@ import { migrateSequence } from '../sequence/migrate'
 import type { Sequence, ShapeRef, StepCamera } from '../sequence/types'
 import { SPOTLIGHT_TYPE } from './spotlight'
 import { getTreeIndex } from './tree'
-import { getDetailIndex } from './details'
 
 const META_KEY = 'sequence'
 
@@ -49,19 +48,11 @@ function treeOptions(editor: Editor) {
   return { tree: parent as Map<ShapeRef, ShapeRef>, folded }
 }
 
-/** Détails : boîte de chaque détail, et boîtes dont le détail est déplié dans le document. */
-function detailOptions(editor: Editor) {
-  const { owner, details } = getDetailIndex(editor)
-  const expanded = new Set<ShapeRef>([...details.keys()].filter((id) => editor.getShape(id)?.meta.detailOpen))
-  return { details: owner as Map<ShapeRef, ShapeRef>, expanded }
-}
-
 export function computeEditorStage(editor: Editor, seq: Sequence, index: number): Stage {
   return computeStage(seq, index, {
     resolve: resolveTargets(editor),
     dependencies: arrowDependencies(editor),
     ...treeOptions(editor),
-    ...detailOptions(editor),
   })
 }
 

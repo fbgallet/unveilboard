@@ -1,23 +1,40 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useEditor, useValue, type Editor, type TLShapeId } from 'tldraw'
+import { atom, useEditor, useValue, type Editor, type TLShapeId } from 'tldraw'
 import {
   addChild,
+  addChildWithRelation,
   addSibling,
   branchOf,
   directionOf,
+  nodeDirection,
   getTreeIndex,
+  isArgumentTree,
   isFolded,
   isTreeNode,
   relayout,
   rootOf,
+  setArgumentTree,
   setDirection,
   toggleFold,
 } from '@/lib/canvas/tree'
-import { addDetail, getDetailIndex, isDetailOpen, toggleDetail } from '@/lib/canvas/details'
+import { presetSettingsAtom, swatchColor } from '@/lib/canvas/presets'
+import type { Preset } from '@/lib/presets/presets'
+import { TREE_DIRECTIONS, type TreeDirection } from '@/lib/tree/layout'
 import { editUnlockedAtom, foldedBadgesAtom, modeAtom } from '@/lib/presentation/store'
 import { useT } from '@/i18n/client'
+
+const ARROWS: Record<TreeDirection, string> = { right: '→', left: '←', down: '↓', up: '↑', both: '↔' }
+
+/** Arbre argumentatif : nœud dont on choisit la relation du prochain enfant (Tab). */
+export const relationPickerAtom = atom<TLShapeId | null>('relationPicker', null)
+
+/** Tab : enfant simple, ou choix d'une relation dans un arbre argumentatif. */
+function tab(editor: Editor, id: TLShapeId) {
+  if (isArgumentTree(editor, id)) relationPickerAtom.set(id)
+  else addChild(editor, id)
+}
 
 /** Le document est modifiable : mode édition, ou présentation déverrouillée. */
 const canEdit = () => modeAtom.get() === 'edit' || editUnlockedAtom.get()
@@ -40,7 +57,7 @@ export function useTreeKeyboard(editor: Editor) {
         if (e.key === 'Enter' && (e.shiftKey || !isTreeNode(editor, editing))) return
         stop(e)
         editor.complete()
-        if (e.key === 'Tab') addChild(editor, editing)
+        if (e.key === 'Tab') tab(editor, editing)
         return
       }
 
@@ -50,7 +67,7 @@ export function useTreeKeyboard(editor: Editor) {
       if (!selected || selected.type !== 'geo' || !editor.isIn('select.idle')) return
       if (e.key === 'Tab') {
         stop(e)
-        addChild(editor, selected.id)
+        tab(editor, selected.id)
       } else if (!e.shiftKey && getTreeIndex(editor).parent.has(selected.id)) {
         stop(e)
         addSibling(editor, selected.id)
@@ -71,7 +88,7 @@ function isTypingTarget(target: EventTarget | null) {
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
 }
 
-/** Barre contextuelle en édition : une boîte (ou un nœud d'arbre) sélectionnée : arbre et détail. */
+/** Barre contextuelle en édition : une boîte (ou un nœud d'arbre) sélectionnée. */
 export function TreeToolbar({ editor }: { editor: Editor }) {
   const t = useT()
   const info = useValue(
@@ -79,12 +96,12 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
     () => {
       const shape = editor.getOnlySelectedShape()
       if (!shape || shape.type !== 'geo' || !editor.isIn('select.idle')) return null
-      const detail = !getDetailIndex(editor).details.has(shape.id) ? 'none' : isDetailOpen(editor, shape.id) ? 'open' : 'closed'
-      if (!isTreeNode(editor, shape.id)) return { id: shape.id, detail, inTree: false as const }
+      const argument = isArgumentTree(editor, shape.id)
+      if (!isTreeNode(editor, shape.id)) return { id: shape.id, argument, inTree: false as const }
       const root = rootOf(editor, shape.id)
       return {
         id: shape.id,
-        detail,
+        argument,
         inTree: true as const,
         kids: getTreeIndex(editor).children.get(shape.id)?.length ?? 0,
         folded: isFolded(editor, shape.id),
@@ -96,21 +113,21 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
   if (!info) return null
   const id = info.id as TLShapeId
 
-  const detailButton =
-    info.detail === 'none' ? (
-      <button className="qa-btn" onClick={() => addDetail(editor, id)} title={t.tree.addDetailHint}>
-        {t.tree.addDetail}
-      </button>
-    ) : (
-      <button className="qa-btn" onClick={() => toggleDetail(editor, id)} title={t.tree.toggleDetailHint}>
-        {info.detail === 'open' ? t.tree.collapseDetail : t.tree.expandDetail}
-      </button>
-    )
+  const argumentToggle = (
+    <button
+      className={`qa-btn ${info.argument ? 'qa-btn-on' : ''}`}
+      onClick={() => setArgumentTree(editor, id, !info.argument)}
+      aria-pressed={info.argument}
+      title={t.tree.argumentHint}
+    >
+      {t.tree.argument}
+    </button>
+  )
 
   if (!info.inTree) {
     return (
       <div className="tree-toolbar">
-        {detailButton}
+        {argumentToggle}
         <span className="tree-hint">
           <kbd>Tab</kbd> {t.tree.startTree}
         </span>
@@ -134,53 +151,26 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
       >
         {t.tree.relayout}
       </button>
-      {detailButton}
-      <button
-        className="qa-btn"
-        onClick={() => setDirection(editor, id, info.dir === 'right' ? 'down' : 'right')}
-        title={t.tree.directionHint}
-      >
-        {info.dir === 'right' ? t.tree.right : t.tree.down}
-      </button>
+      {argumentToggle}
+      {/* Orientation de l'arbre */}
+      <span className="tree-dirs">
+        {TREE_DIRECTIONS.map((dir) => (
+          <button
+            key={dir}
+            className={`tree-dir ${info.dir === dir ? 'tree-dir-active' : ''}`}
+            onClick={() => info.dir !== dir && setDirection(editor, id, dir)}
+            title={t.tree.directions[dir]}
+            aria-label={t.tree.directions[dir]}
+            aria-pressed={info.dir === dir}
+          >
+            {ARROWS[dir]}
+          </button>
+        ))}
+      </span>
       <span className="tree-hint">
         <kbd>Tab</kbd> {t.tree.child} · <kbd>{t.tree.enter}</kbd> {t.tree.sibling}
       </span>
     </div>
-  )
-}
-
-/** Pastilles « … » sous les boîtes dont le détail est replié (édition : cliquer pour le déplier). */
-export function DetailBadges() {
-  const t = useT()
-  const editor = useEditor()
-  const badges = useValue(
-    'detail badges',
-    () => {
-      if (modeAtom.get() !== 'edit') return []
-      return [...getDetailIndex(editor).details.keys()].flatMap((id) => {
-        if (isDetailOpen(editor, id) || editor.isShapeHidden(id)) return []
-        const b = editor.getShapePageBounds(id)
-        return b ? [{ id, x: b.midX, y: b.maxY }] : []
-      })
-    },
-    [editor]
-  )
-  const zoom = useValue('zoom', () => editor.getZoomLevel(), [editor])
-  return (
-    <>
-      {badges.map((b) => (
-        <button
-          key={b.id}
-          className="fold-badge"
-          style={{ left: b.x, top: b.y, transform: `translate(-50%, -50%) scale(${1 / zoom})` }}
-          title={t.tree.expandDetailBadge}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => toggleDetail(editor, b.id)}
-        >
-          …
-        </button>
-      ))}
-    </>
   )
 }
 
@@ -199,8 +189,8 @@ export function FoldBadges() {
       return folded.flatMap((id) => {
         const b = editor.getShapePageBounds(id as TLShapeId)
         if (!b) return []
-        const dir = directionOf(editor, rootOf(editor, id as TLShapeId))
-        const at = dir === 'right' ? { x: b.maxX, y: b.midY } : { x: b.midX, y: b.maxY }
+        const dir = nodeDirection(editor, id as TLShapeId)
+        const at = { right: { x: b.maxX, y: b.midY }, left: { x: b.minX, y: b.midY }, down: { x: b.midX, y: b.maxY }, up: { x: b.midX, y: b.minY } }[dir]
         return [{ id: id as TLShapeId, n: branchOf(editor, id as TLShapeId).length, ...at }]
       })
     },
@@ -225,5 +215,67 @@ export function FoldBadges() {
         </button>
       ))}
     </>
+  )
+}
+
+/** Touche d'une relation dans le choix : 1 à 9, puis a, b, c… */
+const relationKey = (i: number) => (i < 9 ? String(i + 1) : String.fromCharCode(97 + i - 9))
+
+/**
+ * Arbre argumentatif : choix de la relation du nouvel enfant (touches 1 à 9 puis a, b…,
+ * 0 sans relation, Échap pour annuler). La branche prend le style et le sens de la relation, l'enfant sa nature.
+ */
+export function RelationPicker({ editor }: { editor: Editor }) {
+  const t = useT()
+  const nodeId = useValue(relationPickerAtom)
+  const relations = useValue('relations', () => presetSettingsAtom.get().items.filter((p) => p.target === 'arrow').slice(0, 35), [])
+  const at = useValue(
+    'picker position',
+    () => {
+      const b = nodeId && editor.getShapePageBounds(nodeId)
+      return b ? editor.pageToViewport({ x: b.maxX, y: b.minY }) : null
+    },
+    [editor, nodeId]
+  )
+
+  useEffect(() => {
+    if (!nodeId) return
+    const pick = (relation: Preset | null) => {
+      relationPickerAtom.set(null)
+      addChildWithRelation(editor, nodeId, relation)
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      const i = relations.findIndex((_, i) => relationKey(i) === e.key.toLowerCase())
+      if (e.key === 'Escape') relationPickerAtom.set(null)
+      else if (e.key === '0') pick(null)
+      else if (i >= 0) pick(relations[i])
+      else return
+      stop(e)
+    }
+    window.addEventListener('keydown', onKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
+  }, [editor, nodeId, relations])
+
+  if (!nodeId || !at) return null
+  const pick = (relation: Preset | null) => {
+    relationPickerAtom.set(null)
+    addChildWithRelation(editor, nodeId, relation)
+  }
+  return (
+    <div className="relation-picker" style={{ left: at.x + 12, top: at.y }} role="menu" aria-label={t.tree.pickRelation}>
+      <p className="relation-picker-title">{t.tree.pickRelation}</p>
+      {relations.map((r, i) => (
+        <button key={r.id} className="relation-item" role="menuitem" onClick={() => pick(r)}>
+          <kbd>{relationKey(i)}</kbd>
+          <span className="relation-line" style={{ borderColor: swatchColor(editor, r), borderStyle: r.style.dash === 'dashed' ? 'dashed' : r.style.dash === 'dotted' ? 'dotted' : 'solid' }} />
+          {r.name}
+        </button>
+      ))}
+      <button className="relation-item" role="menuitem" onClick={() => pick(null)}>
+        <kbd>0</kbd>
+        <span className="relation-line" />
+        {t.tree.noRelation}
+      </button>
+    </div>
   )
 }

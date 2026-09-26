@@ -1,7 +1,10 @@
 'use client'
 
 import { Fragment, useEffect, useRef, type ReactNode } from 'react'
-import { useValue, type Editor } from 'tldraw'
+import { renderPlaintextFromRichText, useEditor, useValue, type Editor, type TLRichText, type TLShape, type TLShapeId } from 'tldraw'
+import { noteOf } from '@/lib/canvas/notes'
+import { presetById, swatchColor } from '@/lib/canvas/presets'
+import type { Step } from '@/lib/sequence/types'
 import { readSequence } from '@/lib/canvas/adapter'
 import {
   DEFAULT_LASER,
@@ -15,6 +18,12 @@ import {
   updateLaserSettings,
   narrationVisibleAtom,
   narrationWidthAtom,
+  narrationScaleAtom,
+  changeNarrationScale,
+  openedNotesAtom,
+  legendVisibleAtom,
+  shapeClassesAtom,
+  toggleOpenedNote,
   overviewAtom,
   stepIndexAtom,
 } from '@/lib/presentation/store'
@@ -40,6 +49,7 @@ export function NarrationPanel({ editor }: { editor: Editor }) {
   const index = useValue(stepIndexAtom)
   const visible = useValue(narrationVisibleAtom)
   const width = useValue(narrationWidthAtom)
+  const scale = useValue(narrationScaleAtom)
   if (!seq || !visible) return null
   const step = seq.steps[index]
 
@@ -54,27 +64,37 @@ export function NarrationPanel({ editor }: { editor: Editor }) {
         storageKey="narrationWidth"
         onResized={recenterAfterResize}
       />
-      <button
-        className="pbtn absolute right-3 top-3"
-        onClick={toggleNarration}
-        title={t.presenter.hideNarration}
-        aria-label={t.presenter.hideNarrationLabel}
-      >
-        <Icon name="close" />
-      </button>
+      <div className="absolute right-3 top-3 flex items-center gap-0.5">
+        {/* Taille du texte (aussi : touches +, − et 0) */}
+        <button className="pbtn narration-size" onClick={() => changeNarrationScale(-1)} title={t.presenter.textSmaller}>
+          A−
+        </button>
+        <button className="pbtn narration-size" onClick={() => changeNarrationScale(1)} title={`${t.presenter.textLarger} · ${t.presenter.textReset}`}>
+          A+
+        </button>
+        <button className="pbtn" onClick={toggleNarration} title={t.presenter.hideNarration} aria-label={t.presenter.hideNarrationLabel}>
+          <Icon name="close" />
+        </button>
+      </div>
       <p className="text-xs font-medium uppercase tracking-[0.2em] text-stone-400">{seq.title}</p>
       {/* key : relance l'animation d'entrée du texte à chaque étape */}
-      <div key={step?.id ?? 'start'} className="narration-body mt-8 flex-1 overflow-y-auto">
+      <div
+        key={step?.id ?? 'start'}
+        className="narration-body mt-8 flex-1 overflow-y-auto"
+        style={{ fontSize: `${scale / 100}rem` }}
+      >
+        {/* Tailles en em : elles suivent le réglage de taille du texte. */}
         {step ? (
           <>
-            <h2 className="font-serif text-3xl leading-tight text-stone-900">{step.title}</h2>
-            <div className="mt-6 space-y-4 text-xl leading-relaxed text-stone-700">
+            <h2 className="font-serif text-[1.875em] leading-tight text-stone-900">{step.title}</h2>
+            <div className="mt-[1.5em] space-y-[1em] text-[1.25em] leading-relaxed text-stone-700">
               <Markdownish text={step.narration} />
             </div>
           </>
         ) : (
-          <h2 className="font-serif text-4xl leading-tight text-stone-900">{seq.title}</h2>
+          <h2 className="font-serif text-[2.25em] leading-tight text-stone-900">{seq.title}</h2>
         )}
+        <ObjectNotes editor={editor} step={step} />
       </div>
     </aside>
   )
@@ -395,4 +415,127 @@ function inline(text: string): ReactNode[] {
     if (part.startsWith('*') && part.endsWith('*') && part.length > 2) return <em key={i}>{part.slice(1, -1)}</em>
     return <Fragment key={i}>{part}</Fragment>
   })
+}
+
+/** Texte d'une forme (première ligne), pour titrer sa note. */
+function shapeLabel(editor: Editor, shape: TLShape) {
+  const richText = (shape.props as { richText?: TLRichText }).richText
+  return richText ? (renderPlaintextFromRichText(editor, richText).split('\n').find((l) => l.trim()) ?? '') : ''
+}
+
+/** Notes d'objets dans le panneau de narration : programmées à l'étape, ou ouvertes au double-clic. */
+function ObjectNotes({ editor, step }: { editor: Editor; step: Step | undefined }) {
+  const t = useT()
+  const opened = useValue(openedNotesAtom)
+  const notes = useValue(
+    'object notes',
+    () => {
+      const planned = step?.actions.filter((a) => a.type === 'note').flatMap((a) => a.targets) ?? []
+      return [...new Set([...planned, ...opened])].flatMap((id) => {
+        const shape = editor.getShape(id as TLShapeId)
+        const note = noteOf(shape)
+        if (!shape || !note) return []
+        return [{ id, title: shapeLabel(editor, shape), note, manual: !planned.includes(id) }]
+      })
+    },
+    [editor, step, opened]
+  )
+  if (!notes.length) return null
+  return (
+    <div className="mt-[2em] space-y-[1.5em]">
+      {notes.map((n) => (
+        <section key={n.id} className="narration-note">
+          <header className="flex items-start justify-between gap-2">
+            <h3 className="line-clamp-2 text-[0.8em] font-semibold uppercase tracking-[0.12em] text-stone-400">{n.title}</h3>
+            {n.manual && (
+              <button className="pbtn -mt-1 shrink-0" onClick={() => toggleOpenedNote(n.id)} title={t.presenter.closeNote} aria-label={t.presenter.closeNote}>
+                <Icon name="close" />
+              </button>
+            )}
+          </header>
+          <div className="mt-[0.5em] space-y-[0.8em] text-[1.1em] leading-relaxed text-stone-700">
+            <Markdownish text={n.note} />
+          </div>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+/** Marques sur les objets visibles qui ont une note (présentation) : un clic l'affiche. */
+export function NoteMarkers() {
+  const t = useT()
+  const editor = useEditor()
+  const markers = useValue(
+    'note markers',
+    () => {
+      const classes = shapeClassesAtom.get()
+      if (!classes) return []
+      return editor.getCurrentPageShapes().flatMap((shape) => {
+        if (!noteOf(shape)) return []
+        if ((classes.byId.get(shape.id) ?? classes.fallback).className.includes('pres-hidden')) return []
+        const b = editor.getShapePageBounds(shape.id)
+        return b ? [{ id: shape.id, x: b.maxX, y: b.minY }] : []
+      })
+    },
+    [editor]
+  )
+  const opened = useValue(openedNotesAtom)
+  const zoom = useValue('zoom', () => editor.getZoomLevel(), [editor])
+  return (
+    <>
+      {markers.map((m) => (
+        <button
+          key={m.id}
+          className={`note-marker ${opened.includes(m.id) ? 'note-marker-open' : ''}`}
+          style={{ left: m.x, top: m.y, transform: `translate(-50%, -50%) scale(${1 / zoom})` }}
+          title={t.presenter.showNote}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => toggleOpenedNote(m.id)}
+        >
+          ¶
+        </button>
+      ))}
+    </>
+  )
+}
+
+/** Légende (présentation, touche L) : natures et relations utilisées dans le schéma. */
+export function Legend({ editor }: { editor: Editor }) {
+  const t = useT()
+  const visible = useValue(legendVisibleAtom)
+  const items = useValue(
+    'legend',
+    () => {
+      const ids = new Set(editor.getCurrentPageShapes().map((s) => s.meta.preset as string | undefined))
+      return [...ids].flatMap((id) => {
+        const p = presetById(editor, id)
+        return p ? [{ id: p.id, name: p.name, arrow: p.target === 'arrow', color: swatchColor(editor, p), dash: p.style.dash }] : []
+      })
+    },
+    [editor]
+  )
+  if (!visible || !items.length) return null
+  const natures = items.filter((i) => !i.arrow)
+  const relations = items.filter((i) => i.arrow)
+  return (
+    <div className="legend pointer-events-auto absolute bottom-14 left-4 z-[500]" aria-label={t.presenter.legend}>
+      {[natures, relations].map((group, g) =>
+        group.length ? (
+          <ul key={g} className="legend-group">
+            {group.map((i) => (
+              <li key={i.id} className="legend-item">
+                {i.arrow ? (
+                  <span className="legend-line" style={{ borderColor: i.color, borderStyle: i.dash === 'dashed' ? 'dashed' : i.dash === 'dotted' ? 'dotted' : 'solid' }} />
+                ) : (
+                  <span className="legend-box" style={{ borderColor: i.color }} />
+                )}
+                {i.name}
+              </li>
+            ))}
+          </ul>
+        ) : null
+      )}
+    </div>
+  )
 }

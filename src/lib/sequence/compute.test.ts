@@ -128,53 +128,20 @@ describe('arbres : contrainte de parenté, fold / unfold', () => {
   })
 })
 
-describe('détails : expand / collapse', () => {
-  // La boîte « b » a un détail « d » ; b est dans un arbre sous « r ».
-  const details = new Map([['d', 'b']])
-  const tree = new Map([['b', 'r']])
-  const s = seq(
-    step({ type: 'show', targets: ['b'] }),
-    step({ type: 'expand', targets: ['b'] }),
-    step({ type: 'collapse', targets: ['b'] }),
-    step({ type: 'fold', targets: ['r'] })
-  )
-  const at = (i: number, id: string, expanded?: Set<string>) =>
-    stateOf(computeStage(s, i, { details, expanded, tree }), id)
-
-  it('replié par défaut : le détail reste caché quand la boîte apparaît', () => {
-    expect(at(0, 'b').visibility).toBe('visible')
-    expect(at(0, 'd').visibility).toBe('hidden')
-  })
-
-  it('déplier fait entrer le détail en fondu, replier le cache', () => {
-    expect(at(1, 'd')).toMatchObject({ visibility: 'visible', entering: 'fade' })
-    expect(at(2, 'd').visibility).toBe('hidden')
-  })
-
-  it("déplié dans le document : le détail apparaît avec sa boîte, et disparaît avec elle", () => {
-    const open = new Set(['b'])
-    expect(at(-1, 'd', open).visibility).toBe('hidden')
-    expect(at(0, 'd', open)).toMatchObject({ visibility: 'visible', entering: 'fade' })
-    const hidden = seq(step({ type: 'show', targets: ['b'] }), step({ type: 'hide', targets: ['b'] }))
-    expect(stateOf(computeStage(hidden, 1, { details, expanded: open }), 'd').visibility).toBe('hidden')
-  })
-
-  it('une branche repliée cache aussi les détails de ses nœuds', () => {
-    const f = seq(step({ type: 'show', targets: ['r'] }), step({ type: 'fold', targets: ['r'] }))
-    const opts = { details, tree, expanded: new Set(['b']) }
-    expect(stateOf(computeStage(f, 0, opts), 'd').visibility).toBe('visible')
-    expect(stateOf(computeStage(f, 1, opts), 'd').visibility).toBe('hidden')
-  })
-
-  it('la caméra cadre le détail déplié', () => {
-    const t = stepFocusTargets(s.steps[1], undefined, computeStage(s, 1, { details })).sort()
-    expect(t).toEqual(['b', 'd'])
-  })
-})
-
 describe('migrateSequence', () => {
   it("laisse intacte une séquence à jour (même objet, pour les calculs réactifs)", () => {
     const s = { ...seq(), version: SEQUENCE_VERSION }
     expect(migrateSequence(s)).toBe(s)
+  })
+
+  it('v1 → v2 : « déplier le détail » devient « afficher la note », « replier » disparaît', () => {
+    const v1 = {
+      id: 's',
+      title: '',
+      steps: [{ ...step(), actions: [{ type: 'expand', targets: ['b'] }, { type: 'collapse', targets: ['b'] }, { type: 'show', targets: ['c'] }] }],
+    } as unknown as Sequence
+    const v2 = migrateSequence(v1)
+    expect(v2.version).toBe(2)
+    expect(v2.steps[0].actions).toEqual([{ type: 'note', targets: ['b'] }, { type: 'show', targets: ['c'] }])
   })
 })

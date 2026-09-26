@@ -47,7 +47,13 @@ interface LocalMeta {
 const SAVE_DELAY_MS = 1200
 const RETRY_DELAY_MS = 5000
 
-export function startDocumentSync(editor: Editor, docId: string, store: DocumentStore, opts: { demo: DemoName | null }) {
+export function startDocumentSync(
+  editor: Editor,
+  docId: string,
+  store: DocumentStore,
+  /** onLoaded : document chargé (onglet enregistreur), pour les mises à niveau de contenu. */
+  opts: { demo: DemoName | null; onLoaded?: () => void }
+) {
   storageModeAtom.set(store.mode)
   const metaKey = `sync:${docId}`
   let meta: LocalMeta = readMeta(metaKey) ?? { version: -1, dirty: false }
@@ -272,7 +278,7 @@ export function startDocumentSync(editor: Editor, docId: string, store: Document
     leader = true
     if (!initialized) {
       initialized = true
-      return void init()
+      return void init().then(() => !disposed && opts.onLoaded?.())
     }
     // Relève d'un onglet fermé : reprendre là où il s'était arrêté.
     meta = readMeta(metaKey) ?? meta

@@ -17,6 +17,9 @@ export const recenterAtom = atom<number>('recenter', 0)
 /** Panneau de narration visible pendant la présentation. */
 export const narrationVisibleAtom = atom<boolean>('narrationVisible', true)
 
+/** Légende des natures et relations utilisées (touche L). */
+export const legendVisibleAtom = atom<boolean>('legendVisible', false)
+
 /** Bornes de largeur d'un panneau latéral redimensionnable (px). */
 export interface WidthLimits {
   min: number
@@ -26,6 +29,23 @@ export interface WidthLimits {
 /** Largeur du panneau de narration (px), réglable à la souris. */
 export const NARRATION_WIDTH: WidthLimits = { min: 280, default: 460 }
 export const narrationWidthAtom = atom<number>('narrationWidth', readStoredWidth('narrationWidth', NARRATION_WIDTH))
+
+/** Taille du texte de la narration (%), réglable pendant la présentation (+, −, 0). */
+export const NARRATION_SCALE = { min: 60, max: 250, step: 10, default: 100 }
+export const narrationScaleAtom = atom<number>('narrationScale', readStoredScale())
+
+function readStoredScale() {
+  const v = Number(readStoredValue('narrationScale'))
+  return v >= NARRATION_SCALE.min && v <= NARRATION_SCALE.max ? v : NARRATION_SCALE.default
+}
+
+/** Agrandit (+1) ou réduit (−1) le texte de la narration ; null : taille par défaut. */
+export function changeNarrationScale(delta: 1 | -1 | null) {
+  const { min, max, step } = NARRATION_SCALE
+  const next = delta === null ? NARRATION_SCALE.default : Math.min(max, Math.max(min, narrationScaleAtom.get() + delta * step))
+  narrationScaleAtom.set(next)
+  storeValue('narrationScale', next)
+}
 
 /** Panneau des étapes (mode édition) : largeur réglable, repliable. */
 export const SEQUENCE_PANEL_WIDTH: WidthLimits = { min: 300, default: 380 }
@@ -62,6 +82,17 @@ export const editUnlockedAtom = atom<boolean>('editUnlocked', false)
 
 /** Nœuds d'arbre repliés et visibles à l'étape courante (pastilles « +n »). */
 export const foldedBadgesAtom = atom<string[]>('foldedBadges', [])
+
+/** Notes d'objets ouvertes à la main (double-clic) pendant l'étape courante. */
+export const openedNotesAtom = atom<string[]>('openedNotes', [])
+
+/** Ouvre ou referme la note d'un objet dans le panneau de narration (qui s'affiche au besoin). */
+export function toggleOpenedNote(id: string) {
+  const opened = openedNotesAtom.get()
+  if (opened.includes(id)) return openedNotesAtom.set(opened.filter((n) => n !== id))
+  openedNotesAtom.set([...opened, id])
+  narrationVisibleAtom.set(true)
+}
 
 /** Étape sélectionnée dans le panneau d'édition. */
 export const activeStepIdAtom = atom<string | null>('activeStepId', null)

@@ -9,10 +9,9 @@ export type Effect = 'fade' | 'draw' | 'rise' | 'none'
 
 /**
  * Actions persistantes (restent actives aux étapes suivantes) :
- *   show, hide, dim, undim, fold, unfold (replier / déplier une branche d'arbre),
- *   expand, collapse (déplier / replier le détail d'une boîte)
+ *   show, hide, dim, undim, fold, unfold (replier / déplier une branche d'arbre)
  * Actions transitoires (valables uniquement pendant l'étape courante) :
- *   highlight, focus
+ *   highlight, focus, note (afficher la note des objets dans le panneau de narration)
  */
 export type StepAction =
   | { type: 'show'; targets: ShapeRef[]; effect?: Effect }
@@ -21,10 +20,9 @@ export type StepAction =
   | { type: 'undim'; targets: ShapeRef[] }
   | { type: 'fold'; targets: ShapeRef[] }
   | { type: 'unfold'; targets: ShapeRef[] }
-  | { type: 'expand'; targets: ShapeRef[] }
-  | { type: 'collapse'; targets: ShapeRef[] }
   | { type: 'highlight'; targets: ShapeRef[] }
   | { type: 'focus'; targets: ShapeRef[] }
+  | { type: 'note'; targets: ShapeRef[] }
 
 export type StepActionType = StepAction['type']
 
@@ -56,7 +54,7 @@ export interface Sequence {
 }
 
 /** Version courante du format de séquence. */
-export const SEQUENCE_VERSION = 1
+export const SEQUENCE_VERSION = 2
 
 export function newId(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`

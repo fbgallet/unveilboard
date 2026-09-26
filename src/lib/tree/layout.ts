@@ -4,8 +4,18 @@
 // un nœud est centré sur la bande de ses enfants. Les branches repliées gardent leur
 // place : replier ou déplier (en édition comme en présentation) ne déplace rien.
 // Un nœud déplacé à la main garde son décalage (offset), que suit tout son sous-arbre.
+// « both » : carte mentale équilibrée, les enfants de la racine à droite ou à gauche (side).
 
-export type TreeDirection = 'right' | 'down'
+export type TreeDirection = 'right' | 'left' | 'down' | 'up' | 'both'
+
+export const TREE_DIRECTIONS: TreeDirection[] = ['right', 'left', 'down', 'up', 'both']
+
+/** Axe le long duquel l'arbre se déploie (horizontal : x) et sens (+1 ou −1) ; « both » : horizontal. */
+export function treeAxis(dir: TreeDirection) {
+  return { horizontal: dir !== 'down' && dir !== 'up', sign: dir === 'left' || dir === 'up' ? -1 : 1 }
+}
+
+export type TreeSide = 'left' | 'right'
 
 export interface Vec {
   x: number
@@ -19,6 +29,8 @@ export interface TreeNode {
   offset: Vec
   /** Enfants, dans l'ordre d'affichage. */
   children: string[]
+  /** Disposition « both », enfants de la racine : côté de la branche. */
+  side?: TreeSide
 }
 
 export const TREE_GAPS = { main: 72, cross: 24 }
@@ -31,11 +43,12 @@ export function layoutTree(
   dir: TreeDirection,
   gaps = TREE_GAPS
 ): Map<string, Vec> {
-  // Axe principal : celui le long duquel l'arbre se déploie.
-  const main = dir === 'right' ? 'x' : 'y'
-  const cross = dir === 'right' ? 'y' : 'x'
-  const mainSize = (n: TreeNode) => (dir === 'right' ? n.w : n.h)
-  const crossSize = (n: TreeNode) => (dir === 'right' ? n.h : n.w)
+  // Axe principal : celui le long duquel l'arbre se déploie ; vers la gauche ou le haut, sign = −1.
+  const { horizontal, sign: mainSign } = treeAxis(dir)
+  const main = horizontal ? 'x' : 'y'
+  const cross = horizontal ? 'y' : 'x'
+  const mainSize = (n: TreeNode) => (horizontal ? n.w : n.h)
+  const crossSize = (n: TreeNode) => (horizontal ? n.h : n.w)
 
   const band = new Map<string, number>()
   const visiting = new Set<string>()
@@ -55,29 +68,39 @@ export function layoutTree(
 
   // 2. Placement : les enfants se répartissent sur une bande centrée sur leur parent.
   const out = new Map<string, Vec>()
-  function place(id: string, pos: Vec) {
+  function place(id: string, pos: Vec, sign: number, only?: TreeSide) {
     const node = nodes.get(id)!
     visiting.add(id)
-    const kids = childrenOf(id)
+    const kids = childrenOf(id).filter((c) => !only || (nodes.get(c)!.side ?? 'right') === only)
     const kidsBand = kids.reduce((sum, c) => sum + band.get(c)!, 0) + gaps.cross * Math.max(0, kids.length - 1)
     let cursor = pos[cross] + crossSize(node) / 2 - kidsBand / 2
     for (const c of kids) {
       const child = nodes.get(c)!
       const slot = {
-        [main]: pos[main] + mainSize(node) + gaps.main,
+        [main]: sign > 0 ? pos[main] + mainSize(node) + gaps.main : pos[main] - gaps.main - mainSize(child),
         [cross]: cursor + (band.get(c)! - crossSize(child)) / 2,
       } as unknown as Vec
       const actual = { x: slot.x + child.offset.x, y: slot.y + child.offset.y }
       out.set(c, actual)
-      place(c, actual)
+      place(c, actual, sign)
       cursor += band.get(c)! + gaps.cross
     }
     visiting.delete(id)
   }
 
   if (!nodes.has(rootId)) return out
+  if (dir === 'both') {
+    // Chaque côté se répartit sur sa propre bande, centrée sur la racine.
+    for (const side of ['right', 'left'] as const) {
+      visiting.add(rootId)
+      childrenOf(rootId).forEach(measure)
+      visiting.delete(rootId)
+      place(rootId, rootPos, side === 'right' ? 1 : -1, side)
+    }
+    return out
+  }
   measure(rootId)
-  place(rootId, rootPos)
+  place(rootId, rootPos, mainSign)
   return out
 }
 
@@ -104,4 +127,13 @@ export function hasAncestor(parent: Map<string, string>, id: string, test: (ance
     seen.add(p)
   }
   return false
+}
+
+/**
+ * Côté d'un nouvel enfant de la racine en disposition « both » : celui dont la bande est la
+ * plus étroite (à égalité, la droite).
+ */
+export function lighterSide(heights: { side: TreeSide; size: number }[]): TreeSide {
+  const total = (side: TreeSide) => heights.filter((h) => h.side === side).reduce((sum, h) => sum + h.size, 0)
+  return total('left') < total('right') ? 'left' : 'right'
 }

@@ -71,23 +71,30 @@ La séquence est stockée dans le document tldraw : elle bénéficie de l'annule
 Sélectionner une boîte : <kbd>Tab</kbd> ajoute un enfant (et commence un arbre), <kbd>Entrée</kbd> ajoute un frère. Pendant la saisie d'un nœud, <kbd>Entrée</kbd> valide (<kbd>Maj</kbd>+<kbd>Entrée</kbd> : saut de ligne) et <kbd>Tab</kbd> enchaîne sur un enfant.
 
 - La mise en page est automatique ; un nœud déplacé à la main garde son décalage (et entraîne sa branche). « Réorganiser » efface les décalages.
+- Orientation : vers la droite, la gauche, le bas, le haut, ou des deux côtés (carte mentale équilibrée : un nouvel enfant de la racine va du côté le moins chargé, et une branche glissée de l'autre côté de la racine y reste).
 - Replier une branche la masque en édition. L'état replié du document est l'état de départ de la présentation ; les actions « Replier / Déplier la branche » le changent en cours de séquence. Replier ne déplace rien : la place de la branche reste réservée.
 - Supprimer un nœud supprime sa branche (annulable).
+- **Arbre argumentatif** (bouton « Argumentatif ») : <kbd>Tab</kbd> propose une relation (touches 1 à 9 puis a, b…, 0 sans relation). La branche prend le style et le sens de la relation (par défaut vers le parent : « la prémisse soutient la thèse » ; vers l'enfant pour implique, présuppose, soulève), et le nouveau nœud la nature associée (Exemple pour « illustre », Croyance fondamentale pour « présuppose »…). <kbd>Entrée</kbd> ajoute un frère avec la même relation.
+- Dans un arbre argumentatif, **la forme dit la nature, la couleur dit la fonction** : un nœud relié prend la couleur de sa relation (trait et fond pâle) et son étiquette affiche sa fonction seule (Justification, Objection, Réfutation, Réponse, Explication, Implication, Présupposé, Exemple, Définition, Difficulté, Distinction). Le vert est réservé au soutien.
 
 ## Préréglages de styles
 
-Des styles nommés (Énoncé, Concept, Question… ; soutient, objecte, réfute…), en tête du panneau de styles : un clic les applique aux formes ou aux flèches sélectionnées. Ce ne sont que des styles tldraw ordinaires, plus une marque `meta.preset`.
+Des styles nommés, en tête du panneau de styles : des **natures** pour les formes (Énoncé, Croyance fondamentale, Concept, Question, Difficulté, Exemple, Citation) et des **relations** pour les flèches (soutient, objecte, réfute, répond à, explique, implique, présuppose, illustre, définit, soulève, distingue). Ce ne sont que des propriétés tldraw ordinaires (géométrie, couleur, trait…), plus une marque `meta.preset`.
+
+- Un clic applique le préréglage aux formes ou flèches sélectionnées ; sans sélection, une nature arme l'outil de formes : la prochaine forme tracée la reçoit.
+- Chaque nature a sa géométrie (Concept : ovale, Question : losange, Difficulté : hexagone, Croyance fondamentale : nuage, Citation : sans cadre, en serif, avec guillemets…) et une étiquette au-dessus de la forme (« ÉNONCÉ NORMATIF · Hobbes ») : auteur et modalité (descriptif / normatif) se saisissent dans le panneau de droite. Les étiquettes sont dessinées par l'application : sans elle, le schéma garde ses formes et ses couleurs.
 
 - Communs à tous les schémas : table `settings` en mode cloud, IndexedDB en mode local. Chaque schéma garde une copie des préréglages qu'il utilise, pour rester lisible ailleurs.
-- Menu ☰ › « Préréglages de styles… » : renommer, réordonner, mettre à jour ou créer d'après la sélection, masquer la palette, revenir aux préréglages de départ.
+- Menu ☰ › « Préréglages de styles… » : renommer, réordonner, forme et étiquette des natures, sens et nature de l'enfant des relations, mettre à jour ou créer d'après la sélection, masquer la palette ou les étiquettes, revenir aux préréglages de départ.
+- En présentation, <kbd>L</kbd> affiche la légende des natures et relations utilisées.
 
-## Détails dépliables
+## Notes d'objet
 
-Sur une boîte sélectionnée, « + Détail » ajoute sous elle un texte qui la suit (position, largeur) et disparaît avec elle. Replié, il est masqué en édition (pastille « … » pour le déplier) ; en présentation, les actions « Déplier / Replier le détail » le font apparaître ou disparaître. Dans un arbre, sa place reste réservée.
+Le développement d'un objet (citation longue, explication) ne surcharge pas le schéma : il se rédige dans le panneau de droite (« Note de l'objet », même Markdown léger que la narration) et s'affiche dans le panneau de narration pendant la présentation, au double-clic sur l'objet (une marque ¶ signale les objets qui en ont une), ou à une étape avec l'action « Afficher la note ». Les « détails dépliables » des versions précédentes sont convertis en notes à l'ouverture du document.
 
 ## Raccourcis en présentation
 
-`→` / `Espace` / `PageDown` suivant · `←` / `PageUp` précédent · `Début` / `Fin` · `O` vue d'ensemble · `C` recentrer · `K` laser · `N` narration · `F` plein écran · `Échap` quitter (le premier Échap désactive le laser)
+`→` / `Espace` / `PageDown` suivant · `←` / `PageUp` précédent · `Début` / `Fin` · `O` vue d'ensemble · `C` recentrer · `K` laser · `N` narration · `+` / `−` / `0` taille du texte de la narration · `L` légende · `F` plein écran · `Échap` quitter (le premier Échap désactive le laser)
 
 Le cadenas de la barre de présentation déverrouille le document : l'interface tldraw réapparaît et seules `PageUp` / `PageDown` naviguent entre les étapes.
 

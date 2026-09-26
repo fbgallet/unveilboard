@@ -8,7 +8,7 @@ import 'tldraw/tldraw.css'
 import { LaserOverlayUtil } from '@/lib/canvas/laser'
 import { SpotlightShapeUtil } from '@/lib/canvas/spotlight'
 import { registerTreeSideEffects, withBranchesToDelete } from '@/lib/canvas/tree'
-import { registerDetailSideEffects } from '@/lib/canvas/details'
+import { convertLegacyDetails } from '@/lib/canvas/notes'
 import { isHiddenInEdit } from '@/lib/canvas/visibility'
 import { activeStepIdAtom, editUnlockedAtom, modeAtom, quickSequenceAtom, stepIndexAtom } from '@/lib/presentation/store'
 import { assetStore } from '@/lib/sync/assetStore'
@@ -18,15 +18,15 @@ import type { StorageMode } from '@/lib/storage/types'
 import { PresShapeWrapper } from './PresShapeWrapper'
 import { StepBadges } from './StepBadges'
 import { SequencePanel } from './SequencePanel'
-import { NarrationPanel, ProgressBar } from './PresenterUI'
+import { Legend, NarrationPanel, NoteMarkers, ProgressBar } from './PresenterUI'
 import { usePresentation } from './usePresentation'
 import { QuickAssign, QuickSequence } from './QuickAssign'
 import { SyncBanner } from './SyncIndicator'
 import { SpotlightOverlay } from './SpotlightOverlay'
-import { DetailBadges, FoldBadges, TreeToolbar, useTreeKeyboard } from './TreeTools'
+import { FoldBadges, RelationPicker, TreeToolbar, useTreeKeyboard } from './TreeTools'
 import { MainMenu } from './FileMenu'
 import { PresetManager, PresetStylePanel } from './PresetTools'
-import { loadPresetSettings } from '@/lib/canvas/presets'
+import { loadPresetSettings, registerPresetSideEffects } from '@/lib/canvas/presets'
 
 const overlayUtils = [LaserOverlayUtil]
 const shapeUtils = [SpotlightShapeUtil]
@@ -36,7 +36,7 @@ function CanvasBadges() {
     <>
       <StepBadges />
       <FoldBadges />
-      <DetailBadges />
+      <NoteMarkers />
     </>
   )
 }
@@ -94,14 +94,18 @@ export default function Studio({
     if (!editor) return
     // En développement : l'éditeur est accessible depuis la console et les tests Playwright.
     if (process.env.NODE_ENV === 'development') Object.assign(window, { editor })
-    const stop = startDocumentSync(editor, docId, documentStore(storage), { demo })
+    const stop = startDocumentSync(editor, docId, documentStore(storage), {
+      demo,
+      // Anciens « détails » → notes, séquence au format courant.
+      onLoaded: () => convertLegacyDetails(editor),
+    })
     const stopTree = registerTreeSideEffects(editor)
-    const stopDetails = registerDetailSideEffects(editor)
+    const stopPresets = registerPresetSideEffects(editor)
     void loadPresetSettings(settingsStore(storage))
     return () => {
       stop()
       stopTree()
-      stopDetails()
+      stopPresets()
       modeAtom.set('edit')
       editUnlockedAtom.set(false)
       quickSequenceAtom.set(false)
@@ -132,9 +136,11 @@ export default function Studio({
           onMount={setEditor}
         />
         {editor && mode === 'present' && <ProgressBar editor={editor} />}
+        {editor && mode === 'present' && <Legend editor={editor} />}
         {editor && mode === 'present' && unlocked && <QuickAssign editor={editor} />}
         {editor && mode === 'edit' && quickSequence && <QuickSequence editor={editor} />}
         {editor && (mode === 'edit' || unlocked) && <TreeToolbar editor={editor} />}
+        {editor && (mode === 'edit' || unlocked) && <RelationPicker editor={editor} />}
         {editor && <SyncBanner />}
         {editor && <PresetManager editor={editor} />}
       </div>
