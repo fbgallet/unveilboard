@@ -195,7 +195,10 @@ export const en = {
     narration: 'Narration (N)',
     textSmaller: 'Smaller text (−)',
     textLarger: 'Larger text (+)',
-    textReset: 'Default text size (0)',
+    textReset: 'Default text size of the diagram (0) · Ctrl + wheel to adjust',
+    pinTextSize: (n: number) => `Keep this size (${n} %) as this diagram's default`,
+    panelTabs: 'Narration and notes',
+    narrationTab: 'Narration',
     legend: 'Legend',
     showNote: 'Show the note (or double-click the object)',
     closeNote: 'Close the note',
@@ -409,6 +412,25 @@ export const en = {
       `This diagram was changed ${cloud ? 'on another device' : 'in another tab'}.`,
   },
 
+  editor: {
+    bold: 'Bold (Ctrl/⌘ + B)',
+    italic: 'Italic (Ctrl/⌘ + I)',
+    heading: 'Heading',
+    list: 'List',
+    numbered: 'Numbered list',
+    quote: 'Quote',
+    link: 'Link (Ctrl/⌘ + K)',
+    image: 'Image (or paste / drop it into the text)',
+    preview: 'Preview',
+    edit: 'Edit',
+    expand: 'Enlarge the editor',
+    close: 'Close',
+    uploading: 'Uploading image…',
+    boldText: 'bold text',
+    italicText: 'italic text',
+    linkText: 'link text',
+  },
+
   errors: {
     offline: 'No connection: changes are kept on this device.',
     sessionExpired: 'Session expired: please log in again.',
@@ -419,6 +441,7 @@ export const en = {
     notFound: 'Document not found.',
     invalidTldr: 'This is not a valid .tldr file.',
     imageTooLarge: 'Image too large (4 MB maximum).',
+    noteImageTooLarge: 'Image too heavy to be embedded in the diagram (1 MB maximum without online storage): shrink it, or insert a link to an online image.',
   },
 
   viewer: {

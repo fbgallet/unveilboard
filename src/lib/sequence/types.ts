@@ -46,6 +46,8 @@ export interface Step {
 }
 
 export interface Sequence {
+  /** Taille par défaut du texte du panneau de narration (%, 100 si absente). */
+  narrationScale?: number
   /** Version du format (voir migrate.ts). Absente dans les documents d'avant la phase 2 : version 1. */
   version?: number
   id: string

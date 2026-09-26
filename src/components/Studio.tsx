@@ -19,7 +19,7 @@ import { PresShapeWrapper } from './PresShapeWrapper'
 import { StepBadges } from './StepBadges'
 import { SequencePanel } from './SequencePanel'
 import { Legend, NarrationPanel, NoteMarkers, ProgressBar } from './PresenterUI'
-import { usePresentation } from './usePresentation'
+import { pinNarrationScale, usePresentation } from './usePresentation'
 import { QuickAssign, QuickSequence } from './QuickAssign'
 import { SyncBanner } from './SyncIndicator'
 import { SpotlightOverlay } from './SpotlightOverlay'
@@ -172,7 +172,7 @@ export default function Studio({
       </div>
       {editor && <PresentationHost editor={editor} docId={docId} />}
       {editor && mode === 'edit' && <SequencePanel editor={editor} />}
-      {editor && mode === 'present' && <NarrationPanel editor={editor} top={<ScreenControls editor={editor} />} />}
+      {editor && mode === 'present' && <NarrationPanel editor={editor} top={<ScreenControls editor={editor} />} onPinScale={() => pinNarrationScale(editor)} />}
     </div>
   )
 }

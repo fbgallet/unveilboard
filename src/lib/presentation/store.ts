@@ -33,21 +33,26 @@ export interface WidthLimits {
 export const NARRATION_WIDTH: WidthLimits = { min: 280, default: 460 }
 export const narrationWidthAtom = atom<number>('narrationWidth', readStoredWidth('narrationWidth', NARRATION_WIDTH))
 
-/** Taille du texte de la narration (%), réglable pendant la présentation (+, −, 0). */
+/**
+ * Taille du texte du panneau de narration (%). Chaque schéma a sa taille par défaut (enregistrée
+ * dans sa séquence), appliquée en entrant en présentation ; les réglages faits pendant la
+ * présentation (+, −, 0, Ctrl + molette) valent pour la séance, sauf si on les garde pour le schéma.
+ */
 export const NARRATION_SCALE = { min: 60, max: 250, step: 10, default: 100 }
-export const narrationScaleAtom = atom<number>('narrationScale', readStoredScale())
+export const narrationScaleAtom = atom<number>('narrationScale', NARRATION_SCALE.default)
+/** Taille par défaut du schéma ouvert (celle à laquelle 0 revient). */
+export const narrationScaleDefaultAtom = atom<number>('narrationScaleDefault', NARRATION_SCALE.default)
 
-function readStoredScale() {
-  const v = Number(readStoredValue('narrationScale'))
-  return v >= NARRATION_SCALE.min && v <= NARRATION_SCALE.max ? v : NARRATION_SCALE.default
+export function clampNarrationScale(v: number) {
+  const { min, max } = NARRATION_SCALE
+  return Math.round(Math.min(max, Math.max(min, v)))
 }
 
-/** Agrandit (+1) ou réduit (−1) le texte de la narration ; null : taille par défaut. */
-export function changeNarrationScale(delta: 1 | -1 | null) {
-  const { min, max, step } = NARRATION_SCALE
-  const next = delta === null ? NARRATION_SCALE.default : Math.min(max, Math.max(min, narrationScaleAtom.get() + delta * step))
-  narrationScaleAtom.set(next)
-  storeValue('narrationScale', next)
+/** Agrandit (+1) ou réduit (−1) le texte de la narration ; null : taille par défaut du schéma. */
+export function changeNarrationScale(delta: number | null) {
+  narrationScaleAtom.set(
+    delta === null ? narrationScaleDefaultAtom.get() : clampNarrationScale(narrationScaleAtom.get() + delta * NARRATION_SCALE.step)
+  )
 }
 
 /** Panneau des étapes (mode édition) : largeur réglable, repliable. */
@@ -92,12 +97,22 @@ export const foldedBadgesAtom = atom<string[]>('foldedBadges', [])
 /** Notes d'objets ouvertes à la main (double-clic) pendant l'étape courante. */
 export const openedNotesAtom = atom<string[]>('openedNotes', [])
 
-/** Ouvre ou referme la note d'un objet dans le panneau de narration (qui s'affiche au besoin). */
+/** Onglet affiché dans le panneau de droite : la narration (null) ou la note d'un objet. */
+export const activeNoteAtom = atom<string | null>('activeNote', null)
+
+/** Ouvre la note d'un objet dans son onglet (et le panneau au besoin), ou la referme si elle est affichée. */
 export function toggleOpenedNote(id: string) {
   const opened = openedNotesAtom.get()
-  if (opened.includes(id)) return openedNotesAtom.set(opened.filter((n) => n !== id))
-  openedNotesAtom.set([...opened, id])
+  if (activeNoteAtom.get() === id) return closeNote(id)
+  if (!opened.includes(id)) openedNotesAtom.set([...opened, id])
+  activeNoteAtom.set(id)
   narrationVisibleAtom.set(true)
+}
+
+/** Referme l'onglet d'une note ouverte à la main ; s'il était affiché, on revient à la narration. */
+export function closeNote(id: string) {
+  openedNotesAtom.set(openedNotesAtom.get().filter((n) => n !== id))
+  if (activeNoteAtom.get() === id) activeNoteAtom.set(null)
 }
 
 /** Étape sélectionnée dans le panneau d'édition. */

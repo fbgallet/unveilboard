@@ -14,6 +14,8 @@ export interface ScreenState {
   recenter: number
   liveSpot: PageRect | null
   openedNotes: string[]
+  /** Onglet du panneau : narration (null) ou note d'un objet. */
+  activeNote: string | null
   legend: boolean
   /** Narration affichée au projecteur (masquée par défaut : c'est le présentateur qui parle). */
   narration: boolean

@@ -7,22 +7,34 @@ import { m } from '@/i18n/client'
  */
 export const assetStore: TLAssetStore = {
   async upload(_asset, file) {
-    let tooLarge = false
-    try {
-      const body = new FormData()
-      body.append('file', file)
-      const res = await fetch('/api/assets', { method: 'POST', body })
-      if (res.ok) return { src: ((await res.json()) as { url: string }).url }
-      tooLarge = res.status === 413
-    } catch {
-      // réseau indisponible : repli sur l'intégration
-    }
-    if (tooLarge) throw new Error(m().errors.imageTooLarge)
-    return { src: await fileToDataUrl(file) }
+    return { src: await uploadImage(file) }
   },
 }
 
-function fileToDataUrl(file: File) {
+/** Taille maximale d'une image intégrée à une note sans stockage en ligne (elle alourdit le document). */
+export const MAX_INLINE_NOTE_IMAGE = 1024 * 1024
+
+/** Téléverse une image et renvoie son adresse, ou la renvoie en data URL (sans stockage en ligne). */
+export async function uploadImage(file: File): Promise<string> {
+  return (await uploadImageOnline(file)) ?? fileToDataUrl(file)
+}
+
+/** Adresse de l'image téléversée (Vercel Blob) ; null sans stockage en ligne ou hors ligne. */
+export async function uploadImageOnline(file: File): Promise<string | null> {
+  let res: Response
+  try {
+    const body = new FormData()
+    body.append('file', file)
+    res = await fetch('/api/assets', { method: 'POST', body })
+  } catch {
+    return null // réseau indisponible : repli sur l'intégration
+  }
+  if (res.ok) return ((await res.json()) as { url: string }).url
+  if (res.status === 413) throw new Error(m().errors.imageTooLarge)
+  return null
+}
+
+export function fileToDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(reader.result as string)

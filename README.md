@@ -26,7 +26,8 @@ It was made for teaching: an audience follows the reasoning more easily when the
 - **Quick sequencing**: create shapes and add them to the current step, or to a new step before or after it, in one click.
 - **Trees and mind maps** on regular tldraw shapes: <kbd>Tab</kbd> adds a child, <kbd>Enter</kbd> adds a sibling, automatic layout in any direction or on both sides, collapsible branches.
 - **Argument maps**: natures for shapes (statement, fundamental belief, concept, question, problem, example, quote), each with its geometry and a label (with author and descriptive/normative modality), and typed relations for arrows (supports, objects, refutes, answers, explains, implies, presupposes…). In an argument tree, <kbd>Tab</kbd> offers a relation that styles and orients the branch; the shape tells the nature, the color tells the function (justification, objection, explanation…). Presets are editable and shared by all your diagrams; <kbd>L</kbd> shows a legend while presenting.
-- **Object notes**: the longer text about a shape is written in the side panel and shown in the narration panel on double-click, or at a given step.
+- **Object notes**: the longer text about a shape is written in the side panel and shown in its own tab of the narration panel on double-click, or at a given step. Narration and notes use Markdown (headings, lists, links, tables, images) with a toolbar, <kbd>Ctrl/⌘</kbd>+<kbd>B</kbd> / <kbd>I</kbd> / <kbd>K</kbd>, a preview and a large editor.
+- **Text size of the side panel**: a default per diagram, adjusted during a presentation with <kbd>+</kbd> / <kbd>−</kbd> or <kbd>Ctrl</kbd> + wheel.
 - **Read-only sharing**: "Share" creates a link that opens the presentation for anyone, step by step with its narration, without editing. On any instance, the diagram travels inside the link (after the `#`, never sent to the server; embedded images are left out). You can also publish a short link to a copy stored on the server, update it, unpublish it, or show it as a large QR code to project for students: in cloud mode (images included, no expiry), and on a local-mode instance when public sharing is configured (see below).
 - **Files**: save and open `.tldr` files. The sequence is stored inside the tldraw document, so a `.tldr` file keeps it.
 - **Dark mode**: in the editor, the side panels follow the color scheme chosen in tldraw's preferences (light, dark or system); the home and login pages follow the system.
@@ -91,7 +92,7 @@ More details (in French) in [README.fr.md](README.fr.md).
 
 ## Presentation shortcuts
 
-`→` / `Space` / `PageDown` next · `←` / `PageUp` previous · `Home` / `End` · `O` overview · `C` recenter · `K` laser · `N` narration · `+` / `−` / `0` narration text size · `L` legend · `F` fullscreen · `Esc` exit (the first `Esc` turns the laser off)
+`→` / `Space` / `PageDown` next · `←` / `PageUp` previous · `Home` / `End` · `O` overview · `C` recenter · `K` laser · `N` narration · `+` / `−` / `0` (or Ctrl + wheel) side panel text size · `Tab` narration / notes · `L` legend · `F` fullscreen · `Esc` exit (the first `Esc` turns the laser off)
 
 ## Contributing
 

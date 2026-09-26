@@ -131,11 +131,15 @@ Des styles nommés, en tête du panneau de styles : des **natures** pour les for
 
 ## Notes d'objet
 
-Le développement d'un objet (citation longue, explication) ne surcharge pas le schéma : il se rédige dans le panneau de droite (« Note de l'objet », même Markdown léger que la narration) et s'affiche dans le panneau de narration pendant la présentation, au double-clic sur l'objet (une marque ¶ signale les objets qui en ont une), ou à une étape avec l'action « Afficher la note ». Les « détails dépliables » des versions précédentes sont convertis en notes à l'ouverture du document.
+Le développement d'un objet (citation longue, explication) ne surcharge pas le schéma : il se rédige dans le panneau de droite (« Note de l'objet ») et s'affiche pendant la présentation dans son propre onglet du panneau de droite, à côté de la narration : au double-clic sur l'objet (une marque ¶ signale les objets qui en ont une), ou à une étape avec l'action « Afficher la note » (la note s'affiche alors d'emblée, la narration reste à un onglet). <kbd>Tab</kbd> passe d'un onglet à l'autre. Les « détails dépliables » des versions précédentes sont convertis en notes à l'ouverture du document.
+
+**Saisie de la narration et des notes** : Markdown (titres, listes, liens, tableaux, citations, images ; un retour à la ligne en est un), avec une barre d'outils, les raccourcis <kbd>Ctrl/⌘</kbd>+<kbd>B</kbd> / <kbd>I</kbd> / <kbd>K</kbd> (lien), un aperçu et un grand éditeur. Une image collée ou déposée est téléversée (Vercel Blob) ou, à défaut, rangée dans le document comme ressource tldraw (`asset:…` dans le texte, 1 Mo maximum).
+
+**Taille du texte du panneau** : chaque schéma a sa taille par défaut. En présentation, <kbd>+</kbd> / <kbd>−</kbd>, <kbd>Ctrl</kbd> + molette (ou pincement) au-dessus du panneau et les boutons A− / A+ l'ajustent pour la séance ; le bouton « n % » la garde comme défaut du schéma, <kbd>0</kbd> y revient.
 
 ## Raccourcis en présentation
 
-`→` / `Espace` / `PageDown` suivant · `←` / `PageUp` précédent · `Début` / `Fin` · `O` vue d'ensemble · `C` recentrer · `K` laser · `N` narration · `+` / `−` / `0` taille du texte de la narration · `L` légende · `F` plein écran · `Échap` quitter (le premier Échap désactive le laser)
+`→` / `Espace` / `PageDown` suivant · `←` / `PageUp` précédent · `Début` / `Fin` · `O` vue d'ensemble · `C` recentrer · `K` laser · `N` narration · `+` / `−` / `0` (ou Ctrl + molette) taille du texte du panneau · `Tab` narration / notes · `L` légende · `F` plein écran · `Échap` quitter (le premier Échap désactive le laser)
 
 Le cadenas de la barre de présentation déverrouille le document : l'interface tldraw réapparaît et seules `PageUp` / `PageDown` naviguent entre les étapes.
 

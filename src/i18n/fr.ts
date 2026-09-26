@@ -194,7 +194,10 @@ export const fr: Messages = {
     narration: 'Narration (N)',
     textSmaller: 'Texte plus petit (−)',
     textLarger: 'Texte plus grand (+)',
-    textReset: 'Taille du texte par défaut (0)',
+    textReset: 'Taille du texte par défaut du schéma (0) · Ctrl + molette pour ajuster',
+    pinTextSize: (n: number) => `Garder cette taille (${n} %) par défaut pour ce schéma`,
+    panelTabs: 'Narration et notes',
+    narrationTab: 'Narration',
     legend: 'Légende',
     showNote: 'Afficher la note (ou double-clic sur l’objet)',
     closeNote: 'Refermer la note',
@@ -405,6 +408,25 @@ export const fr: Messages = {
     modifiedElsewhere: (cloud) => `Ce schéma a été modifié ${cloud ? 'sur un autre appareil' : 'dans un autre onglet'}.`,
   },
 
+  editor: {
+    bold: 'Gras (Ctrl/⌘ + B)',
+    italic: 'Italique (Ctrl/⌘ + I)',
+    heading: 'Titre',
+    list: 'Liste',
+    numbered: 'Liste numérotée',
+    quote: 'Citation',
+    link: 'Lien (Ctrl/⌘ + K)',
+    image: 'Image (ou collez / déposez-la dans le texte)',
+    preview: 'Aperçu',
+    edit: 'Modifier',
+    expand: 'Agrandir l’éditeur',
+    close: 'Fermer',
+    uploading: 'Envoi de l’image…',
+    boldText: 'texte en gras',
+    italicText: 'texte en italique',
+    linkText: 'texte du lien',
+  },
+
   errors: {
     offline: 'Pas de connexion : modifications conservées sur cet appareil.',
     sessionExpired: 'Session expirée : reconnectez-vous.',
@@ -415,6 +437,7 @@ export const fr: Messages = {
     notFound: 'Document introuvable.',
     invalidTldr: 'Ce fichier n’est pas un fichier .tldr valide.',
     imageTooLarge: 'Image trop volumineuse (4 Mo maximum).',
+    noteImageTooLarge: 'Image trop lourde pour être intégrée au schéma (1 Mo maximum sans stockage en ligne) : réduisez-la, ou insérez un lien vers une image en ligne.',
   },
 
   viewer: {

@@ -1255,3 +1255,127 @@ svg.preset-swatch {
   opacity: 0.7;
   pointer-events: none;
 }
+
+/* Éditeur Markdown (narration, notes) */
+.md-editor {
+  display: flex;
+  flex-direction: column;
+}
+.md-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px;
+  border: 1px solid var(--color-zinc-200);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: var(--color-zinc-50);
+}
+.md-tool {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--color-zinc-600);
+}
+.md-tool:hover {
+  background: var(--color-zinc-200);
+  color: var(--color-zinc-900);
+}
+.md-tool-text {
+  font-size: 11px;
+}
+.md-tool-on {
+  background: var(--color-amber-100);
+  color: var(--color-amber-800);
+}
+.md-textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid var(--color-zinc-200);
+  border-radius: 0 0 6px 6px;
+  background: var(--color-white);
+  padding: 6px 8px;
+  font: 12px/1.5 var(--font-geist-mono, ui-monospace), monospace;
+  color: var(--color-zinc-800);
+  outline: none;
+}
+.md-textarea:focus {
+  border-color: var(--color-amber-400);
+}
+.md-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+  border: 1px solid var(--color-zinc-200);
+  border-radius: 0 0 6px 6px;
+  background: var(--color-white);
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-stone-700);
+}
+.md-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.25);
+}
+.md-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(1100px, calc(100% - 32px));
+  height: min(760px, calc(100% - 48px));
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--color-white);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.25);
+}
+.md-dialog .md-preview {
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+/* Onglets du panneau de droite en présentation : narration, notes d'objets */
+.narration-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-stone-200);
+}
+.narration-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 14em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--color-stone-500);
+  cursor: pointer;
+}
+.narration-tab:hover {
+  background: var(--color-stone-200);
+  color: var(--color-stone-900);
+}
+.narration-tab-active {
+  background: var(--color-amber-100);
+  color: var(--color-amber-800);
+}
+.narration-tab-close {
+  margin-left: 2px;
+  padding: 0 2px;
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.6;
+}
+.narration-tab-close:hover {
+  opacity: 1;
+}

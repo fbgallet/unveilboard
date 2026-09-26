@@ -14,6 +14,7 @@ import {
   narrationScaleAtom,
   narrationVisibleAtom,
   openedNotesAtom,
+  activeNoteAtom,
   overviewAtom,
   recenterAtom,
   remoteScribblesAtom,
@@ -155,6 +156,7 @@ function apply(state: ScreenState) {
   recenterAtom.set(state.recenter)
   liveSpotAtom.set(state.liveSpot)
   openedNotesAtom.set(state.openedNotes)
+  activeNoteAtom.set(state.activeNote ?? null)
   legendVisibleAtom.set(state.legend)
   narrationVisibleAtom.set(state.narration)
   narrationScaleAtom.set(state.narrationScale)

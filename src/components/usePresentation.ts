@@ -2,9 +2,9 @@
 
 import { useEffect, useRef } from 'react'
 import { react, type Editor, type TLCamera, type TLEventInfo } from 'tldraw'
-import { activeSpotlights, boundsOf, computeEditorStage, drawClip, moveCamera, readSequence } from '@/lib/canvas/adapter'
+import { activeSpotlights, boundsOf, computeEditorStage, drawClip, moveCamera, readSequence, writeSequence } from '@/lib/canvas/adapter'
 import { stateOf } from '@/lib/sequence/compute'
-import { noteOf } from '@/lib/canvas/notes'
+import { noteOf, panelNoteIds } from '@/lib/canvas/notes'
 import { applyLaserTiming } from '@/lib/canvas/laser'
 import {
   activeSpotsAtom,
@@ -31,6 +31,10 @@ import {
   viewerAtom,
   presentationStartedAtAtom,
   moreMenuOpenAtom,
+  activeNoteAtom,
+  narrationScaleAtom,
+  narrationScaleDefaultAtom,
+  NARRATION_SCALE,
 } from '@/lib/presentation/store'
 
 export function enterPresentation(fromIndex = -1) {
@@ -64,11 +68,14 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
   const savedCamera = useRef<TLCamera | null>(null)
 
   // Notes d'objets : double-clic sur un objet visible qui en a une ; refermées à chaque étape.
+  // Une note programmée à l'étape s'affiche d'emblée (la narration reste à un onglet).
   useEffect(() => {
     const stopReset = react('reset notes', () => {
-      stepIndexAtom.get()
+      const index = stepIndexAtom.get()
       modeAtom.get()
       openedNotesAtom.set([])
+      const step = readSequence(editor)?.steps[index]
+      activeNoteAtom.set(panelNoteIds(editor, step, [])[0] ?? null)
     })
     const onEvent = (info: TLEventInfo) => {
       if (modeAtom.get() !== 'present' || info.name !== 'double_click' || info.type !== 'click' || info.phase !== 'up') return
@@ -170,6 +177,12 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
       const unlocked = editUnlockedAtom.get()
       if (presenting) {
         if (!wasPresenting) savedCamera.current = editor.getCamera()
+        // Taille du texte : celle du schéma (la fenêtre écran reçoit celle du présentateur).
+        if (!wasPresenting && keyboard) {
+          const scale = readSequence(editor)?.narrationScale ?? NARRATION_SCALE.default
+          narrationScaleDefaultAtom.set(scale)
+          narrationScaleAtom.set(scale)
+        }
         if (!unlocked) {
           editor.selectNone()
           if (editor.getCurrentToolId() !== 'laser') editor.setCurrentTool('select')
@@ -182,7 +195,7 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
       }
       wasPresenting = presenting
     })
-  }, [editor])
+  }, [editor, keyboard])
 
   // Fenêtre redimensionnée (téléphone tourné, panneau replié par le navigateur) : on recadre l'étape.
   useEffect(() => {
@@ -262,6 +275,9 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
         case 'n':
         case 'N':
           toggleNarration()
+          break
+        case 'Tab':
+          cycleNoteTab(editor, e.shiftKey ? -1 : 1)
           break
         case 'l':
         case 'L':
@@ -396,4 +412,23 @@ export function toggleFullscreen() {
 export function recenterAfterResize() {
   // recenterAtom relance la caméra en conservant le mode courant (étape ou vue d'ensemble).
   setTimeout(() => recenterAtom.set(recenterAtom.get() + 1), 60)
+}
+
+/** Tab : onglet suivant du panneau de droite (narration, puis notes ouvertes) ; Maj+Tab : précédent. */
+export function cycleNoteTab(editor: Editor, delta: 1 | -1) {
+  const step = readSequence(editor)?.steps[stepIndexAtom.get()]
+  const tabs: (string | null)[] = [null, ...panelNoteIds(editor, step, openedNotesAtom.get())]
+  if (tabs.length < 2) return
+  const i = Math.max(0, tabs.indexOf(activeNoteAtom.get()))
+  activeNoteAtom.set(tabs[(i + delta + tabs.length) % tabs.length])
+  narrationVisibleAtom.set(true)
+}
+
+/** Garde la taille courante du texte de la narration comme défaut du schéma (enregistré dans sa séquence). */
+export function pinNarrationScale(editor: Editor) {
+  const seq = readSequence(editor)
+  if (!seq) return
+  const scale = narrationScaleAtom.get()
+  writeSequence(editor, { ...seq, narrationScale: scale === NARRATION_SCALE.default ? undefined : scale })
+  narrationScaleDefaultAtom.set(scale)
 }

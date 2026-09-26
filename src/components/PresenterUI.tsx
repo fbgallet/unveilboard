@@ -1,10 +1,9 @@
 'use client'
 
-import { Fragment, useEffect, useRef, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { renderPlaintextFromRichText, useEditor, useValue, type Editor, type TLRichText, type TLShape, type TLShapeId } from 'tldraw'
-import { noteOf } from '@/lib/canvas/notes'
+import { noteOf, panelNoteIds, plannedNoteIds, resolveTextImage } from '@/lib/canvas/notes'
 import { presetById, swatchColor } from '@/lib/canvas/presets'
-import type { Step } from '@/lib/sequence/types'
 import { readSequence } from '@/lib/canvas/adapter'
 import {
   DEFAULT_LASER,
@@ -22,6 +21,9 @@ import {
   changeNarrationScale,
   openedNotesAtom,
   legendVisibleAtom,
+  activeNoteAtom,
+  closeNote,
+  narrationScaleDefaultAtom,
   shapeClassesAtom,
   toggleOpenedNote,
   overviewAtom,
@@ -48,19 +50,59 @@ import { screenConnectedAtom } from '@/lib/presentation/screen'
 import { remoteStatusAtom } from '@/lib/remote/host'
 import { useLocale, useT } from '@/i18n/client'
 
-/** top : bloc affiché en tête du panneau (contrôles du double affichage, chez le présentateur). */
-export function NarrationPanel({ editor, top }: { editor: Editor; top?: ReactNode }) {
+/**
+ * Panneau de droite en présentation : la narration de l'étape, ou la note d'un objet (onglets).
+ * top : bloc affiché en tête du panneau (contrôles du double affichage, chez le présentateur).
+ * onPinScale : garder la taille du texte courante comme défaut du schéma (absent si non modifiable).
+ */
+export function NarrationPanel({ editor, top, onPinScale }: { editor: Editor; top?: ReactNode; onPinScale?: () => void }) {
   const t = useT()
   const seq = useValue('sequence', () => readSequence(editor), [editor])
   const index = useValue(stepIndexAtom)
   const visible = useValue(narrationVisibleAtom)
   const width = useValue(narrationWidthAtom)
   const scale = useValue(narrationScaleAtom)
+  const scaleDefault = useValue(narrationScaleDefaultAtom)
+  const active = useValue(activeNoteAtom)
+  const opened = useValue(openedNotesAtom)
+  const step = seq?.steps[index]
+  const tabs = useValue(
+    'note tabs',
+    () => {
+      const planned = plannedNoteIds(step)
+      return panelNoteIds(editor, step, opened).map((id) => {
+        const shape = editor.getShape(id as TLShapeId)!
+        return { id, title: shapeLabel(editor, shape), note: noteOf(shape), manual: !planned.includes(id) }
+      })
+    },
+    [editor, step, opened]
+  )
+  const aside = useRef<HTMLElement>(null)
+  const resolveSrc = useMemo(() => resolveTextImage(editor), [editor])
+
+  // Ctrl + molette (ou pincement sur un trackpad) au-dessus du panneau : taille du texte.
+  useEffect(() => {
+    const el = aside.current
+    if (!el) return
+    let acc = 0
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return
+      e.preventDefault()
+      acc += e.deltaY
+      if (Math.abs(acc) < 40) return
+      changeNarrationScale(acc > 0 ? -1 : 1)
+      acc = 0
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [visible, seq])
+
   if (!seq || !visible) return null
-  const step = seq.steps[index]
+  const note = tabs.find((n) => n.id === active)
 
   return (
     <aside
+      ref={aside}
       className="narration relative flex h-full shrink-0 flex-col border-l border-stone-200 bg-stone-50 px-10 py-12"
       style={{ width }}
     >
@@ -71,7 +113,12 @@ export function NarrationPanel({ editor, top }: { editor: Editor; top?: ReactNod
         onResized={recenterAfterResize}
       />
       <div className="absolute right-3 top-3 flex items-center gap-0.5">
-        {/* Taille du texte (aussi : touches +, − et 0) */}
+        {/* Taille du texte (aussi : touches +, − et 0, Ctrl + molette) */}
+        {onPinScale && scale !== scaleDefault && (
+          <button className="pbtn narration-size" onClick={onPinScale} title={t.presenter.pinTextSize(scale)}>
+            {scale} %
+          </button>
+        )}
         <button className="pbtn narration-size" onClick={() => changeNarrationScale(-1)} title={t.presenter.textSmaller}>
           A−
         </button>
@@ -84,25 +131,50 @@ export function NarrationPanel({ editor, top }: { editor: Editor; top?: ReactNod
       </div>
       {top}
       <p className="pr-24 text-xs font-medium uppercase tracking-[0.2em] text-stone-400">{seq.title}</p>
-      {/* key : relance l'animation d'entrée du texte à chaque étape */}
+      {tabs.length > 0 && (
+        <nav className="narration-tabs" aria-label={t.presenter.panelTabs}>
+          <button className={`narration-tab ${note ? '' : 'narration-tab-active'}`} onClick={() => activeNoteAtom.set(null)}>
+            {t.presenter.narrationTab}
+          </button>
+          {tabs.map((n) => (
+            <span key={n.id} className={`narration-tab ${note?.id === n.id ? 'narration-tab-active' : ''}`}>
+              <button className="min-w-0 truncate" onClick={() => activeNoteAtom.set(n.id)} title={n.title}>
+                ¶ {n.title || t.panel.note}
+              </button>
+              {n.manual && (
+                <button className="narration-tab-close" onClick={() => closeNote(n.id)} title={t.presenter.closeNote} aria-label={t.presenter.closeNote}>
+                  ×
+                </button>
+              )}
+            </span>
+          ))}
+        </nav>
+      )}
+      {/* key : relance l'animation d'entrée du texte à chaque étape et à chaque changement d'onglet */}
       <div
-        key={step?.id ?? 'start'}
+        key={`${step?.id ?? 'start'}:${note?.id ?? ''}`}
         className="narration-body mt-8 flex-1 overflow-y-auto"
         // em : relatif au panneau, dont la taille de base diminue sur petit écran (globals.css).
         style={{ fontSize: `${scale / 100}em` }}
       >
         {/* Tailles en em : elles suivent le réglage de taille du texte. */}
-        {step ? (
+        {note ? (
+          <>
+            <h2 className="line-clamp-3 font-serif text-[1.5em] leading-tight text-stone-900">{note.title}</h2>
+            <div className="mt-[1.2em] space-y-[0.9em] text-[1.15em] leading-relaxed text-stone-700">
+              <Markdownish text={note.note} resolveSrc={resolveSrc} />
+            </div>
+          </>
+        ) : step ? (
           <>
             <h2 className="font-serif text-[1.875em] leading-tight text-stone-900">{step.title}</h2>
             <div className="mt-[1.5em] space-y-[1em] text-[1.25em] leading-relaxed text-stone-700">
-              <Markdownish text={step.narration} />
+              <Markdownish text={step.narration} resolveSrc={resolveSrc} />
             </div>
           </>
         ) : (
           <h2 className="font-serif text-[2.25em] leading-tight text-stone-900">{seq.title}</h2>
         )}
-        <ObjectNotes editor={editor} step={step} />
       </div>
     </aside>
   )
@@ -481,45 +553,6 @@ function Icon({ name }: { name: IconName }) {
 function shapeLabel(editor: Editor, shape: TLShape) {
   const richText = (shape.props as { richText?: TLRichText }).richText
   return richText ? (renderPlaintextFromRichText(editor, richText).split('\n').find((l) => l.trim()) ?? '') : ''
-}
-
-/** Notes d'objets dans le panneau de narration : programmées à l'étape, ou ouvertes au double-clic. */
-function ObjectNotes({ editor, step }: { editor: Editor; step: Step | undefined }) {
-  const t = useT()
-  const opened = useValue(openedNotesAtom)
-  const notes = useValue(
-    'object notes',
-    () => {
-      const planned = step?.actions.filter((a) => a.type === 'note').flatMap((a) => a.targets) ?? []
-      return [...new Set([...planned, ...opened])].flatMap((id) => {
-        const shape = editor.getShape(id as TLShapeId)
-        const note = noteOf(shape)
-        if (!shape || !note) return []
-        return [{ id, title: shapeLabel(editor, shape), note, manual: !planned.includes(id) }]
-      })
-    },
-    [editor, step, opened]
-  )
-  if (!notes.length) return null
-  return (
-    <div className="mt-[2em] space-y-[1.5em]">
-      {notes.map((n) => (
-        <section key={n.id} className="narration-note">
-          <header className="flex items-start justify-between gap-2">
-            <h3 className="line-clamp-2 text-[0.8em] font-semibold uppercase tracking-[0.12em] text-stone-400">{n.title}</h3>
-            {n.manual && (
-              <button className="pbtn -mt-1 shrink-0" onClick={() => toggleOpenedNote(n.id)} title={t.presenter.closeNote} aria-label={t.presenter.closeNote}>
-                <Icon name="close" />
-              </button>
-            )}
-          </header>
-          <div className="mt-[0.5em] space-y-[0.8em] text-[1.1em] leading-relaxed text-stone-700">
-            <Markdownish text={n.note} />
-          </div>
-        </section>
-      ))}
-    </div>
-  )
 }
 
 /** Marques sur les objets visibles qui ont une note (présentation) : un clic l'affiche. */

@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import Link from 'next/link'
 import { LogoMark } from './Logo'
 import { shareDialogOpenAtom } from './ShareDialog'
@@ -7,8 +8,9 @@ import { Box, createShapeId, useValue, type Editor, type TLShapeId } from 'tldra
 import { readSequence, writeSequence } from '@/lib/canvas/adapter'
 import { SPOTLIGHT_TYPE } from '@/lib/canvas/spotlight'
 import { getTreeIndex } from '@/lib/canvas/tree'
-import { noteOf, setNote } from '@/lib/canvas/notes'
+import { noteOf, resolveTextImage, setNote, storeTextImage } from '@/lib/canvas/notes'
 import { NatureFields } from './PresetTools'
+import { MarkdownEditor } from './MarkdownEditor'
 import {
   addStep,
   addTargets,
@@ -88,6 +90,11 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
   const quickSequence = useValue(quickSequenceAtom)
   const badgesVisible = useValue(stepBadgesVisibleAtom)
   const canFold = useValue('can fold', () => selection.some((id) => getTreeIndex(editor).children.has(id)), [editor, selection])
+  // Images de la narration et des notes : en ligne, ou ressources du document.
+  const images = useMemo(
+    () => ({ storeImage: (file: File) => storeTextImage(editor, file), resolveSrc: resolveTextImage(editor) }),
+    [editor]
+  )
   const canNote = useValue('can note', () => selection.some((id) => !!noteOf(editor.getShape(id))), [editor, selection])
   const appears = appearanceIndex(seq)
 
@@ -220,7 +227,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
         </div>
         <p className="px-1 text-[11px] text-zinc-400">{selectionHint}</p>
         {selection.length === 1 && <NatureFields editor={editor} id={selection[0]} />}
-        {selection.length === 1 && <NoteEditor editor={editor} id={selection[0]} />}
+        {selection.length === 1 && <NoteEditor editor={editor} id={selection[0]} images={images} />}
       </div>
 
       <ol
@@ -232,6 +239,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
         {seq.steps.map((step, i) => (
           <StepCard
             key={step.id}
+            images={images}
             step={step}
             index={i}
             count={seq.steps.length}
@@ -271,6 +279,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
 }
 
 interface StepCardProps {
+  images: TextImages
   step: Step
   index: number
   count: number
@@ -384,11 +393,13 @@ function StepCard(p: StepCardProps) {
               ))}
             </select>
           </label>
-          <textarea
-            className="h-28 w-full resize-y rounded border border-zinc-200 p-2 text-xs outline-none focus:border-amber-400"
-            placeholder={t.step.narrationPlaceholder}
+          <MarkdownEditor
             value={step.narration}
-            onChange={(e) => p.onChange({ narration: e.target.value })}
+            onChange={(narration) => p.onChange({ narration })}
+            placeholder={t.step.narrationPlaceholder}
+            rows={6}
+            title={step.title}
+            {...p.images}
           />
         </div>
       )}
@@ -437,19 +448,25 @@ function Icon({ name }: { name: keyof typeof ICONS }) {
 }
 
 /** Note de l'objet sélectionné : affichée dans le panneau de narration pendant la présentation. */
-function NoteEditor({ editor, id }: { editor: Editor; id: TLShapeId }) {
+interface TextImages {
+  storeImage(file: File): Promise<string>
+  resolveSrc(src: string): string | undefined
+}
+
+function NoteEditor({ editor, id, images }: { editor: Editor; id: TLShapeId; images: TextImages }) {
   const t = useT()
   const note = useValue('note', () => noteOf(editor.getShape(id)), [editor, id])
   return (
-    <label className="mt-1 flex flex-col gap-1 px-1 text-[11px] text-zinc-500">
+    <div className="mt-1 flex flex-col gap-1 px-1 text-[11px] text-zinc-500">
       {t.panel.note}
-      <textarea
-        className="min-h-16 resize-y rounded border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-800 outline-none focus:border-amber-400"
-        rows={note ? 4 : 2}
+      <MarkdownEditor
         value={note}
+        onChange={(text) => setNote(editor, id, text)}
         placeholder={t.panel.notePlaceholder}
-        onChange={(e) => setNote(editor, id, e.target.value)}
+        rows={note ? 5 : 2}
+        title={t.panel.note}
+        {...images}
       />
-    </label>
+    </div>
   )
 }
