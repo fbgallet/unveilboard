@@ -35,13 +35,15 @@ pnpm dev
 
 ## Mise en ligne (Vercel + Neon)
 
-En mode local, seul `NEXT_PUBLIC_TLDRAW_LICENSE_KEY` est nécessaire sur Vercel. En mode cloud :
+En mode local, seul `TLDRAW_LICENSE_KEY` est nécessaire sur Vercel. En mode cloud :
 
 1. Créer un projet Neon et copier l'URL de connexion **pooled** (hôte en `-pooler`).
 2. Appliquer le schéma sur Neon (à refaire après chaque nouvelle migration dans `drizzle/`), **avec l'URL entre guillemets simples** (elle contient des `&`) :
    `DATABASE_URL='postgresql://…-pooler…/neondb?sslmode=require' pnpm db:migrate`
-3. Sur Vercel, définir les variables : `DATABASE_URL`, `APP_PASSWORD`, `SESSION_SECRET` (`openssl rand -base64 48`), `NEXT_PUBLIC_TLDRAW_LICENSE_KEY`.
+3. Sur Vercel, définir les variables : `DATABASE_URL`, `APP_PASSWORD`, `SESSION_SECRET` (`openssl rand -base64 48`), `TLDRAW_LICENSE_KEY`.
 4. Optionnel : créer un store Vercel Blob (ajoute `BLOB_READ_WRITE_TOKEN`) pour stocker les images hors du document.
+
+`TLDRAW_LICENSE_KEY` est lue à l'exécution : la changer ne demande pas de redéploiement. Sans clé valide pour votre domaine (`www.` compris, s'il est utilisé), tldraw masque l'éditeur quelques secondes après son chargement.
 
 ## Sauvegarde
 

@@ -56,16 +56,16 @@ pnpm dev
 
 ## Deploying (Vercel)
 
-- **Local mode**: import the repository into Vercel and set `NEXT_PUBLIC_TLDRAW_LICENSE_KEY`. That's all.
+- **Local mode**: import the repository into Vercel and set `TLDRAW_LICENSE_KEY`. That's all.
 - **Cloud mode**:
   1. Create a Postgres database (e.g. Neon).
   2. Apply the migrations with the **direct** (non-pooled) connection URL, in single quotes because it contains `&`:
      `DATABASE_URL='postgresql://…/neondb?sslmode=require' pnpm db:migrate`
      Run it again whenever a new migration is added in `drizzle/`.
-  3. On Vercel, set `DATABASE_URL` (the **pooled** URL, with `-pooler` in the host), `APP_PASSWORD`, `SESSION_SECRET` (`openssl rand -base64 48`) and `NEXT_PUBLIC_TLDRAW_LICENSE_KEY`.
+  3. On Vercel, set `DATABASE_URL` (the **pooled** URL, with `-pooler` in the host), `APP_PASSWORD`, `SESSION_SECRET` (`openssl rand -base64 48`) and `TLDRAW_LICENSE_KEY`.
   4. Optional: add a Vercel Blob store (`BLOB_READ_WRITE_TOKEN`) to store images outside the document.
 
-`NEXT_PUBLIC_*` variables are embedded at build time: redeploy after changing them.
+`TLDRAW_LICENSE_KEY` is read at runtime, so changing it takes effect without a rebuild. Without a valid key covering your domain (including `www.` if you use it), tldraw hides the editor a few seconds after it loads.
 
 ## Architecture
 

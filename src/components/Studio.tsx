@@ -71,7 +71,17 @@ const overrides: TLUiOverrides = {
 const getShapeVisibility = (shape: TLShape, editor: Editor) =>
   modeAtom.get() === 'edit' && isHiddenInEdit(editor, shape) ? 'hidden' : 'inherit'
 
-export default function Studio({ docId, demo, storage }: { docId: string; demo: DemoName | null; storage: StorageMode }) {
+export default function Studio({
+  docId,
+  demo,
+  storage,
+  licenseKey,
+}: {
+  docId: string
+  demo: DemoName | null
+  storage: StorageMode
+  licenseKey?: string
+}) {
   const [editor, setEditor] = useState<Editor | null>(null)
   const mode = useValue(modeAtom)
   const unlocked = useValue(editUnlockedAtom)
@@ -116,7 +126,7 @@ export default function Studio({ docId, demo, storage }: { docId: string; demo: 
           overlayUtils={overlayUtils}
           getShapeVisibility={getShapeVisibility}
           overrides={overrides}
-          licenseKey={process.env.NEXT_PUBLIC_TLDRAW_LICENSE_KEY}
+          licenseKey={licenseKey}
           onMount={setEditor}
         />
         {editor && mode === 'present' && <ProgressBar editor={editor} />}

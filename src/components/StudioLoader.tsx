@@ -11,7 +11,7 @@ const Studio = dynamic(() => import('./Studio'), {
   loading: () => <Loading />,
 })
 
-export default function StudioLoader(props: { docId: string; demo: DemoName | null; storage: StorageMode }) {
+export default function StudioLoader(props: { docId: string; demo: DemoName | null; storage: StorageMode; licenseKey?: string }) {
   return <Studio {...props} />
 }
 
