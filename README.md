@@ -1,6 +1,10 @@
-# Schémas animés
+# Unveilboard
+
+*Show your diagrams step by step. Built with [tldraw](https://tldraw.dev).*
 
 Présentation progressive de schémas sur un canevas tldraw : chaque étape fait apparaître, atténue, cache ou surligne des objets, déplace la caméra et affiche un texte de narration.
+
+> Unveilboard n'est pas affilié à tldraw ni approuvé par tldraw Inc. « tldraw » est une marque de tldraw Inc.
 
 ## Deux modes de stockage
 

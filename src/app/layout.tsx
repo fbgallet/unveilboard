@@ -18,8 +18,8 @@ const serif = Source_Serif_4({
 });
 
 export const metadata: Metadata = {
-  title: "Schémas animés",
-  description: "Présentation progressive de schémas pour les cours",
+  title: "Unveilboard",
+  description: "Show your diagrams step by step. Built with tldraw.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
