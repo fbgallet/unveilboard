@@ -36,7 +36,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} ${serif.variable} h-full antialiased`}
     >
-      <body className="h-full">
+      {/* Des extensions (ColorZilla…) ajoutent des attributs à <body> avant React : écart d'hydratation sans conséquence. */}
+      <body className="h-full" suppressHydrationWarning>
         <I18nProvider locale={locale}>{children}</I18nProvider>
       </body>
     </html>

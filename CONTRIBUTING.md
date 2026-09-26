@@ -22,13 +22,14 @@ pnpm lint
 pnpm test         # if you touched src/lib/sequence or src/lib/tree
 ```
 
-Please test your change in the browser, both in editing and in presentation mode.
+Please test your change in the browser, both in editing and in presentation mode, in light and dark themes.
 
 ## Guidelines
 
 - **Keep tldraw behind the adapter.** The presentation engine only talks to tldraw through `src/lib/canvas/adapter.ts`. The sequence model (`src/lib/sequence/`) stays pure data.
 - **Never modify the document during a presentation.** Presentation state is computed and applied with CSS classes.
 - **Storage goes through `DocumentStore`** (`src/lib/storage/`), so both local and cloud modes keep working.
+- **Use the Tailwind palette for colors** (`bg-white`, `text-stone-600`, `var(--color-stone-500)` in CSS), not hard-coded values: dark mode works by redefining the palette. Check your change in both themes (tldraw's menu › Preferences › Color scheme).
 - **Don't hide the tldraw watermark**, and don't use the tldraw name or logo in branding (see the [tldraw trademark guidelines](https://tldraw.dev/legal/trademarks)).
 - Existing code comments are in French. New comments can be in English or French.
 

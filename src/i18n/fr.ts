@@ -371,6 +371,58 @@ export const fr: Messages = {
     imageTooLarge: 'Image trop volumineuse (4 Mo maximum).',
   },
 
+  viewer: {
+    madeWith: 'Fait avec Unveilboard : montrez vos schémas étape par étape',
+    invalidLink: 'Ce lien est incomplet ou abîmé. Redemandez-le, copié en entier.',
+    report: 'Signaler',
+    reportTitle: 'Signaler cette présentation',
+    reportIntro: 'Qu’est-ce qui ne va pas (contenu illégal ou haineux, spam, arnaque…) ? Le signalement est envoyé à la personne qui gère ce site.',
+    reportReason: 'Motif',
+    reportContact: 'Votre e-mail (facultatif, pour une réponse)',
+    reportSend: 'Envoyer le signalement',
+    reportSent: 'Merci, votre signalement a été envoyé.',
+    reportFailed: 'Le signalement n’a pas pu être envoyé. Réessayez plus tard.',
+  },
+
+  share: {
+    button: 'Partager',
+    buttonHint: 'Partager cette présentation par un lien, en lecture seule',
+    menu: 'Partager…',
+    title: 'Partager la présentation',
+    readOnly: 'Toute personne qui a le lien peut suivre la présentation étape par étape, avec sa narration, sans pouvoir la modifier.',
+    linkTitle: 'Lien contenant le schéma',
+    linkIntro:
+      'Le schéma voyage dans le lien : rien n’est stocké sur un serveur. Les modifications ultérieures n’y sont pas : créez un nouveau lien.',
+    createLink: 'Créer le lien',
+    copy: 'Copier',
+    copied: 'Copié',
+    droppedImages: (n: number) =>
+      n <= 1
+        ? 'Une image intégrée au schéma ne peut pas voyager dans un lien : elle manquera.'
+        : `${n} images intégrées au schéma ne peuvent pas voyager dans un lien : elles manqueront.`,
+    longLink: (kb: number) => `Lien long (${kb} Ko) : il passe par e-mail, mais certaines messageries peuvent le couper.`,
+    publishTitle: 'Lien publié',
+    publishIntro: 'Un lien court vers une copie enregistrée sur ce serveur, images comprises. Republier met à jour le même lien.',
+    publish: 'Publier',
+    update: 'Publier la dernière version',
+    unpublish: 'Dépublier',
+    confirmUnpublish: 'Dépublier ? Le lien ne fonctionnera plus.',
+    publishedAt: (date: string) => `Publié le ${date}`,
+    notSaved: 'Les dernières modifications ne sont pas encore enregistrées. Réessayez dans un instant.',
+    publicTitle: 'Lien court',
+    publicIntro:
+      'Un lien court vers une copie du schéma, gardée 30 jours après la dernière publication. Seuls le schéma et ses textes sont publiés : les liens cliquables et les images intégrées sont retirés, les images du web sont gardées.',
+    expiresAt: (date: string) => `Expire le ${date}, sauf nouvelle publication.`,
+    errors: {
+      disabled: 'La publication n’est pas disponible sur ce site.',
+      rate_limited: 'Trop de publications depuis votre connexion. Réessayez plus tard.',
+      too_large: 'Ce schéma est trop volumineux pour être publié (256 Ko au plus). Utilisez le lien contenant le schéma.',
+      blocked: 'Ce schéma contient des mots ou des adresses d’images qui ne peuvent pas être publiés ici.',
+      invalid: 'Ce schéma ne peut pas être publié.',
+      not_found: 'Ce lien n’existe plus (expiré ou retiré).',
+    },
+  },
+
   files: {
     typeDescription: 'Schéma tldraw',
     defaultName: 'schéma',

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { LogoMark } from './Logo'
+import { shareDialogOpenAtom } from './ShareDialog'
 import { Box, createShapeId, useValue, type Editor, type TLShapeId } from 'tldraw'
 import { readSequence, writeSequence } from '@/lib/canvas/adapter'
 import { SPOTLIGHT_TYPE } from '@/lib/canvas/spotlight'
@@ -135,6 +136,13 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
           </Link>
           <div className="flex items-center gap-2">
             <SyncIndicator />
+            <button
+              className="rounded px-1.5 text-xs text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900"
+              onClick={() => shareDialogOpenAtom.set(true)}
+              title={t.share.buttonHint}
+            >
+              {t.share.button}
+            </button>
             <button
               className="rounded px-1.5 text-xs text-zinc-400 hover:bg-zinc-200 hover:text-zinc-900"
               onClick={() => void saveTldrAs(editor).catch((e) => alert(e instanceof Error ? e.message : e))}

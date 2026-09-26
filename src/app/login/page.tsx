@@ -11,7 +11,7 @@ export default async function LoginPage({ searchParams }: PageProps<'/login'>) {
   const { next } = await searchParams
   const t = await getMessages()
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[#fbfaf7] px-4">
+    <main className="site flex min-h-dvh items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex items-center justify-between">
           <h1>

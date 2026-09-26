@@ -12,6 +12,27 @@ Présentation progressive de schémas sur un canevas tldraw : chaque étape fait
 
 L'interface existe en anglais et en français (sélecteur EN · FR sur l'accueil et la page de connexion) ; par défaut, elle suit la langue du navigateur, et le choix est mémorisé dans un cookie. L'interface de tldraw suit la même langue. Les textes sont dans `src/i18n/` : `en.ts` fait référence, et TypeScript signale toute clé manquante dans `fr.ts`. Le contenu des schémas n'est jamais traduit ; seules les valeurs par défaut suivent la langue (titres, préréglages de départ, exemple : la liberté en français, le cycle de l'eau en anglais).
 
+## Partage en lecture seule
+
+« Partager » (en-tête du panneau des étapes, ou menu ☰) donne un lien qui ouvre la présentation pour n'importe qui : étape par étape, avec la narration, sans pouvoir modifier le schéma (page `/p`).
+
+- **Lien contenant le schéma**, sur toute instance : le document est compressé dans le lien, après le `#`, que le navigateur n'envoie jamais au serveur. Rien n'est stocké, donc rien à modérer. Les images intégrées au document sont retirées (elles rendraient le lien démesuré), et les modifications ultérieures demandent un nouveau lien.
+- **Lien publié**, en mode cloud seulement : un lien court (`/p/<id>`) vers une copie de la dernière version enregistrée (table `shares`), images comprises. « Publier la dernière version » met à jour le même lien ; « Dépublier » le désactive. La publication exige la session ; la lecture est publique.
+
+- **Partage public**, sur une instance en mode local, si un stockage Upstash Redis est configuré (`KV_REST_API_URL`, `KV_REST_API_TOKEN`, via la marketplace Vercel) : n'importe quel visiteur peut publier un lien court. Garde-fous :
+  - seuls le schéma et ses textes sont publiés : liens cliquables, cartes de site et images intégrées sont retirés ; les images du web doivent être en `https` et passer le filtre d'adresses ;
+  - filtre de mots-clés volontairement court (`src/lib/share/blocklist.ts`, complétable par `SHARE_BLOCKLIST`), pour ne pas bloquer des sujets de cours ;
+  - 256 Ko au plus ; 3 publications par heure et 10 par jour par adresse IP, 200 par jour au total ;
+  - effacement 30 jours après la dernière publication ; `SHARING=off` arrête aussitôt les publications (les liens existants restent lisibles) ;
+  - la clé de gestion (mise à jour, dépublication) reste dans le navigateur de l'auteur, jamais dans le document.
+- **Signalement** : le lecteur d'un lien publié a un bouton « Signaler » ; le formulaire envoie un e-mail à `REPORT_EMAIL` via Resend (`RESEND_API_KEY`), sans que l'adresse ne quitte le serveur. Pour retirer un partage public : supprimer la clé `share:<id>` dans la console Upstash.
+
+L'adresse IP vient de l'en-tête `X-Forwarded-For` : derrière Vercel, elle ne peut pas être falsifiée ; en auto-hébergement, placer l'app derrière un proxy qui le pose. Détails dans `.env.example`.
+
+## Mode sombre
+
+Dans l'éditeur, les panneaux de l'app (étapes, narration, barres d'outils) suivent le thème choisi dans les préférences de tldraw : clair, sombre ou celui du système. L'accueil et la page de connexion suivent le thème du système. En mode sombre, la palette Tailwind est redéfinie dans `globals.css` (utilitaire `dark-palette` : gris inversés) : les couleurs de l'interface passent donc par ses variables (`bg-white`, `var(--color-stone-500)`…), jamais par des valeurs en dur.
+
 ## Deux modes de stockage
 
 Le mode dépend de la présence de `DATABASE_URL` :
@@ -44,6 +65,8 @@ En mode local, seul `TLDRAW_LICENSE_KEY` est nécessaire sur Vercel. En mode clo
 4. Optionnel : créer un store Vercel Blob (ajoute `BLOB_READ_WRITE_TOKEN`) pour stocker les images hors du document.
 
 `TLDRAW_LICENSE_KEY` est lue à l'exécution : la changer ne demande pas de redéploiement. Sans clé valide pour votre domaine (`www.` compris, s'il est utilisé), tldraw masque l'éditeur quelques secondes après son chargement.
+
+Les aperçus de lien (réseaux sociaux, messageries) pointent par défaut vers `https://unveilboard.com` ; une instance auto-hébergée indique sa propre adresse dans `SITE_URL`.
 
 ## Sauvegarde
 

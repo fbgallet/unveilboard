@@ -17,6 +17,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Tout sauf la page de connexion et les fichiers statiques.
-  matcher: ['/((?!login|_next/static|_next/image|favicon.ico).*)'],
+  // Tout sauf : la connexion, les présentations partagées (/p, /p/<id>) et leur signalement, les icônes et l'image
+  // d'aperçu (lues par les navigateurs et les réseaux sociaux sans session), les fichiers statiques.
+  matcher: ['/((?!login|p$|p/|api/report|icon\\.svg|apple-icon|opengraph-image|_next/static|_next/image|favicon.ico).*)'],
 }

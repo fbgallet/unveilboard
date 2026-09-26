@@ -26,6 +26,7 @@ import { SpotlightOverlay } from './SpotlightOverlay'
 import { FoldBadges, RelationPicker, TreeToolbar, useTreeKeyboard } from './TreeTools'
 import { MainMenu } from './FileMenu'
 import { PresetManager, PresetStylePanel } from './PresetTools'
+import { ShareDialog, shareDialogOpenAtom } from './ShareDialog'
 import { loadPresetSettings, registerPresetSideEffects } from '@/lib/canvas/presets'
 
 const overlayUtils = [LaserOverlayUtil]
@@ -76,11 +77,14 @@ export default function Studio({
   demo,
   storage,
   licenseKey,
+  publicSharing,
 }: {
   docId: string
   demo: DemoName | null
   storage: StorageMode
   licenseKey?: string
+  /** Instance publique : publication d'un lien court ouverte à tous (partages publics). */
+  publicSharing: boolean
 }) {
   const [editor, setEditor] = useState<Editor | null>(null)
   const mode = useValue(modeAtom)
@@ -111,6 +115,7 @@ export default function Studio({
       quickSequenceAtom.set(false)
       stepIndexAtom.set(-1)
       activeStepIdAtom.set(null)
+      shareDialogOpenAtom.set(false)
     }
   }, [editor, docId, demo, storage])
 
@@ -143,6 +148,7 @@ export default function Studio({
         {editor && (mode === 'edit' || unlocked) && <RelationPicker editor={editor} />}
         {editor && <SyncBanner />}
         {editor && <PresetManager editor={editor} />}
+        {editor && <ShareDialog editor={editor} docId={docId} publicSharing={publicSharing} />}
       </div>
       {editor && <PresentationHost editor={editor} />}
       {editor && mode === 'edit' && <SequencePanel editor={editor} />}

@@ -3,6 +3,7 @@
 // de ceux qu'il utilise (document.meta.presets), pour rester lisible ailleurs.
 
 import { m } from '@/i18n/client'
+import { viewerAtom } from '@/lib/presentation/store'
 import {
   ArrowShapeArrowheadEndStyle,
   ArrowShapeArrowheadStartStyle,
@@ -196,7 +197,10 @@ export function registerPresetSideEffects(editor: Editor) {
 /** Préréglage d'après son identifiant : communs, sinon copie du document. */
 export function presetById(editor: Editor, id: string | undefined): Preset | undefined {
   if (!id) return undefined
-  return presetSettingsAtom.get().items.find((p) => p.id === id) ?? documentPresets(editor)[id]
+  const own = presetSettingsAtom.get().items.find((p) => p.id === id)
+  // Lien partagé : la copie du document fait foi (les préréglages de l'auteur, pas ceux du lecteur).
+  if (viewerAtom.get()) return documentPresets(editor)[id] ?? own
+  return own ?? documentPresets(editor)[id]
 }
 
 // ---------- Copie dans le document ----------

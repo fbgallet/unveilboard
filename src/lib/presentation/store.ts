@@ -77,6 +77,9 @@ export function storeValue(key: string, value: number | boolean) {
   }
 }
 
+/** Lecteur d'un lien partagé (/p) : présentation seule, sans retour à l'édition ni déverrouillage. */
+export const viewerAtom = atom<boolean>('viewer', false)
+
 /** Document modifiable pendant la présentation (cadenas ouvert). */
 export const editUnlockedAtom = atom<boolean>('editUnlocked', false)
 

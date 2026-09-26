@@ -19,10 +19,10 @@ interface Box {
 }
 
 const TONES = {
-  violet: { stroke: '#7c3aed', fill: '#f5f3ff' },
-  blue: { stroke: '#2563eb', fill: '#eff6ff' },
-  green: { stroke: '#059669', fill: '#ecfdf5' },
-  amber: { stroke: '#d97706', fill: '#fffbeb' },
+  violet: { stroke: '#7c3aed', fill: 'var(--color-violet-50)' },
+  blue: { stroke: '#2563eb', fill: 'var(--color-blue-50)' },
+  green: { stroke: '#059669', fill: 'var(--color-emerald-50)' },
+  amber: { stroke: '#d97706', fill: 'var(--color-amber-50)' },
 }
 
 const W = 160
@@ -75,7 +75,7 @@ export function HeroDemo() {
         <svg viewBox="0 0 520 290" className="hero-demo-canvas">
           <defs>
             <marker id="hero-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#57534e" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="var(--color-stone-600)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
             </marker>
             <filter id="hero-glow" x="-30%" y="-60%" width="160%" height="220%">
               <feDropShadow dx="0" dy="0" stdDeviation="7" floodColor="#f59e0b" floodOpacity="0.55" />

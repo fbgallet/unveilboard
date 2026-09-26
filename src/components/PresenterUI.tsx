@@ -26,6 +26,7 @@ import {
   toggleOpenedNote,
   overviewAtom,
   stepIndexAtom,
+  viewerAtom,
 } from '@/lib/presentation/store'
 import {
   clearLiveSpot,
@@ -107,6 +108,7 @@ export function ProgressBar({ editor }: { editor: Editor }) {
   const overview = useValue(overviewAtom)
   const narration = useValue(narrationVisibleAtom)
   const unlocked = useValue(editUnlockedAtom)
+  const viewer = useValue(viewerAtom)
   const laser = useValue('laser', () => editor.getCurrentToolId() === 'laser', [editor])
   if (!seq) return null
   const total = seq.steps.length
@@ -141,15 +143,17 @@ export function ProgressBar({ editor }: { editor: Editor }) {
         <ToolBtn onClick={recenter} title={t.presenter.recenter} icon="recenter" />
         <LaserControl editor={editor} active={laser} />
         <SpotControl editor={editor} />
-        <ToolBtn
-          onClick={toggleUnlocked}
-          active={unlocked}
-          title={unlocked ? t.presenter.lock : t.presenter.unlock}
-          icon={unlocked ? 'unlocked' : 'locked'}
-        />
+        {!viewer && (
+          <ToolBtn
+            onClick={toggleUnlocked}
+            active={unlocked}
+            title={unlocked ? t.presenter.lock : t.presenter.unlock}
+            icon={unlocked ? 'unlocked' : 'locked'}
+          />
+        )}
         <ToolBtn onClick={toggleNarration} active={narration} title={t.presenter.narration} icon="panel" />
         <ToolBtn onClick={toggleFullscreen} title={t.presenter.fullscreen} icon="fullscreen" />
-        <ToolBtn onClick={exitPresentation} title={t.presenter.exit} icon="close" />
+        {!viewer && <ToolBtn onClick={exitPresentation} title={t.presenter.exit} icon="close" />}
       </div>
     </div>
   )

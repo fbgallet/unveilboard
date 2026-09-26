@@ -15,6 +15,13 @@
       "when": 1790414981860,
       "tag": "0001_lush_nightmare",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790456467837,
+      "tag": "0002_pale_phil_sheldon",
+      "breakpoints": true
     }
   ]
 }

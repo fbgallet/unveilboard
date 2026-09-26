@@ -375,6 +375,56 @@ export const en = {
     imageTooLarge: 'Image too large (4 MB maximum).',
   },
 
+  viewer: {
+    madeWith: 'Made with Unveilboard: show your diagrams step by step',
+    invalidLink: 'This link is incomplete or damaged. Ask for it again, copied in full.',
+    report: 'Report',
+    reportTitle: 'Report this presentation',
+    reportIntro: 'What is wrong with it (illegal or hateful content, spam, scam…)? Your report is sent to whoever runs this site.',
+    reportReason: 'Reason',
+    reportContact: 'Your email (optional, to get an answer)',
+    reportSend: 'Send the report',
+    reportSent: 'Thank you, your report has been sent.',
+    reportFailed: 'The report could not be sent. Try again later.',
+  },
+
+  share: {
+    button: 'Share',
+    buttonHint: 'Share this presentation, read-only, with a link',
+    menu: 'Share…',
+    title: 'Share the presentation',
+    readOnly: 'Anyone with the link can watch the presentation step by step, with its narration, without being able to change it.',
+    linkTitle: 'Link with the diagram inside',
+    linkIntro:
+      'The diagram travels inside the link: nothing is stored on a server. Later changes are not included: create a new link.',
+    createLink: 'Create the link',
+    copy: 'Copy',
+    copied: 'Copied',
+    droppedImages: (n: number) =>
+      `${plural(n, 'image', 'images')} embedded in the diagram cannot travel in a link and will be missing.`,
+    longLink: (kb: number) => `Long link (${kb} KB): fine by email, but some messaging apps may cut it.`,
+    publishTitle: 'Published link',
+    publishIntro: 'A short link to a copy stored on this server, images included. Republishing updates the same link.',
+    publish: 'Publish',
+    update: 'Publish the latest version',
+    unpublish: 'Unpublish',
+    confirmUnpublish: 'Unpublish? The link will stop working.',
+    publishedAt: (date: string) => `Published ${date}`,
+    notSaved: 'The latest changes are not saved yet. Try again in a moment.',
+    publicTitle: 'Short link',
+    publicIntro:
+      'A short link to a copy of the diagram, kept 30 days after the last publication. Only the diagram and its texts are published: clickable links and embedded images are removed, images from the web are kept.',
+    expiresAt: (date: string) => `Expires ${date}, unless you publish again.`,
+    errors: {
+      disabled: 'Publishing is not available on this site.',
+      rate_limited: 'Too many publications from your connection. Try again later.',
+      too_large: 'This diagram is too large to be published (256 KB max). Use the link with the diagram inside.',
+      blocked: 'This diagram contains words or image addresses that cannot be published here.',
+      invalid: 'This diagram cannot be published.',
+      not_found: 'This link no longer exists (expired or removed).',
+    } as Record<string, string>,
+  },
+
   files: {
     typeDescription: 'tldraw diagram',
     defaultName: 'diagram',

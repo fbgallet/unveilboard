@@ -28,6 +28,7 @@ import {
   openedNotesAtom,
   toggleOpenedNote,
   legendVisibleAtom,
+  viewerAtom,
 } from '@/lib/presentation/store'
 
 export function enterPresentation(fromIndex = -1) {
@@ -266,7 +267,7 @@ export function usePresentation(editor: Editor) {
           if (spotToolAtom.get()) spotToolAtom.set(false)
           else if (liveSpotAtom.get()) clearLiveSpot()
           else if (editor.getCurrentToolId() === 'laser') editor.setCurrentTool('select')
-          else exitPresentation()
+          else if (!viewerAtom.get()) exitPresentation()
           break
         default:
           handled = false

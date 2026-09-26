@@ -24,7 +24,9 @@ It was made for teaching: an audience follows the reasoning more easily when the
 - **Trees and mind maps** on regular tldraw shapes: <kbd>Tab</kbd> adds a child, <kbd>Enter</kbd> adds a sibling, automatic layout in any direction or on both sides, collapsible branches.
 - **Argument maps**: natures for shapes (statement, fundamental belief, concept, question, problem, example, quote), each with its geometry and a label (with author and descriptive/normative modality), and typed relations for arrows (supports, objects, refutes, answers, explains, implies, presupposes…). In an argument tree, <kbd>Tab</kbd> offers a relation that styles and orients the branch; the shape tells the nature, the color tells the function (justification, objection, explanation…). Presets are editable and shared by all your diagrams; <kbd>L</kbd> shows a legend while presenting.
 - **Object notes**: the longer text about a shape is written in the side panel and shown in the narration panel on double-click, or at a given step.
+- **Read-only sharing**: "Share" creates a link that opens the presentation for anyone, step by step with its narration, without editing. On any instance, the diagram travels inside the link (after the `#`, never sent to the server; embedded images are left out). You can also publish a short link to a copy stored on the server, update it or unpublish it: in cloud mode (images included, no expiry), and on a local-mode instance when public sharing is configured (see below).
 - **Files**: save and open `.tldr` files. The sequence is stored inside the tldraw document, so a `.tldr` file keeps it.
+- **Dark mode**: in the editor, the side panels follow the color scheme chosen in tldraw's preferences (light, dark or system); the home and login pages follow the system.
 - **English and French interface**, including tldraw's own menus. Adding a language means adding one file in `src/i18n/`.
 
 ## Two storage modes
@@ -67,6 +69,10 @@ pnpm dev
   4. Optional: add a Vercel Blob store (`BLOB_READ_WRITE_TOKEN`) to store images outside the document.
 
 `TLDRAW_LICENSE_KEY` is read at runtime, so changing it takes effect without a rebuild. Without a valid key covering your domain (including `www.` if you use it), tldraw hides the editor a few seconds after it loads.
+
+**Public sharing** (local mode, optional): with an Upstash Redis store (`KV_REST_API_URL`, `KV_REST_API_TOKEN`, from the Vercel Marketplace), any visitor can publish a short link. Safeguards: only the diagram and its texts are published (clickable links, link cards and embedded images are removed; web images must be `https` and pass the address filter), a short keyword filter (`src/lib/share/blocklist.ts`, extendable with `SHARE_BLOCKLIST`), 256 KB max, 3 publications per hour and 10 per day per IP address, 200 per day in total, deletion 30 days after the last publication, and `SHARING=off` to stop publications at once. Readers can report a link through a form, emailed to `REPORT_EMAIL` via Resend (`RESEND_API_KEY`); to remove a link, delete the key `share:<id>` in the Upstash console. See `.env.example`.
+
+Link previews (social networks, messaging apps) point to `https://unveilboard.com` by default; a self-hosted instance sets `SITE_URL` to its own address.
 
 ## Architecture
 

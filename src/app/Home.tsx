@@ -23,7 +23,7 @@ export function Home({ storage }: { storage: StorageMode }) {
   const docs = useDocuments(storage)
   return (
     <main
-      className={`min-h-dvh bg-[#fbfaf7] ${docs.dragging ? 'outline-4 -outline-offset-8 outline-dashed outline-amber-400' : ''}`}
+      className={`site min-h-dvh ${docs.dragging ? 'outline-4 -outline-offset-8 outline-dashed outline-amber-400' : ''}`}
       // Déposer un fichier .tldr n'importe où sur la page l'importe.
       {...docs.dropHandlers}
     >
