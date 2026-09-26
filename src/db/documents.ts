@@ -13,8 +13,11 @@ export async function listDocuments() {
     .orderBy(desc(documents.updatedAt))
 }
 
-export async function createDocument(title = 'Sans titre') {
-  const [row] = await db.insert(documents).values({ title, ownerId: OWNER }).returning({ id: documents.id })
+export async function createDocument(title = 'Sans titre', snapshot?: unknown) {
+  const [row] = await db
+    .insert(documents)
+    .values({ title: title.trim().slice(0, 200) || 'Sans titre', ownerId: OWNER, snapshot })
+    .returning({ id: documents.id })
   return row.id
 }
 

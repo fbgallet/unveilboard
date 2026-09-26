@@ -37,6 +37,7 @@ import {
 } from '@/lib/presentation/store'
 import { enterPresentation, toggleQuickSequence } from './usePresentation'
 import { SyncIndicator } from './SyncIndicator'
+import { downloadTldr } from '@/lib/storage/tldrFile'
 import { ResizeHandle } from './ResizeHandle'
 
 const ADDABLE: StepActionType[] = ['show', 'dim', 'hide', 'undim', 'highlight', 'focus']
@@ -123,6 +124,13 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
           </Link>
           <div className="flex items-center gap-2">
             <SyncIndicator />
+            <button
+              className="rounded px-1.5 text-xs text-zinc-400 hover:bg-zinc-200 hover:text-zinc-900"
+              onClick={() => void downloadTldr(editor)}
+              title="Télécharger ce schéma (fichier .tldr, séquence comprise) : sauvegarde, transfert, ou ouverture sur tldraw.com"
+            >
+              Exporter
+            </button>
             <button
               className="rounded px-1.5 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-900"
               onClick={() => setPanelOpen(false)}

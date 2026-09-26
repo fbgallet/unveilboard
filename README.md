@@ -2,9 +2,18 @@
 
 Présentation progressive de schémas sur un canevas tldraw : chaque étape fait apparaître, atténue, cache ou surligne des objets, déplace la caméra et affiche un texte de narration.
 
+## Deux modes de stockage
+
+Le mode dépend de la présence de `DATABASE_URL` :
+
+- **Mode local** (sans `DATABASE_URL`) : aucun serveur de données ni mot de passe. Les schémas sont enregistrés dans le navigateur de chacun (IndexedDB). « Exporter » (dans un schéma) télécharge un fichier `.tldr`, séquence comprise ; « Importer » (sur l'accueil) le rouvre. Idéal pour partager l'app par une simple URL.
+- **Mode cloud** (avec `DATABASE_URL`) : les schémas sont enregistrés sur Postgres (Neon), accessibles depuis tous vos appareils, et l'accès est protégé par mot de passe.
+
 ## Démarrage en local
 
-Prérequis : Postgres local (ex. Postgres.app).
+Mode local : `pnpm install && pnpm dev`, rien d'autre à configurer.
+
+Mode cloud, avec un Postgres local (ex. Postgres.app) :
 
 ```bash
 pnpm install
@@ -16,6 +25,8 @@ pnpm dev
 
 ## Mise en ligne (Vercel + Neon)
 
+En mode local, seul `NEXT_PUBLIC_TLDRAW_LICENSE_KEY` est nécessaire sur Vercel. En mode cloud :
+
 1. Créer un projet Neon et copier l'URL de connexion **pooled** (hôte en `-pooler`).
 2. Appliquer le schéma sur Neon, **avec l'URL entre guillemets simples** (elle contient des `&`) :
    `DATABASE_URL='postgresql://…-pooler…/neondb?sslmode=require' pnpm db:migrate`
@@ -24,12 +35,14 @@ pnpm dev
 
 ## Sauvegarde
 
+- Le stockage passe par une interface commune, `DocumentStore` (`src/lib/storage/`) : `cloud.ts` (routes `/api/documents`, Postgres) ou `local.ts` (IndexedDB).
 - Chaque document a un cache local (IndexedDB, via `persistenceKey`) : ouverture instantanée, travail hors ligne.
-- Les modifications sont envoyées au serveur ~1 s après la dernière action (`src/lib/sync/cloudSync.ts`), sous forme d'instantané tldraw stocké en `jsonb`.
-- Verrouillage optimiste : si le document a été modifié sur un autre appareil entre-temps, le serveur refuse (409) et un bandeau propose de charger la version en ligne ou de garder la sienne. Les modifications locales écartées sont copiées dans `localStorage` (`backup:<id>`).
+- Les modifications sont enregistrées ~1 s après la dernière action (`src/lib/sync/documentSync.ts`), sous forme d'instantané tldraw (`jsonb` sur le serveur).
+- Verrouillage optimiste : si le document a été modifié ailleurs entre-temps, l'enregistrement est refusé et un bandeau propose de charger l'autre version ou de garder la sienne. Les modifications locales écartées sont copiées dans `localStorage` (`backup:<id>`).
+- Plusieurs onglets sur le même document : tldraw les synchronise, et un seul d'entre eux (verrou du navigateur) enregistre pour tous. Il n'y a donc pas de conflit entre onglets.
 - Au retour sur l'onglet, une version plus récente enregistrée ailleurs est chargée automatiquement.
 
-L'accès est protégé par un mot de passe unique (`APP_PASSWORD`) et un cookie de session signé : suffisant pour un usage personnel, à remplacer par de vrais comptes avant une ouverture au public.
+En mode cloud, l'accès est protégé par un mot de passe unique (`APP_PASSWORD`) et un cookie de session signé : suffisant pour un usage personnel, à remplacer par de vrais comptes avant une ouverture au public.
 
 ## Architecture
 

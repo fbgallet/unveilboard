@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getDocument, getDocumentVersion, saveDocument } from '@/db/documents'
+import { deleteDocument, getDocument, getDocumentVersion, saveDocument } from '@/db/documents'
 import { unauthorized } from '@/lib/session'
 
 /** GET : le document complet, ou seulement sa version avec ?meta=1 (vérification légère). */
@@ -38,6 +38,14 @@ export async function PUT(request: Request, ctx: RouteContext<'/api/documents/[i
     return NextResponse.json({ error: 'Modifié ailleurs', version: result.version }, { status: 409 })
   }
   return notFound()
+}
+
+export async function DELETE(_request: Request, ctx: RouteContext<'/api/documents/[id]'>) {
+  const denied = await unauthorized()
+  if (denied) return denied
+  const { id } = await ctx.params
+  await deleteDocument(id)
+  return new NextResponse(null, { status: 204 })
 }
 
 function notFound() {

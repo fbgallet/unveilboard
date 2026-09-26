@@ -1,7 +1,7 @@
 'use client'
 
 import { useValue } from 'tldraw'
-import { syncControls, syncStatusAtom, type SyncState } from '@/lib/sync/cloudSync'
+import { storageModeAtom, syncControls, syncStatusAtom, type SyncState } from '@/lib/sync/documentSync'
 
 const LABELS: Record<SyncState, string> = {
   loading: 'Chargement…',
@@ -23,11 +23,13 @@ const DOT: Record<SyncState, string> = {
   error: 'bg-red-500',
 }
 
-/** Pastille d'état de la sauvegarde en ligne. */
+/** Pastille d'état de la sauvegarde (en ligne, ou dans ce navigateur en mode local). */
 export function SyncIndicator() {
   const status = useValue(syncStatusAtom)
+  const local = useValue(storageModeAtom) === 'local'
+  const title = status.message ?? (local ? 'Enregistré dans ce navigateur uniquement (mode local)' : 'Enregistré en ligne')
   return (
-    <span className="sync-indicator inline-flex items-center gap-1.5 text-xs text-zinc-500" title={status.message} role="status">
+    <span className="sync-indicator inline-flex items-center gap-1.5 text-xs text-zinc-500" title={title} role="status">
       <span className={`h-2 w-2 rounded-full ${DOT[status.state]}`} />
       {LABELS[status.state]}
     </span>
@@ -38,6 +40,7 @@ export function SyncIndicator() {
 export function SyncBanner() {
   const status = useValue(syncStatusAtom)
   const controls = useValue(syncControls)
+  const local = useValue(storageModeAtom) === 'local'
   if (status.state !== 'conflict' && status.state !== 'error') return null
 
   return (
@@ -46,7 +49,7 @@ export function SyncBanner() {
       {status.state === 'conflict' && controls && (
         <span className="flex gap-2">
           <button className="btn-xs" onClick={controls.reloadFromServer} title="Vos modifications locales sont sauvegardées dans ce navigateur avant d'être remplacées">
-            Charger la version en ligne
+            {local ? 'Charger l’autre version' : 'Charger la version en ligne'}
           </button>
           <button className="btn-xs" onClick={controls.overwriteServer}>
             Garder la mienne

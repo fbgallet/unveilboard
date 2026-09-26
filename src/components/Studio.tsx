@@ -8,7 +8,9 @@ import { SpotlightShapeUtil } from '@/lib/canvas/spotlight'
 import { isHiddenByFold, registerTreeSideEffects, withBranchesToDelete } from '@/lib/canvas/tree'
 import { activeStepIdAtom, editUnlockedAtom, modeAtom, quickSequenceAtom, stepIndexAtom } from '@/lib/presentation/store'
 import { assetStore } from '@/lib/sync/assetStore'
-import { startCloudSync } from '@/lib/sync/cloudSync'
+import { startDocumentSync } from '@/lib/sync/documentSync'
+import { documentStore } from '@/lib/storage'
+import type { StorageMode } from '@/lib/storage/types'
 import { PresShapeWrapper } from './PresShapeWrapper'
 import { StepBadges } from './StepBadges'
 import { SequencePanel } from './SequencePanel'
@@ -59,18 +61,18 @@ const overrides: TLUiOverrides = {
 const getShapeVisibility = (shape: TLShape, editor: Editor) =>
   modeAtom.get() === 'edit' && isHiddenByFold(editor, shape) ? 'hidden' : 'inherit'
 
-export default function Studio({ docId, seedDemo }: { docId: string; seedDemo: boolean }) {
+export default function Studio({ docId, seedDemo, storage }: { docId: string; seedDemo: boolean; storage: StorageMode }) {
   const [editor, setEditor] = useState<Editor | null>(null)
   const mode = useValue(modeAtom)
   const unlocked = useValue(editUnlockedAtom)
   const quickSequence = useValue(quickSequenceAtom)
 
-  // Synchronisation avec le serveur, et remise à zéro de l'état de présentation en quittant le document.
+  // Synchronisation avec le stockage (serveur ou navigateur), et remise à zéro de l'état de présentation en quittant le document.
   useEffect(() => {
     if (!editor) return
     // En développement : l'éditeur est accessible depuis la console et les tests Playwright.
     if (process.env.NODE_ENV === 'development') Object.assign(window, { editor })
-    const stop = startCloudSync(editor, docId, { seedDemo })
+    const stop = startDocumentSync(editor, docId, documentStore(storage), { seedDemo })
     const stopTree = registerTreeSideEffects(editor)
     return () => {
       stop()
@@ -81,7 +83,7 @@ export default function Studio({ docId, seedDemo }: { docId: string; seedDemo: b
       stepIndexAtom.set(-1)
       activeStepIdAtom.set(null)
     }
-  }, [editor, docId, seedDemo])
+  }, [editor, docId, seedDemo, storage])
 
   return (
     <div className="studio flex h-dvh w-full overflow-hidden" data-mode={mode} data-unlocked={unlocked}>
