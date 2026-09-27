@@ -19,7 +19,8 @@ const GITHUB_URL = 'https://github.com/fbgallet/unveilboard'
  * Accueil. Instance publique (mode local) : présentation de l'app, puis les schémas du visiteur.
  * Instance personnelle (mode cloud) : la liste des schémas, sans présentation.
  */
-export function Home({ storage }: { storage: StorageMode }) {
+/** legal : l'instance a une page de mentions légales (LEGAL_PUBLISHER). */
+export function Home({ storage, legal = false }: { storage: StorageMode; legal?: boolean }) {
   const docs = useDocuments(storage)
   return (
     <main
@@ -27,7 +28,7 @@ export function Home({ storage }: { storage: StorageMode }) {
       // Déposer un fichier .tldr n'importe où sur la page l'importe.
       {...docs.dropHandlers}
     >
-      {storage === 'local' ? <PublicHome docs={docs} /> : <PersonalHome docs={docs} />}
+      {storage === 'local' ? <PublicHome docs={docs} legal={legal} /> : <PersonalHome docs={docs} />}
     </main>
   )
 }
@@ -116,7 +117,7 @@ function useDocuments(storage: StorageMode) {
 
 // ---------- Instance publique ----------
 
-function PublicHome({ docs }: { docs: Documents }) {
+function PublicHome({ docs, legal }: { docs: Documents; legal: boolean }) {
   const t = useT()
   const l = t.landing
   const hasDocs = !!docs.list?.length
@@ -193,6 +194,14 @@ function PublicHome({ docs }: { docs: Documents }) {
             <a href="https://tldraw.dev" className="hover:text-stone-900">
               {l.footer.builtWith}
             </a>
+            {legal && (
+              <>
+                <span aria-hidden="true">·</span>
+                <Link href="/legal" className="hover:text-stone-900">
+                  {t.legal.link}
+                </Link>
+              </>
+            )}
           </span>
           <span>{l.footer.notAffiliated}</span>
         </div>

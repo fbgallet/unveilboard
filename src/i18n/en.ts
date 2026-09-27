@@ -252,6 +252,45 @@ export const en = {
     beforeStart: 'Before the first step',
   },
 
+  legal: {
+    link: 'Legal notice & privacy',
+    title: 'Legal notice and privacy',
+    back: 'Home',
+    publisherTitle: 'Publisher',
+    publisher: (name: string) => `This site is published by ${name}, as a personal, non-commercial project.`,
+    hostTitle: 'Hosting',
+    /** Hébergeur par défaut (LEGAL_HOST pour un autre). */
+    host: 'Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, United States (vercel.com).',
+    privacyTitle: 'Your data',
+    privacyIntro: 'No account, no advertising, no audience measurement. What happens to your data:',
+    privacy: [
+      '**Your diagrams** stay in your browser (on this site, the public instance). They reach the server only if you publish them.',
+      '**Link with the diagram inside**: the diagram is in the link itself, after the `#`, which browsers never send to the server. Nothing is stored.',
+      '**Short link**: a copy of the diagram (without embedded images or clickable links) is stored on Upstash (a Redis database) and deleted 30 days after its last publication, or as soon as you unpublish it. The key to update or unpublish it stays in your browser.',
+      '**Limits on publications and messages**: your IP address is used in hashed form (not stored as such), in counters erased after 24 hours at most.',
+      '**Reports and contact messages** are sent by email (through Resend) to the publisher, with your email address if you give one, and are kept only as long as needed to handle them.',
+      '**Phone remote**: PeerJS’s public service puts the two devices in touch (it sees their IP addresses); they then talk directly, encrypted, and nothing is stored.',
+      '**Technical services**: the site is hosted by Vercel (technical logs); the drawing tool loads its fonts, icons and translations from tldraw’s servers (cdn.tldraw.com).',
+      '**Cookies**: only your language choice. No tracking cookie.',
+    ],
+    rights:
+      'You can ask for access to, or deletion of, data about you through the form below. You can also lodge a complaint with your data protection authority (in France, the CNIL).',
+    contentTitle: 'Published content',
+    content:
+      'Authors are responsible for the presentations they publish. To report a presentation, use the “Report” button on its page; reported content that is unlawful or contrary to these rules is removed.',
+    codeTitle: 'Source code',
+    code: 'Unveilboard is open source (MIT license).',
+    tldraw: 'Built with the tldraw SDK. Unveilboard is not affiliated with tldraw Inc.; “tldraw” is a trademark of tldraw Inc.',
+    contactTitle: 'Contact',
+    contactIntro: 'Your message is sent to the publisher; your email address is optional, to get an answer.',
+    message: 'Message',
+    contact: 'Your email (optional)',
+    send: 'Send',
+    sent: 'Thank you, your message has been sent.',
+    failed: 'The message could not be sent. Try again later.',
+    unavailable: 'The contact form is not available on this instance.',
+  },
+
   laser: {
     pointer: 'Laser pointer (K)',
     settings: 'Laser settings',

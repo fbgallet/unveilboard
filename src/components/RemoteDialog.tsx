@@ -32,7 +32,13 @@ export function RemoteDialog({ editor }: { editor: Editor }) {
         </div>
         <p className="text-zinc-500">{t.remote.intro}</p>
         {id && status.state !== 'failed' && status.state !== 'connected' && (
-          <QrCode value={`${location.origin}/r#${id}`} className="remote-qr mx-auto" />
+          <>
+            <QrCode value={`${location.origin}/r#${id}`} className="remote-qr mx-auto" />
+            {/* Le même lien, à s'envoyer par message si le téléphone ne lit pas le QR code. */}
+            <a className="remote-link mx-auto" href={`${location.origin}/r#${id}`} target="_blank" rel="noreferrer">
+              {`${location.host}/r#${id}`}
+            </a>
+          </>
         )}
         <p className="flex items-center gap-2">
           <span

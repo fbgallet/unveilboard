@@ -349,9 +349,13 @@ export function toggleQuickSequence(editor: Editor) {
   quickSequenceAtom.set(on)
 }
 
+/** Champs qui ne prennent pas le clavier : une case cochée ne doit pas bloquer la navigation. */
+const NON_TEXT_INPUTS = new Set(['checkbox', 'radio', 'button', 'submit', 'reset', 'color'])
+
 function isTypingTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false
-  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+  if (target instanceof HTMLInputElement) return !NON_TEXT_INPUTS.has(target.type)
+  return target.isContentEditable || ['TEXTAREA', 'SELECT'].includes(target.tagName)
 }
 
 // ---------- Commandes (clavier et boutons) ----------

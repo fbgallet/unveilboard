@@ -102,7 +102,7 @@ export default function Studio({
   // Synchronisation avec le stockage (serveur ou navigateur), et remise à zéro de l'état de présentation en quittant le document.
   useEffect(() => {
     if (!editor) return
-    // En développement : l'éditeur est accessible depuis la console et les tests Playwright.
+    // En développement : l'éditeur est accessible depuis la console et les tests de bout en bout (tests/e2e).
     if (process.env.NODE_ENV === 'development') Object.assign(window, { editor })
     const stop = startDocumentSync(editor, docId, documentStore(storage), {
       demo,

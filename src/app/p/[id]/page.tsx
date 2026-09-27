@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import type { TLStoreSnapshot } from 'tldraw'
 import { getPublishedShare } from '@/db/shares'
 import { getPublicShare } from '@/lib/server/publicShares'
-import { reportEnabled } from '@/lib/server/report'
+import { ownerMailEnabled } from '@/lib/server/report'
 import { PublishedViewer } from '@/components/ViewerLoader'
 import { tldrawLicenseKey } from '@/lib/licenseKey'
 import { storageMode } from '@/lib/storageMode'
@@ -28,7 +28,7 @@ export default async function PublishedPage({ params }: PageProps<'/p/[id]'>) {
     <PublishedViewer
       snapshot={share.snapshot as TLStoreSnapshot}
       licenseKey={tldrawLicenseKey()}
-      reportShareId={reportEnabled() ? id : undefined}
+      reportShareId={ownerMailEnabled() ? id : undefined}
     />
   )
 }

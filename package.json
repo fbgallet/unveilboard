@@ -1,6 +1,16 @@
 {
   "name": "unveilboard",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "description": "Show your diagrams step by step: progressive presentations on a tldraw canvas.",
+  "homepage": "https://unveilboard.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fbgallet/unveilboard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fbgallet/unveilboard/issues"
+  },
+  "author": "Fabrice Gallet (https://www.the-thought-experimenter.com)",
   "license": "MIT",
   "private": true,
   "scripts": {
@@ -12,7 +22,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.0",
@@ -31,6 +42,7 @@
   },
   "devDependencies": {
     "@next/env": "^16.3.6",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.23.1",
