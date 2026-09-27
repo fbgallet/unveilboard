@@ -37,5 +37,5 @@ test('exemple d’arbre argumentatif : relations, natures, séquence, sans histo
         }
       })
     )
-    .toEqual({ nodes: 7, relations: 6, argument: true, steps: 8, editing: null, canUndo: false })
+    .toEqual({ nodes: 8, relations: 7, argument: true, steps: 9, editing: null, canUndo: false })
 })

@@ -5,6 +5,7 @@ All notable changes to Unveilboard. The format follows [Keep a Changelog](https:
 ## [Unreleased]
 
 ### Added
+- JSON diagram format (`unveilboard/map`, documented in `docs/map-format.md`, with a JSON Schema): export a diagram as JSON or copy it for an AI, and import a JSON diagram as a new one, checked (errors and warnings with their path) and laid out automatically. The argument example is now described in this format.
 - Handout: one section per step (the diagram at that step, dimmed shapes in grey, and the narration), to print or save as PDF.
 - Examples gallery on the home page, with a new bilingual argument tree (“Should we always tell the truth?”, Kant and Constant) built with the same functions as the editor.
 - Shortcuts help while presenting (`?` key, or the ⋯ menu).

@@ -28,6 +28,7 @@ It was made for teaching: an audience follows the reasoning more easily when the
 - **Handout**: ☰ › "Handout (print / PDF)…" gives one section per step, the diagram at that step (dimmed shapes in grey) and its narration, to print or save as PDF for students.
 - **Examples** on the home page (an argument tree, Kant and Constant on lying, in English or French; the water cycle in English; freedom in French), and a shortcuts help while presenting (<kbd>?</kbd>).
 - **Files**: save and open `.tldr` files. The sequence is stored inside the tldraw document, so a `.tldr` file keeps it. In Chrome and Edge, a diagram opened from a file, or saved to one, stays linked to it: every change is written back automatically (<kbd>Ctrl/⌘</kbd>+<kbd>S</kbd> saves at once), so you can work directly on a file in a synced folder (Google Drive, Dropbox, iCloud Drive, OneDrive). A file changed elsewhere is reloaded when you come back to the tab, and never overwritten without asking; reopening a linked file reopens its diagram instead of duplicating it.
+- **JSON format**: export a diagram as JSON (types, relations, trees, sequence, all named), or copy it for an AI; import a JSON diagram written by hand, by an AI or by another tool, laid out automatically. See [The JSON diagram format](docs/map-format.md).
 - **Dark mode**, and an **English and French interface**.
 
 ## Read-only sharing
@@ -187,6 +188,7 @@ In cloud mode, access is protected by a single password (`APP_PASSWORD`) and a s
 - `src/components/PresShapeWrapper.tsx`: wraps each rendered shape. The document is never modified during a presentation.
 - `src/lib/tree/` and `src/lib/canvas/tree.ts`: trees (mind maps) on regular tldraw shapes, connected by arrows marked `meta.branch`. Without this module, the document stays a normal tldraw diagram.
 - `src/lib/share/`: shared links (compression into the link, checks before public publication); `src/lib/presentation/screen.ts` and `src/lib/remote/`: dual screen and phone remote.
+- `src/lib/map/`: the JSON diagram format (Zod schema, checks, sequence conversion), without tldraw; `src/lib/canvas/mapExport.ts` and `mapImport.ts`: conversion to and from the tldraw document.
 
 The sequence is stored in the tldraw document: it benefits from undo/redo and local persistence (IndexedDB).
 

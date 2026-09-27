@@ -6,6 +6,7 @@ import {
   DefaultMainMenuContent,
   TldrawUiMenuGroup,
   TldrawUiMenuItem,
+  useEditor,
   useValue,
   useToasts,
 } from 'tldraw'
@@ -16,6 +17,7 @@ import { storageModeAtom } from '@/lib/sync/documentSync'
 import { presetGuideOpenAtom, presetManagerOpenAtom } from './PresetTools'
 import { shareDialogOpenAtom } from './ShareDialog'
 import { handoutOpenAtom } from './Handout'
+import { downloadMapJson, mapImportOpenAtom, mapJsonText } from './MapJsonDialog'
 import { useT } from '@/i18n/client'
 
 /** Menu principal de tldraw (en haut à gauche), précédé des commandes de fichier .tldr. */
@@ -24,6 +26,7 @@ export function MainMenu() {
   const actions = useValue(fileActionsAtom)
   const linked = useValue(fileLinkAtom)
   const router = useRouter()
+  const editor = useEditor()
   const { addToast } = useToasts()
   const fail = (e: unknown) =>
     addToast({ title: e instanceof Error ? e.message : t.common.genericError, severity: 'error' })
@@ -34,6 +37,15 @@ export function MainMenu() {
       if (!picked) return
       const id = await openTldrFile(documentStore(storageModeAtom.get()), picked)
       router.push(`/d/${id}`)
+    } catch (e) {
+      fail(e)
+    }
+  }
+
+  async function copyJson() {
+    try {
+      await navigator.clipboard.writeText(mapJsonText(editor))
+      addToast({ title: t.mapJson.copied, severity: 'success' })
     } catch (e) {
       fail(e)
     }
@@ -55,6 +67,9 @@ export function MainMenu() {
         {linked && (
           <TldrawUiMenuItem id="unlink-tldr" label={t.files.unlink} readonlyOk onSelect={() => void actions?.unlink()} />
         )}
+        <TldrawUiMenuItem id="export-json" label={t.mapJson.menuExport} readonlyOk onSelect={() => downloadMapJson(editor)} />
+        <TldrawUiMenuItem id="copy-json" label={t.mapJson.menuCopy} readonlyOk onSelect={() => void copyJson()} />
+        <TldrawUiMenuItem id="import-json" label={t.mapJson.menuImport} readonlyOk onSelect={() => void mapImportOpenAtom.set(true)} />
         <TldrawUiMenuItem id="share" label={t.share.menu} readonlyOk onSelect={() => void shareDialogOpenAtom.set(true)} />
         <TldrawUiMenuItem id="handout" label={t.handout.menu} readonlyOk onSelect={() => void handoutOpenAtom.set(true)} />
       </TldrawUiMenuGroup>

@@ -12,6 +12,8 @@
 import { atom, getSnapshot, loadSnapshot, type Editor, type TLStoreSnapshot } from 'tldraw'
 import { readSequence, writeSequence } from '../canvas/adapter'
 import { seedDemo } from '../demo'
+import { seedMap } from '../canvas/mapImport'
+import { takePendingMap } from '../map/pending'
 import type { DemoName } from '../demoNames'
 import { m } from '@/i18n/client'
 import { emptySequence } from '../sequence/types'
@@ -117,7 +119,12 @@ export function startDocumentSync(
     if (!server.snapshotJson) {
       // Document neuf.
       if (!hasLocalContent()) {
-        writeSequence(editor, opts.demo ? seedDemo(editor, opts.demo) : emptySequence(m().sequence.defaultTitle))
+        // Schéma d'exemple, ou schéma importé (format JSON) en attente d'ouverture.
+        const pending = opts.demo ? null : takePendingMap(docId)
+        writeSequence(
+          editor,
+          opts.demo ? seedDemo(editor, opts.demo) : pending ? seedMap(editor, pending) : emptySequence(m().sequence.defaultTitle)
+        )
         editor.zoomToFit()
       }
       setMeta({ version: server.version, dirty: true })

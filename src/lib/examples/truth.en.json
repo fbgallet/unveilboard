@@ -1,0 +1,181 @@
+{
+  "format": "unveilboard/map",
+  "version": 1,
+  "title": "Demo: Should we always tell the truth?",
+  "lang": "en",
+  "elements": [
+    {
+      "id": "question",
+      "type": "question",
+      "text": "Should we always tell the truth?",
+      "tree": {
+        "kind": "argument"
+      }
+    },
+    {
+      "id": "thesis",
+      "text": "Yes: truthfulness is an unconditional duty",
+      "parent": "question",
+      "relation": "answers",
+      "source": "Kant",
+      "modality": "prescriptive"
+    },
+    {
+      "id": "justification",
+      "text": "A lie cannot become a universal law: it would destroy all trust in what people say",
+      "parent": "thesis",
+      "relation": "supports",
+      "reasoning": "absurd"
+    },
+    {
+      "id": "assumption",
+      "text": "The moral worth of an act lies in its principle, not in its consequences",
+      "parent": "thesis",
+      "relation": "presupposes",
+      "modality": "prescriptive"
+    },
+    {
+      "id": "example",
+      "text": "The murderer at the door: even to him, I must not lie",
+      "parent": "thesis",
+      "relation": "illustrates",
+      "source": "Kant"
+    },
+    {
+      "id": "objection",
+      "text": "Telling the truth is a duty only towards those who have a right to the truth",
+      "parent": "thesis",
+      "relation": "objects",
+      "source": "Constant, On Political Reactions"
+    },
+    {
+      "id": "distinction",
+      "type": "distinction",
+      "text": "“Right to the truth” ≠ right to truthfulness: the first expression is meaningless",
+      "parent": "objection",
+      "relation": "refutes",
+      "source": "Kant, On a Supposed Right to Lie"
+    },
+    {
+      "id": "answer",
+      "text": "Whoever lies answers for the consequences of the lie; whoever tells the truth does not",
+      "parent": "objection",
+      "relation": "answers",
+      "source": "Kant"
+    }
+  ],
+  "sequence": {
+    "steps": [
+      {
+        "title": "The question",
+        "narration": "Lying to save a friend: is it still wrong? In 1797, Benjamin Constant and Kant disagree on this very case.",
+        "camera": "overview",
+        "actions": [
+          {
+            "do": "show",
+            "targets": [
+              "question"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Kant’s answer",
+        "narration": "**Yes, always.** For Kant, truthfulness is an unconditional duty: no circumstance makes lying permissible.",
+        "actions": [
+          {
+            "do": "show",
+            "targets": [
+              "thesis"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Why?",
+        "narration": "A maxim that allowed lying could not become a **universal law**: if everyone lied whenever it suited them, no one would believe anyone, and a given word would mean nothing. A **reductio**: universalised, lying destroys itself.",
+        "actions": [
+          {
+            "do": "show",
+            "targets": [
+              "justification"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "What it presupposes",
+        "narration": "The thesis rests on an **assumption**: the moral worth of an act lies in its **principle**, not in its consequences. The cloud marks a belief that is often implicit, yet debatable; here, a normative one.",
+        "actions": [
+          {
+            "do": "show",
+            "targets": [
+              "assumption"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The murderer at the door",
+        "narration": "> A murderer asks me whether my friend, whom he is pursuing, has taken refuge in my house.\n\nEven to him, Kant says, I must not lie.",
+        "actions": [
+          {
+            "do": "show",
+            "targets": [
+              "example"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Constant’s objection",
+        "narration": "> To tell the truth is therefore a duty only towards those who have a right to the truth. But no one has a right to a truth that harms others.\n\nBenjamin Constant, *On Political Reactions* (1797).",
+        "actions": [
+          {
+            "do": "show",
+            "targets": [
+              "objection"
+            ]
+          },
+          {
+            "do": "focus",
+            "targets": [
+              "thesis",
+              "objection"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "A distinction",
+        "narration": "Kant first answers with a **distinction**: to speak of a “right to the truth” is meaningless; one only has a right to **truthfulness**, to not being lied to. The objection rests on a confusion. *On a Supposed Right to Lie from Philanthropy* (1797).",
+        "actions": [
+          {
+            "do": "show",
+            "targets": [
+              "distinction"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "The consequences",
+        "narration": "Kant holds his ground: if I lie, I become responsible for everything that follows; if I tell the truth, what happens cannot be imputed to me.",
+        "actions": [
+          {
+            "do": "show",
+            "targets": [
+              "answer"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Overview",
+        "narration": "Two moralities meet: one of **duty**, one of **consequences**. The shape of each box tells its type, its color its function; press L to show the legend.",
+        "camera": "overview",
+        "actions": []
+      }
+    ]
+  }
+}

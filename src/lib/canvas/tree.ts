@@ -249,6 +249,25 @@ function edgeAnchors(editor: Editor, ids: TLShapeId[], dirOf: (id: TLShapeId) =>
 
 const STYLE_KEYS = ['geo', 'color', 'labelColor', 'fill', 'dash', 'size', 'font', 'align', 'verticalAlign', 'w', 'h'] as const
 
+/** Relie un nœud à son parent par une flèche de branche (début = parent, fin = enfant). Renvoie la flèche. */
+export function linkToParent(editor: Editor, parentId: TLShapeId, childId: TLShapeId): TLShapeId {
+  const arrowId = createShapeId()
+  editor.createShape({
+    id: arrowId,
+    type: 'arrow',
+    meta: { branch: true },
+    props: { kind: 'elbow', color: 'grey', size: 's', arrowheadEnd: 'none' },
+  })
+  const binding = (terminal: 'start' | 'end', toId: TLShapeId) => ({
+    type: 'arrow' as const,
+    fromId: arrowId,
+    toId,
+    props: { terminal, normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false, snap: 'none' as const },
+  })
+  editor.createBindings([binding('start', parentId), binding('end', childId)])
+  return arrowId
+}
+
 /** Nouveau nœud relié à `parentId`, sur le modèle de `modelId`, placé près de `near`. */
 function createNode(editor: Editor, parentId: TLShapeId, modelId: TLShapeId, near: Vec, side?: TreeSide): TLShapeId {
   const model = editor.getShape(modelId)
@@ -257,23 +276,10 @@ function createNode(editor: Editor, parentId: TLShapeId, modelId: TLShapeId, nea
   else Object.assign(props, { geo: 'rectangle', w: 200, h: 60 })
 
   const id = createShapeId()
-  const arrowId = createShapeId()
   editor.run(() => {
     const meta = { ...(model?.meta.preset ? { preset: model.meta.preset } : {}), ...(side && { treeSide: side }) }
     editor.createShape({ id, type: 'geo', x: near.x, y: near.y, props, meta })
-    editor.createShape({
-      id: arrowId,
-      type: 'arrow',
-      meta: { branch: true },
-      props: { kind: 'elbow', color: 'grey', size: 's', arrowheadEnd: 'none' },
-    })
-    const binding = (terminal: 'start' | 'end', toId: TLShapeId) => ({
-      type: 'arrow' as const,
-      fromId: arrowId,
-      toId,
-      props: { terminal, normalizedAnchor: { x: 0.5, y: 0.5 }, isExact: false, isPrecise: false, snap: 'none' as const },
-    })
-    editor.createBindings([binding('start', parentId), binding('end', id)])
+    linkToParent(editor, parentId, id)
     // Un parent replié se déplie pour montrer le nouveau nœud.
     const parent = editor.getShape(parentId)
     if (parent?.meta.folded) editor.updateShape({ id: parentId, type: parent.type, meta: { ...parent.meta, folded: false } })

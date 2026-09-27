@@ -35,6 +35,7 @@ import { remoteDialogOpenAtom, startRemote, stopRemote } from '@/lib/remote/host
 import { RemoteDialog } from './RemoteDialog'
 import { ShortcutsHelp } from './ShortcutsHelp'
 import { Handout, handoutOpenAtom } from './Handout'
+import { MapImportDialog, mapImportOpenAtom } from './MapJsonDialog'
 import { loadPresetSettings, registerPresetSideEffects } from '@/lib/canvas/presets'
 
 const overlayUtils = [LaserOverlayUtil]
@@ -130,6 +131,7 @@ export default function Studio({
       shareDialogOpenAtom.set(false)
       remoteDialogOpenAtom.set(false)
       handoutOpenAtom.set(false)
+      mapImportOpenAtom.set(false)
       stopRemote()
     }
   }, [editor, docId, demo, storage])
@@ -180,6 +182,7 @@ export default function Studio({
         {editor && <ShareDialog editor={editor} docId={docId} publicSharing={publicSharing} />}
         {editor && <RemoteDialog editor={editor} />}
         {editor && <Handout editor={editor} />}
+        {editor && <MapImportDialog editor={editor} />}
       </div>
       {editor && <PresentationHost editor={editor} docId={docId} />}
       {editor && mode === 'edit' && <SequencePanel editor={editor} />}

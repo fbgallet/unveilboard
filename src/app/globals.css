@@ -973,6 +973,24 @@ svg.preset-swatch {
   padding-top: 12px;
   border-top: 1px solid var(--color-zinc-200);
 }
+.map-json-input {
+  width: 100%;
+  min-height: 180px;
+  padding: 8px;
+  border: 1px solid var(--color-zinc-200);
+  border-radius: 8px;
+  background: var(--color-white);
+  color: var(--color-zinc-800);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  resize: vertical;
+}
+.map-json-issues {
+  display: grid;
+  gap: 2px;
+  max-height: 160px;
+  overflow-y: auto;
+}
 .preset-group-title {
   margin-bottom: 4px;
   font-size: 11px;

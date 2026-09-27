@@ -28,6 +28,7 @@ L'app est née pour l'enseignement : on suit mieux un raisonnement quand le sch�
 - **Polycopié** : ☰ › « Polycopié (imprimer / PDF)… » donne une partie par étape, le schéma à ce stade (objets atténués en gris) et sa narration, à imprimer ou enregistrer en PDF pour les élèves.
 - **Exemples** sur l'accueil (un arbre argumentatif, Kant et Constant sur le mensonge, en français ou en anglais ; le cycle de l'eau en anglais ; la liberté en français), et une aide des raccourcis en présentation (<kbd>?</kbd>).
 - **Fichiers** : enregistrer et ouvrir des fichiers `.tldr`. La séquence est stockée dans le document tldraw : un fichier `.tldr` la garde. Sur Chrome et Edge, un schéma ouvert depuis un fichier, ou enregistré dans un fichier, reste lié à lui : chaque modification y est écrite automatiquement (<kbd>Ctrl/⌘</kbd>+<kbd>S</kbd> enregistre aussitôt). On peut ainsi travailler directement sur un fichier d'un dossier synchronisé (Google Drive, Dropbox, iCloud Drive, OneDrive). Un fichier modifié ailleurs est rechargé au retour sur l'onglet, et jamais écrasé sans le demander ; rouvrir un fichier lié rouvre son schéma au lieu d'en créer un doublon.
+- **Format JSON** : exporter un schéma en JSON (types, relations, arbres, séquence, tout nommé), ou le copier pour une IA ; importer un schéma JSON écrit à la main, par une IA ou par un autre outil, mis en page automatiquement. Voir [Le format JSON des schémas](docs/map-format.fr.md).
 - **Mode sombre**, et **interface en anglais et en français**.
 
 ## Partage en lecture seule
@@ -187,6 +188,7 @@ En mode cloud, l'accès est protégé par un mot de passe unique (`APP_PASSWORD`
 - `src/components/PresShapeWrapper.tsx` : enveloppe chaque forme rendue ; le document n'est jamais modifié pendant la présentation.
 - `src/lib/tree/` et `src/lib/canvas/tree.ts` : arbres (cartes mentales) sur des formes tldraw ordinaires, reliées par des flèches marquées `meta.branch`. Sans ce module, le document reste un schéma tldraw normal.
 - `src/lib/share/` : liens partagés (compression dans le lien, contrôles avant publication publique) ; `src/lib/presentation/screen.ts` et `src/lib/remote/` : double affichage et télécommande.
+- `src/lib/map/` : le format JSON des schémas (schéma Zod, contrôles, conversion de la séquence), sans tldraw ; `src/lib/canvas/mapExport.ts` et `mapImport.ts` : conversion depuis et vers le document tldraw.
 
 La séquence est stockée dans le document tldraw : elle bénéficie de l'annuler/rétablir et de la persistance locale (IndexedDB).
 

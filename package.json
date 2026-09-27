@@ -24,6 +24,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "test": "vitest run",
+    "map:schema": "UPDATE_MAP_SCHEMA=1 vitest run src/lib/map",
     "test:e2e": "playwright test"
   },
   "dependencies": {
@@ -40,7 +41,8 @@
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "server-only": "^0.0.1",
-    "tldraw": "^5.4.2"
+    "tldraw": "^5.4.2",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@next/env": "^16.3.6",

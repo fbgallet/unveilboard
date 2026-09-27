@@ -14,6 +14,7 @@ export const en = {
     untitled: 'Untitled',
     delete: 'Delete',
     close: 'Close',
+    cancel: 'Cancel',
     moveUp: 'Move up',
     moveDown: 'Move down',
     objects: (n: number) => plural(n, 'object', 'objects'),
@@ -795,6 +796,45 @@ export const en = {
     reopenConflict: (name: string) =>
       `${name} was modified elsewhere, and this diagram has changes not yet saved to it.\n\nOK: load the file (your changes are replaced).\nCancel: keep your version (it will overwrite the file).`,
     missing: 'The linked file can no longer be found (moved or deleted?).',
+  },
+
+  /** Format JSON des schémas (src/lib/map) : import et export, pour une IA ou un autre outil. */
+  mapJson: {
+    menuExport: 'Export as JSON…',
+    menuCopy: 'Copy as JSON (for an AI)',
+    copied: 'Diagram copied as JSON',
+    menuImport: 'Import a JSON diagram…',
+    title: 'Import a JSON diagram',
+    intro:
+      'Paste a diagram in Unveilboard’s JSON format (an export, or the answer of an AI), or choose a .json file. It opens as a new diagram, laid out automatically.',
+    formatLink: 'The JSON format',
+    formatUrl: 'https://github.com/fbgallet/unveilboard/blob/main/docs/map-format.md',
+    placeholder: '{ "format": "unveilboard/map", "version": 1, "elements": [ … ] }',
+    chooseFile: 'Choose a file…',
+    create: 'Open as a new diagram',
+    creating: 'Opening…',
+    valid: (elements: number, steps: number) =>
+      `Valid: ${elements} element${elements === 1 ? '' : 's'}, ${steps} step${steps === 1 ? '' : 's'}.`,
+    errors: 'Errors',
+    warnings: 'Warnings',
+    issues: {
+      invalid_json: 'The text is not valid JSON',
+      invalid_format: 'Does not match the format',
+      duplicate_id: 'Identifier used twice',
+      unknown_parent: 'The parent is not an element of the diagram',
+      cycle: 'The parents form a cycle',
+      relation_without_parent: 'A relation needs a parent',
+      reasoning_without_relation: 'A type of reasoning needs a relation (ignored)',
+      unknown_type: 'Unknown element type',
+      unknown_relation: 'Unknown relation',
+      tree_on_child: 'Tree settings only apply to a root (ignored)',
+      modality_ignored: 'Modality only applies to statements and assumptions',
+      unknown_link_end: 'A link must connect two elements',
+      unknown_target: 'A step refers to an unknown identifier',
+      part_ignored: '“part” does not apply here (ignored)',
+      no_note: 'This element has no note to show',
+      shown_but_hidden: 'Shown by this step, but still hidden: an ancestor is hidden or folded',
+    } as Record<string, string>,
   },
 }
 

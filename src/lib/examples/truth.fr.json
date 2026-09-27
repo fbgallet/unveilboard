@@ -1,0 +1,181 @@
+{
+  "format": "unveilboard/map",
+  "version": 1,
+  "title": "Démo : Faut-il toujours dire la vérité ?",
+  "lang": "fr",
+  "elements": [
+    {
+      "id": "question",
+      "type": "question",
+      "text": "Faut-il toujours dire la vérité ?",
+      "tree": {
+        "kind": "argument"
+      }
+    },
+    {
+      "id": "thesis",
+      "text": "Oui : la véracité est un devoir inconditionnel",
+      "parent": "question",
+      "relation": "answers",
+      "source": "Kant",
+      "modality": "prescriptive"
+    },
+    {
+      "id": "justification",
+      "text": "Un mensonge ne peut devenir loi universelle : il ruinerait toute confiance dans la parole",
+      "parent": "thesis",
+      "relation": "supports",
+      "reasoning": "absurd"
+    },
+    {
+      "id": "assumption",
+      "text": "La valeur morale d’un acte tient à son principe, non à ses conséquences",
+      "parent": "thesis",
+      "relation": "presupposes",
+      "modality": "prescriptive"
+    },
+    {
+      "id": "example",
+      "text": "L’assassin à la porte : même à lui, je ne dois pas mentir",
+      "parent": "thesis",
+      "relation": "illustrates",
+      "source": "Kant"
+    },
+    {
+      "id": "objection",
+      "text": "Dire la vérité n’est un devoir qu’envers ceux qui ont droit à la vérité",
+      "parent": "thesis",
+      "relation": "objects",
+      "source": "Constant, Des réactions politiques"
+    },
+    {
+      "id": "distinction",
+      "type": "distinction",
+      "text": "« Droit à la vérité » ≠ droit à la véracité : la première expression n’a pas de sens",
+      "parent": "objection",
+      "relation": "refutes",
+      "source": "Kant, D’un prétendu droit de mentir"
+    },
+    {
+      "id": "answer",
+      "text": "Qui ment répond des conséquences de son mensonge ; qui dit vrai, non",
+      "parent": "objection",
+      "relation": "answers",
+      "source": "Kant"
+    }
+  ],
+  "sequence": {
+    "steps": [
+      {
+        "title": "La question",
+        "narration": "Mentir pour sauver un ami, est-ce encore mal ? En 1797, Benjamin Constant et Kant s’opposent sur ce cas précis.",
+        "camera": "overview",
+        "actions": [
+          {
+            "do": "show",
+            "targets": [
+              "question"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "La réponse de Kant",
+        "narration": "**Oui, toujours.** Pour Kant, la véracité est un devoir inconditionnel : aucune circonstance ne rend le mensonge permis.",
+        "actions": [
+          {
+            "do": "show",
+            "targets": [
+              "thesis"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Pourquoi ?",
+        "narration": "Une maxime qui autoriserait le mensonge ne peut pas devenir **loi universelle** : si chacun mentait quand cela l’arrange, plus personne ne croirait personne, et la parole donnée perdrait tout sens. Un raisonnement **par l’absurde** : universalisé, le mensonge se détruit lui-même.",
+        "actions": [
+          {
+            "do": "show",
+            "targets": [
+              "justification"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Ce que cela suppose",
+        "narration": "La thèse repose sur un **présupposé** : la valeur morale d’un acte tient à son **principe**, non à ses conséquences. Le nuage signale une croyance souvent implicite, mais discutable, ici normative.",
+        "actions": [
+          {
+            "do": "show",
+            "targets": [
+              "assumption"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Le cas de l’assassin",
+        "narration": "> Un assassin me demande si mon ami, qu’il poursuit, s’est réfugié chez moi.\n\nMême à lui, selon Kant, je ne dois pas mentir.",
+        "actions": [
+          {
+            "do": "show",
+            "targets": [
+              "example"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "L’objection de Constant",
+        "narration": "> Dire la vérité n’est donc un devoir qu’envers ceux qui ont droit à la vérité. Or nul homme n’a droit à la vérité qui nuit à autrui.\n\nBenjamin Constant, *Des réactions politiques* (1797).",
+        "actions": [
+          {
+            "do": "show",
+            "targets": [
+              "objection"
+            ]
+          },
+          {
+            "do": "focus",
+            "targets": [
+              "thesis",
+              "objection"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Une distinction",
+        "narration": "Kant répond d’abord par une **distinction** : parler d’un « droit à la vérité » n’a pas de sens ; on a seulement droit à la **véracité**, à ce que l’autre ne mente pas. L’objection repose sur une confusion. *D’un prétendu droit de mentir par humanité* (1797).",
+        "actions": [
+          {
+            "do": "show",
+            "targets": [
+              "distinction"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Les conséquences",
+        "narration": "Kant maintient sa thèse : si je mens, je deviens responsable de tout ce qui s’ensuit ; si je dis la vérité, ce qui arrive ne m’est pas imputable.",
+        "actions": [
+          {
+            "do": "show",
+            "targets": [
+              "answer"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Vue d’ensemble",
+        "narration": "Deux morales s’opposent : celle du **devoir** et celle des **conséquences**. La forme de chaque case dit son type, sa couleur sa fonction ; la touche L affiche la légende.",
+        "camera": "overview",
+        "actions": []
+      }
+    ]
+  }
+}
