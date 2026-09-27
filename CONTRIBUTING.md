@@ -17,7 +17,7 @@ pnpm dev          # local mode: no database needed
 Before submitting a pull request:
 
 ```bash
-npx tsc --noEmit
+pnpm typecheck   # generates Next's route types, then runs tsc
 pnpm lint
 pnpm test         # unit tests (sequence engine, trees, presets, sharing)
 pnpm test:e2e     # end-to-end tests in a browser (starts a dev server on port 3100)

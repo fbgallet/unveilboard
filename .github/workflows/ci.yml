@@ -17,7 +17,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Types
-        run: pnpm exec tsc --noEmit
+        # next typegen génère les types des routes (PageProps, RouteContext), absents du dépôt.
+        run: pnpm typecheck
       - name: Lint
         run: pnpm lint
       - name: Unit tests
