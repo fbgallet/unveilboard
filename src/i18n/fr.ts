@@ -91,6 +91,10 @@ export const fr: Messages = {
         text: 'Clavier ou télécommande, pointeur laser, vue d’ensemble, et retouches en direct.',
       },
       {
+        title: 'Cartographier un argument',
+        text: 'Thèse, justifications, objections, réponses : Tab ajoute un nœud relié. La forme dit son type, la couleur sa fonction.',
+      },
+      {
         title: 'Tout l’éditeur tldraw',
         text: 'Dessin libre, arbres et cartes mentales, fichiers .tldr à enregistrer et rouvrir.',
       },
@@ -279,7 +283,7 @@ export const fr: Messages = {
     hostTitle: 'Hébergement',
     host: 'Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis (vercel.com).',
     privacyTitle: 'Vos données',
-    privacyIntro: 'Ni compte, ni publicité, ni mesure d’audience. Ce que deviennent vos données :',
+    privacyIntro: 'Ni compte, ni publicité, ni cookie de suivi. Ce que deviennent vos données :',
     privacy: [
       '**Vos schémas** restent dans votre navigateur (sur ce site, l’instance publique). Ils n’arrivent sur le serveur que si vous les publiez.',
       '**Lien contenant le schéma** : le schéma est dans le lien lui-même, après le `#`, que les navigateurs n’envoient jamais au serveur. Rien n’est stocké.',
@@ -287,7 +291,7 @@ export const fr: Messages = {
       '**Limites de publication et de messages** : votre adresse IP est utilisée sous forme hachée (elle n’est pas conservée telle quelle), dans des compteurs effacés au plus tard au bout de 24 heures.',
       '**Signalements et messages de contact** : ils sont envoyés par e-mail (via Resend) à l’éditeur, avec votre adresse si vous la donnez, et ne sont conservés que le temps de les traiter.',
       '**Télécommande sur téléphone** : le service public de PeerJS met les deux appareils en relation (il voit leurs adresses IP) ; ils communiquent ensuite directement, de façon chiffrée, et rien n’est stocké.',
-      '**Services techniques** : le site est hébergé par Vercel (journaux techniques) ; l’outil de dessin charge ses polices, icônes et traductions depuis les serveurs de tldraw (cdn.tldraw.com).',
+      '**Services techniques** : le site est hébergé par Vercel (journaux techniques, et mesure d’audience anonyme et agrégée, sans cookie : Vercel Web Analytics) ; l’outil de dessin charge ses polices, icônes et traductions depuis les serveurs de tldraw (cdn.tldraw.com).',
       '**Cookies** : seulement votre choix de langue. Aucun cookie de suivi.',
     ],
     rights:

@@ -92,6 +92,10 @@ export const en = {
         text: 'Keyboard or clicker, laser pointer, overview, and edits on the fly.',
       },
       {
+        title: 'Map an argument',
+        text: 'Thesis, reasons, objections, replies: Tab adds a linked node. Shape shows its type, color its role.',
+      },
+      {
         title: 'The whole tldraw editor',
         text: 'Draw freely, build trees and mind maps, save and open .tldr files.',
       },
@@ -281,7 +285,7 @@ export const en = {
     /** Hébergeur par défaut (LEGAL_HOST pour un autre). */
     host: 'Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, United States (vercel.com).',
     privacyTitle: 'Your data',
-    privacyIntro: 'No account, no advertising, no audience measurement. What happens to your data:',
+    privacyIntro: 'No account, no advertising, no tracking cookies. What happens to your data:',
     privacy: [
       '**Your diagrams** stay in your browser (on this site, the public instance). They reach the server only if you publish them.',
       '**Link with the diagram inside**: the diagram is in the link itself, after the `#`, which browsers never send to the server. Nothing is stored.',
@@ -289,7 +293,7 @@ export const en = {
       '**Limits on publications and messages**: your IP address is used in hashed form (not stored as such), in counters erased after 24 hours at most.',
       '**Reports and contact messages** are sent by email (through Resend) to the publisher, with your email address if you give one, and are kept only as long as needed to handle them.',
       '**Phone remote**: PeerJS’s public service puts the two devices in touch (it sees their IP addresses); they then talk directly, encrypted, and nothing is stored.',
-      '**Technical services**: the site is hosted by Vercel (technical logs); the drawing tool loads its fonts, icons and translations from tldraw’s servers (cdn.tldraw.com).',
+      '**Technical services**: the site is hosted by Vercel (technical logs, plus anonymous, aggregated, cookieless audience measurement: Vercel Web Analytics); the drawing tool loads its fonts, icons and translations from tldraw’s servers (cdn.tldraw.com).',
       '**Cookies**: only your language choice. No tracking cookie.',
     ],
     rights:

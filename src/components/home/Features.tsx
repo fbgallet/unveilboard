@@ -21,6 +21,13 @@ const ICONS = [
     <path d="M12 16v4M8 20h8" />
     <circle cx="15" cy="9" r="1.6" fill="currentColor" />
   </>,
+  // Carte d'argument : une thèse et deux branches
+  <>
+    <rect x="8" y="3" width="8" height="5" rx="1.5" />
+    <rect x="3" y="16" width="7" height="5" rx="1.5" />
+    <rect x="14" y="16" width="7" height="5" rx="1.5" />
+    <path d="M12 8v4M6.5 16v-4h11v4" />
+  </>,
   // Éditeur : crayon
   <>
     <path d="M4 20l1-4L16 5l3 3L8 19l-4 1Z" />
@@ -31,7 +38,7 @@ const ICONS = [
 export function Features() {
   const t = useT()
   return (
-    <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
       {t.landing.features.map((f, i) => (
         <li key={f.title}>
           <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-700">
