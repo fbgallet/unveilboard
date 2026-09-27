@@ -123,7 +123,7 @@ export function startDocumentSync(
         const pending = opts.demo ? null : takePendingMap(docId)
         writeSequence(
           editor,
-          opts.demo ? seedDemo(editor, opts.demo) : pending ? seedMap(editor, pending) : emptySequence(m().sequence.defaultTitle)
+          opts.demo ? seedDemo(editor, opts.demo) : pending ? seedMap(editor, pending.map, { unverified: pending.unverified }) : emptySequence(m().sequence.defaultTitle)
         )
         editor.zoomToFit()
       }

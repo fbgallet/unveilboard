@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { defaultPresets } from '../presets/presets'
 import { checkMap, formatIssue, parseMap } from './check'
 import { mapJsonSchema, MapSchema, type UnveilMap } from './format'
+import { patchJsonSchema } from './patch'
+import { reviewJsonSchema } from './review'
 import { fromEngineSteps, toEngineSteps, type RefShapes, type ShapeOwner } from './sequence'
 import truthEn from '../examples/truth.en.json'
 import truthFr from '../examples/truth.fr.json'
@@ -143,9 +145,13 @@ describe('séquence : format ↔ moteur', () => {
 })
 
 describe('JSON Schema publié', () => {
-  it('docs/map-format.schema.json est à jour (UPDATE_MAP_SCHEMA=1 pour le régénérer)', () => {
-    const file = join(process.cwd(), 'docs/map-format.schema.json')
-    const expected = JSON.stringify(mapJsonSchema(), null, 2) + '\n'
+  it.each([
+    ['docs/map-format.schema.json', mapJsonSchema],
+    ['docs/patch-format.schema.json', patchJsonSchema],
+    ['docs/review-format.schema.json', reviewJsonSchema],
+  ])('%s est à jour (pnpm map:schema pour le régénérer)', (path, schema) => {
+    const file = join(process.cwd(), path)
+    const expected = JSON.stringify(schema(), null, 2) + '\n'
     if (process.env.UPDATE_MAP_SCHEMA) writeFileSync(file, expected)
     expect(readFileSync(file, 'utf8')).toBe(expected)
   })

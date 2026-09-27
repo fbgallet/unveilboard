@@ -9,7 +9,7 @@ import { readSequence, writeSequence } from '@/lib/canvas/adapter'
 import { SPOTLIGHT_TYPE } from '@/lib/canvas/spotlight'
 import { getTreeIndex } from '@/lib/canvas/tree'
 import { noteOf, resolveTextImage, setNote, storeTextImage } from '@/lib/canvas/notes'
-import { NatureFields, ReasoningField } from './PresetTools'
+import { NatureFields, ProvenanceField, ReasoningField } from './PresetTools'
 import { MarkdownEditor } from './MarkdownEditor'
 import {
   addStep,
@@ -220,6 +220,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
         </div>
         <p className="px-1 text-[11px] text-zinc-400">{selectionHint}</p>
         {selection.length === 1 && <NatureFields editor={editor} id={selection[0]} />}
+        {selection.length === 1 && <ProvenanceField editor={editor} id={selection[0]} />}
         {selection.length === 1 && <ReasoningField editor={editor} id={selection[0]} />}
         {selection.length === 1 && <NoteEditor editor={editor} id={selection[0]} images={images} />}
       </div>

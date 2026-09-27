@@ -37,7 +37,8 @@ test('exporter en JSON, puis réimporter comme nouveau schéma', async ({ page }
   const map = JSON.parse(json)
   expect(map.format).toBe('unveilboard/map')
   expect(map.elements).toHaveLength(8)
-  expect(map.elements[0]).toMatchObject({ id: 'n1', type: 'question', tree: { kind: 'argument' } })
+  // Identifiants : ceux du JSON de l'exemple, gardés par les formes (meta.ref).
+  expect(map.elements[0]).toMatchObject({ id: 'question', type: 'question', tree: { kind: 'argument' } })
   expect(map.elements.find((e: { relation?: string }) => e.relation === 'objects')).toMatchObject({
     type: 'statement',
     function: 'Objection',
@@ -46,12 +47,12 @@ test('exporter en JSON, puis réimporter comme nouveau schéma', async ({ page }
   expect(map.elements.find((e: { relation?: string }) => e.relation === 'supports')).toMatchObject({ reasoning: 'absurd' })
   expect(map.vocabulary.find((v: { id: string }) => v.id === 'presupposes')).toMatchObject({ kind: 'relation', direction: 'toChild' })
   expect(map.sequence.steps).toHaveLength(9)
-  expect(map.sequence.steps[0]).toMatchObject({ camera: 'overview', actions: [{ do: 'show', targets: ['n1'] }] })
+  expect(map.sequence.steps[0]).toMatchObject({ camera: 'overview', actions: [{ do: 'show', targets: ['question'] }] })
 
   // Import : le JSON exporté, collé dans la boîte de dialogue, ouvre un nouveau schéma identique.
   await page.getByTestId('main-menu.button').click()
-  await page.getByText('Import a JSON diagram…').click()
-  const dialog = page.getByRole('dialog', { name: 'Import a JSON diagram' })
+  await page.getByText('Paste JSON (diagram or changes)…').click()
+  const dialog = page.getByRole('dialog', { name: 'Paste JSON' })
   await dialog.getByRole('textbox').fill(json)
   await expect(dialog.getByText('Valid: 8 elements, 9 steps.')).toBeVisible()
   await page.screenshot({ path: 'test-results/map-json-import-dialog.png' })
@@ -72,8 +73,8 @@ test('exporter en JSON, puis réimporter comme nouveau schéma', async ({ page }
 test('import : erreurs signalées, bouton désactivé', async ({ page }) => {
   await openTruthExample(page)
   await page.getByTestId('main-menu.button').click()
-  await page.getByText('Import a JSON diagram…').click()
-  const dialog = page.getByRole('dialog', { name: 'Import a JSON diagram' })
+  await page.getByText('Paste JSON (diagram or changes)…').click()
+  const dialog = page.getByRole('dialog', { name: 'Paste JSON' })
   await dialog.getByRole('textbox').fill(
     JSON.stringify({
       format: 'unveilboard/map',
@@ -122,8 +123,8 @@ test.describe('en français', () => {
       },
     }
     await page.getByTestId('main-menu.button').click()
-    await page.getByText('Importer un schéma JSON…').click()
-    const dialog = page.getByRole('dialog', { name: 'Importer un schéma JSON' })
+    await page.getByText('Coller du JSON (schéma ou modifications)…').click()
+    const dialog = page.getByRole('dialog', { name: 'Coller du JSON' })
     await dialog.getByRole('textbox').fill(JSON.stringify(map))
     await expect(dialog.getByText('Valide : 9 éléments, 4 étapes.')).toBeVisible()
     const before = page.url()
@@ -145,7 +146,7 @@ test.describe('en français', () => {
       }
     })
     expect(shapes).toEqual({
-      hypothese: { geo: 'ellipse', meta: { preset: 'hypothese', origin: 'reconstruction' } },
+      hypothese: { geo: 'ellipse', meta: { ref: 'h', preset: 'hypothese', origin: 'reconstruction' } },
       down: true,
       leftSide: true,
       rightSide: true,
@@ -155,4 +156,74 @@ test.describe('en français', () => {
     await page.waitForTimeout(500)
     await page.screenshot({ path: 'test-results/map-json-handwritten.png' })
   })
+})
+
+test('texte des boîtes en Markdown : mis en forme, et rendu tel quel à l’export', async ({ page }) => {
+  await openTruthExample(page)
+  await page.waitForFunction(() => (window as unknown as { unveilboard?: { getMap(): { elements: unknown[] } } }).unveilboard?.getMap().elements.length === 8)
+  const text = 'Mentir peut **sauver** une vie :\n- *le médecin*\n- l’ami caché'
+  const result = await page.evaluate(async (t) => {
+    const w = window as unknown as { unveilboard: import('../../src/lib/canvas/assistant').UnveilboardApi; editor: import('tldraw').Editor }
+    await w.unveilboard.apply({
+      format: 'unveilboard/patch',
+      version: 1,
+      operations: [{ op: 'add', id: 'md', text: t, note: 'Une **précision** brève.', parent: 'thesis', relation: 'objects' }],
+    })
+    const shape = w.editor.getCurrentPageShapes().find((s) => s.meta.ref === 'md')!
+    return { rich: JSON.stringify(shape.props), exported: w.unveilboard.getMap().elements.find((e) => e.id === 'md') }
+  }, text)
+  expect(result.rich).toContain('"marks":[{"type":"bold"}]')
+  expect(result.rich).toContain('"type":"bulletList"')
+  expect(result.exported).toMatchObject({ text, note: 'Une **précision** brève.' })
+  await page.evaluate(() => {
+    const { editor } = window as unknown as { editor: import('tldraw').Editor }
+    editor.select(editor.getCurrentPageShapes().find((s) => s.meta.ref === 'md')!.id)
+    editor.zoomToSelection()
+  })
+  await page.waitForTimeout(400)
+  await page.screenshot({ path: 'test-results/markdown-box.png' })
+})
+
+test('étiquettes des relations dans la langue du contenu, pas dans celle de l’interface', async ({ page }) => {
+  await openTruthExample(page) // interface en anglais
+  await page.waitForFunction(() => (window as unknown as { unveilboard?: { getMap(): { elements: unknown[] } } }).unveilboard?.getMap().elements.length === 8)
+  const map = {
+    format: 'unveilboard/map',
+    version: 1,
+    title: 'La technique',
+    lang: 'fr',
+    elements: [
+      { id: 'q', type: 'question', text: 'La technique nous libère-t-elle ?', tree: { kind: 'argument' } },
+      { id: 't', text: 'Oui, elle nous affranchit de la nature', parent: 'q', relation: 'answers' },
+      { id: 'j', text: 'Elle épargne les tâches pénibles', parent: 't', relation: 'supports', reasoning: 'analogy' },
+    ],
+  }
+  const before = page.url()
+  await page.evaluate((m) => (window as unknown as { unveilboard: import('../../src/lib/canvas/assistant').UnveilboardApi }).unveilboard.apply(m), map)
+  await page.waitForURL((url) => url.href !== before && /\/d\//.test(url.href))
+  await page.waitForFunction(() => (window as unknown as { unveilboard?: { getMap(): { elements: unknown[] } } }).unveilboard?.getMap().elements.length === 3)
+  const labels = await page.evaluate(() => {
+    const { editor } = window as unknown as { editor: import('tldraw').Editor }
+    return editor
+      .getCurrentPageShapes()
+      .filter((s) => s.type === 'arrow')
+      .map((s) => JSON.stringify(s.props).match(/"text":"([^"]+)"/)?.[1])
+      .sort()
+  })
+  expect(labels).toEqual(['répond à', 'soutient · analogie'])
+  // Ajout par l'IA ensuite : même langue (celle gardée dans le document).
+  await page.evaluate(() =>
+    (window as unknown as { unveilboard: import('../../src/lib/canvas/assistant').UnveilboardApi }).unveilboard.apply({
+      format: 'unveilboard/patch',
+      version: 1,
+      operations: [{ op: 'add', id: 'o', text: 'Elle crée de nouvelles dépendances', parent: 't', relation: 'objects' }],
+    })
+  )
+  const added = await page.evaluate(() => {
+    const { editor } = window as unknown as { editor: import('tldraw').Editor }
+    const o = editor.getCurrentPageShapes().find((s) => s.meta.ref === 'o')!
+    const arrow = editor.getCurrentPageShapes().find((s) => s.type === 'arrow' && editor.getBindingsFromShape(s, 'arrow').some((b) => b.toId === o.id))!
+    return JSON.stringify(arrow.props).match(/"text":"([^"]+)"/)?.[1]
+  })
+  expect(added).toBe('objecte')
 })

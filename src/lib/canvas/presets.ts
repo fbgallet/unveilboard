@@ -2,8 +2,9 @@
 // Les préréglages sont communs (SettingsStore) ; chaque document garde aussi une copie
 // de ceux qu'il utilise (document.meta.presets), pour rester lisible ailleurs.
 
-import { m } from '@/i18n/client'
-import { LOCALES, messagesFor } from '@/i18n/config'
+import { clientLocale, m } from '@/i18n/client'
+import { LOCALES, messagesFor, type Locale } from '@/i18n/config'
+import { presetLabel } from '../presets/labels'
 import { viewerAtom } from '@/lib/presentation/store'
 import {
   ArrowShapeArrowheadEndStyle,
@@ -131,9 +132,11 @@ export function applyPreset(editor: Editor, preset: Preset) {
 /**
  * Applique un préréglage à des formes données. Sur une branche d'arbre (flèche parent → enfant),
  * une relation pointe par défaut vers le parent (« la prémisse soutient la thèse ») : les pointes
- * sont alors inversées.
+ * sont alors inversées. L'étiquette d'une relation de départ non renommée est écrite dans la langue
+ * du contenu (`lang`, par défaut celle de l'interface), et non dans celle de sa création.
  */
-export function applyPresetTo(editor: Editor, preset: Preset, shapes: TLShape[]) {
+export function applyPresetTo(editor: Editor, preset: Preset, shapes: TLShape[], opts: { lang?: Locale } = {}) {
+  const label = presetLabel(preset, messagesFor(opts.lang ?? clientLocale()))
   editor.run(() => {
     const updates: TLShapePartial[] = shapes.map((shape) => {
       const props: Record<string, unknown> = {}
@@ -146,7 +149,7 @@ export function applyPresetTo(editor: Editor, preset: Preset, shapes: TLShape[])
         // Étiquette sur le dernier segment, près de l'enfant : pas sur le tronc commun des branches.
         props.labelPosition = 0.85
       }
-      if (preset.label && shape.type === 'arrow' && !hasText(shape.props.richText)) props.richText = toRichText(preset.label)
+      if (label && shape.type === 'arrow' && !hasText(shape.props.richText)) props.richText = toRichText(label)
       return { id: shape.id, type: shape.type, props, meta: { ...shape.meta, preset: preset.id } }
     })
     editor.updateShapes(updates)
@@ -231,13 +234,13 @@ function reasoningLabels(): string[] {
  * Précise le type de raisonnement d'une flèche (null : aucun). Il est inscrit dans le texte de la
  * flèche (« soutient · par analogie ») : visible partout, même sans l'application.
  */
-export function setReasoning(editor: Editor, id: TLShape['id'], reasoning: Reasoning | null) {
+export function setReasoning(editor: Editor, id: TLShape['id'], reasoning: Reasoning | null, opts: { lang?: Locale } = {}) {
   const shape = editor.getShape(id)
   if (!shape || shape.type !== 'arrow') return
   const text = renderPlaintextFromRichText(editor, shape.props.richText).trim()
   const suffix = new RegExp(`\\s*·\\s*(${reasoningLabels().map((l) => l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})$`)
   const base = text.replace(suffix, '')
-  const label = reasoning ? m().reasoning.types[reasoning] : ''
+  const label = reasoning ? messagesFor(opts.lang ?? clientLocale()).reasoning.types[reasoning] : ''
   const next = [base, label].filter(Boolean).join(' · ')
   editor.markHistoryStoppingPoint('type de raisonnement')
   editor.updateShape({

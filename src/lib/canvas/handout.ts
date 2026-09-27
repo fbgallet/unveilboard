@@ -24,7 +24,8 @@ export interface HandoutStep {
 const PADDING = 24
 
 export async function buildHandout(editor: Editor, seq: Sequence): Promise<HandoutStep[]> {
-  const ids = [...editor.getCurrentPageShapeIds()].filter((id) => editor.getShape(id)?.type !== SPOTLIGHT_TYPE)
+  // Ni calques occultants, ni suggestions de l'IA en attente.
+  const ids = [...editor.getCurrentPageShapeIds()].filter((id) => editor.getShape(id)?.type !== SPOTLIGHT_TYPE && !editor.getShape(id)?.meta.suggestion)
   const steps: HandoutStep[] = []
   for (let i = 0; i < seq.steps.length; i++) {
     const stage = computeEditorStage(editor, seq, i)

@@ -17,6 +17,7 @@ export default function StudioLoader(props: {
   storage: StorageMode
   licenseKey?: string
   publicSharing: boolean
+  serverAi: { model: string; models: string[] } | null
 }) {
   return <Studio {...props} />
 }

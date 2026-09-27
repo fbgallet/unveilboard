@@ -32,6 +32,8 @@ import { TREE_DIRECTIONS, type TreeDirection } from '@/lib/tree/layout'
 import { editUnlockedAtom, foldedBadgesAtom, modeAtom } from '@/lib/presentation/store'
 import { useT } from '@/i18n/client'
 import { swallowNextKeyUp } from '@/lib/keyboard'
+import { elementAiAtom } from './ElementAi'
+import { openAssistant } from './MapJsonDialog'
 
 const ARROWS: Record<TreeDirection, string> = { right: '→', left: '←', down: '↓', up: '↑', both: '↔' }
 
@@ -158,9 +160,17 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
     </button>
   )
 
+  // À partir de cet élément, une demande à l'IA.
+  const aiButton = (
+    <button className="qa-btn" onClick={() => elementAiAtom.set(id)} title={t.elementAi.buttonHint}>
+      {t.elementAi.button}
+    </button>
+  )
+
   if (!info.inTree) {
     return (
       <div className="tree-toolbar">
+        {aiButton}
         {argumentToggle}
         <span className="tree-hint">
           <kbd>Tab</kbd> {info.argument ? t.tree.argumentTabHint : t.tree.startTree}
@@ -191,6 +201,10 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
           {t.tree.revealMap}
         </button>
       )}
+      <button className="qa-btn" onClick={() => openAssistant('sequence')} title={t.tree.sequenceAiHint}>
+        {t.tree.sequenceAi}
+      </button>
+      {aiButton}
       {/* Orientation de l'arbre */}
       <span className="tree-dirs">
         {TREE_DIRECTIONS.map((dir) => (

@@ -416,6 +416,48 @@ export function NatureFields({ editor, id }: { editor: Editor; id: TLShapeId }) 
 }
 
 /**
+ * Provenance d'un élément tiré d'une source : l'extrait du texte dont il vient (ou « reconstruction »),
+ * et, si l'extrait est introuvable dans le texte, un avertissement à lever après vérification.
+ */
+export function ProvenanceField({ editor, id }: { editor: Editor; id: TLShapeId }) {
+  const t = useT()
+  const info = useValue(
+    'provenance',
+    () => {
+      const meta = editor.getShape(id)?.meta
+      if (!meta) return null
+      const excerpt = typeof meta.excerpt === 'string' ? meta.excerpt : ''
+      // Une citation introuvable n'a pas toujours d'extrait : elle vient du texte, par définition.
+      const origin = meta.origin === 'text' || meta.origin === 'reconstruction' ? meta.origin : excerpt || meta.excerptUnverified ? 'text' : null
+      if (!origin) return null
+      return { origin, excerpt, unverified: !!meta.excerptUnverified }
+    },
+    [editor, id]
+  )
+  if (!info) return null
+  return (
+    <div className="provenance">
+      <span className="font-semibold uppercase tracking-wide">{info.origin === 'text' ? t.source.fromText : t.source.reconstruction}</span>
+      {info.excerpt && <blockquote title={info.excerpt}>{info.excerpt}</blockquote>}
+      {info.unverified && (
+        <span className="flex flex-wrap items-center gap-2 text-red-700">
+          {t.source.unverified}
+          <button
+            className="btn-xs"
+            onClick={() => {
+              const shape = editor.getShape(id)
+              if (shape) editor.updateShape({ id, type: shape.type, meta: { ...shape.meta, excerptUnverified: null } })
+            }}
+          >
+            {t.source.markVerified}
+          </button>
+        </span>
+      )}
+    </div>
+  )
+}
+
+/**
  * Guide des natures et relations : pour chacune, sa forme ou son trait, sa définition, son usage
  * et un exemple. La forme dit la nature, la couleur la fonction.
  */

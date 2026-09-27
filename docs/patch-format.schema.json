@@ -1,0 +1,684 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "unveilboard/patch"
+    },
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "summary": {
+      "description": "What the changes do and why, shown to the user before applying.",
+      "type": "string",
+      "maxLength": 4000
+    },
+    "vocabulary": {
+      "description": "New types or relations used by the changes.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^\\S+$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "type",
+              "relation"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Name in the language of the author."
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "direction": {
+            "description": "Relations: \"toParent\" reads \"child RELATION parent\" (default); \"toChild\" reads \"parent RELATION child\".",
+            "type": "string",
+            "enum": [
+              "toParent",
+              "toChild"
+            ]
+          },
+          "childType": {
+            "description": "Relations: type given to an element connected by this relation.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^\\S+$"
+          },
+          "function": {
+            "description": "Relations: function of the connected element in an argument map.",
+            "type": "string",
+            "maxLength": 100
+          },
+          "style": {
+            "description": "tldraw style (geo, color, fill, dash, size, font, arrowheads); custom entries only.",
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "name"
+        ],
+        "additionalProperties": false,
+        "description": "An element type or relation used in the map."
+      }
+    },
+    "operations": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^\\S+$",
+                "description": "Short identifier, unique in the map (elements, links and other shapes share one namespace)."
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 4000,
+                "description": "Text shown in the box: explicit and concise. Light Markdown: **bold**, *italic*, ~~strike~~, `code`, [link](url), bullet or numbered lists; one paragraph per line."
+              },
+              "type": {
+                "description": "Element type (what the element is): statement, belief (assumption), fact, concept, distinction, question, problem, example, quote, or a custom type from `vocabulary`. Omitted: the type given by the relation (its `childType`), or none.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^\\S+$"
+              },
+              "parent": {
+                "description": "Parent element in a tree. Omitted: the element is a root (or stands alone).",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^\\S+$"
+              },
+              "relation": {
+                "description": "Relation that connects the element to its parent (supports, objects, refutes, answers, explains, implies, presupposes, illustrates, defines, raises, distinguishes, opposes, relates, or a custom relation). Most relations read \"element RELATION parent\" (\"the premise supports the thesis\"); those with direction \"toChild\" in the vocabulary read \"parent RELATION element\" (implies, presupposes, raises). Omitted: a plain branch (mind map).",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^\\S+$"
+              },
+              "reasoning": {
+                "description": "Type of reasoning of the relation to the parent (mostly for supports and objects).",
+                "type": "string",
+                "enum": [
+                  "deduction",
+                  "induction",
+                  "analogy",
+                  "abduction",
+                  "absurd",
+                  "afortiori",
+                  "authority",
+                  "example"
+                ]
+              },
+              "side": {
+                "description": "Trees with direction \"both\": side of a child of the root.",
+                "type": "string",
+                "enum": [
+                  "left",
+                  "right"
+                ]
+              },
+              "source": {
+                "description": "Source: author, theory, position, reference.",
+                "type": "string",
+                "maxLength": 300
+              },
+              "modality": {
+                "description": "Statements and assumptions: descriptive (how things are) or prescriptive (how things ought to be).",
+                "type": "string",
+                "enum": [
+                  "descriptive",
+                  "prescriptive"
+                ]
+              },
+              "note": {
+                "description": "Longer development (Markdown), shown beside the diagram on demand.",
+                "type": "string",
+                "maxLength": 20000
+              },
+              "folded": {
+                "description": "Branch folded at the start of the presentation.",
+                "type": "boolean"
+              },
+              "origin": {
+                "description": "Generated from a source: stated in the text, or reconstructed by the analysis (an implicit assumption, a link left unsaid).",
+                "type": "string",
+                "enum": [
+                  "text",
+                  "reconstruction"
+                ]
+              },
+              "excerpt": {
+                "description": "Generated from a source: the passage it comes from, quoted verbatim.",
+                "type": "string",
+                "maxLength": 4000
+              },
+              "tree": {
+                "description": "On a root: the tree it starts.",
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "argument",
+                      "mindmap"
+                    ],
+                    "description": "argument: argument map (relations give functions and colors); mindmap: plain tree."
+                  },
+                  "direction": {
+                    "description": "Direction in which the tree opens. Default: right.",
+                    "type": "string",
+                    "enum": [
+                      "right",
+                      "left",
+                      "down",
+                      "up",
+                      "both"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              "op": {
+                "type": "string",
+                "const": "add"
+              },
+              "rationale": {
+                "description": "Why you propose it, in one sentence, for the user.",
+                "type": "string",
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "id",
+              "text",
+              "op"
+            ],
+            "additionalProperties": false,
+            "description": "Add an element (a new id). With `parent` (an existing element or one added earlier), it joins that tree."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "const": "update"
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^\\S+$"
+              },
+              "text": {
+                "type": "string",
+                "maxLength": 4000
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^\\S+$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "relation": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^\\S+$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reasoning": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "deduction",
+                      "induction",
+                      "analogy",
+                      "abduction",
+                      "absurd",
+                      "afortiori",
+                      "authority",
+                      "example"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "source": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 300
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "modality": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "descriptive",
+                      "prescriptive"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "note": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "folded": {
+                "type": "boolean"
+              },
+              "origin": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "text",
+                      "reconstruction"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "excerpt": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 4000
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tree": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "argument",
+                          "mindmap"
+                        ]
+                      },
+                      "direction": {
+                        "type": "string",
+                        "enum": [
+                          "right",
+                          "left",
+                          "down",
+                          "up",
+                          "both"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "op",
+              "id"
+            ],
+            "additionalProperties": false,
+            "description": "Change fields of an element; null removes a field. Only the given fields change."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "const": "move"
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^\\S+$"
+              },
+              "parent": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^\\S+$"
+              },
+              "relation": {
+                "description": "Omitted: the element keeps its relation.",
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^\\S+$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "op",
+              "id",
+              "parent"
+            ],
+            "additionalProperties": false,
+            "description": "Attach an element (with its branch) to another parent."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "const": "remove"
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^\\S+$"
+              }
+            },
+            "required": [
+              "op",
+              "id"
+            ],
+            "additionalProperties": false,
+            "description": "Remove an element with its whole branch (and the links that touch them), or a link."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^\\S+$",
+                "description": "Short identifier, unique in the map (elements, links and other shapes share one namespace)."
+              },
+              "from": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^\\S+$",
+                "description": "Short identifier, unique in the map (elements, links and other shapes share one namespace)."
+              },
+              "to": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^\\S+$",
+                "description": "Short identifier, unique in the map (elements, links and other shapes share one namespace)."
+              },
+              "relation": {
+                "description": "Reads \"from RELATION to\". Omitted: a plain arrow.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^\\S+$"
+              },
+              "reasoning": {
+                "type": "string",
+                "enum": [
+                  "deduction",
+                  "induction",
+                  "analogy",
+                  "abduction",
+                  "absurd",
+                  "afortiori",
+                  "authority",
+                  "example"
+                ]
+              },
+              "label": {
+                "description": "Text of a plain arrow (without relation).",
+                "type": "string",
+                "maxLength": 300
+              },
+              "op": {
+                "type": "string",
+                "const": "link"
+              },
+              "rationale": {
+                "description": "Why you propose it, in one sentence, for the user.",
+                "type": "string",
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "id",
+              "from",
+              "to",
+              "op"
+            ],
+            "additionalProperties": false,
+            "description": "Add an arrow between two elements outside the trees."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "const": "sequence"
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "replace",
+                  "append"
+                ],
+                "description": "replace: the new steps replace the sequence; append: they are added at the end."
+              },
+              "title": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "narration": {
+                      "description": "Text shown to the audience beside the diagram (Markdown).",
+                      "type": "string",
+                      "maxLength": 20000
+                    },
+                    "camera": {
+                      "description": "follow (default): frame what the step shows; overview: the whole visible diagram; keep: do not move.",
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "follow",
+                            "overview",
+                            "keep"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "mode": {
+                              "type": "string",
+                              "enum": [
+                                "follow",
+                                "overview",
+                                "keep"
+                              ]
+                            },
+                            "padding": {
+                              "type": "number"
+                            },
+                            "maxZoom": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "mode"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "actions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "do": {
+                            "type": "string",
+                            "enum": [
+                              "show",
+                              "hide",
+                              "dim",
+                              "undim",
+                              "fold",
+                              "unfold",
+                              "highlight",
+                              "focus",
+                              "note"
+                            ],
+                            "description": "show, hide, dim, undim: lasting; highlight, focus (dims everything else), note (shows the note of the element): this step only; fold, unfold: a tree branch."
+                          },
+                          "targets": {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64,
+                              "pattern": "^\\S+$",
+                              "description": "Short identifier, unique in the map (elements, links and other shapes share one namespace)."
+                            }
+                          },
+                          "effect": {
+                            "description": "show: entrance effect. Omitted: the box rises (fades in for a root) and the arrow to its parent is drawn.",
+                            "type": "string",
+                            "enum": [
+                              "fade",
+                              "draw",
+                              "rise",
+                              "none"
+                            ]
+                          },
+                          "part": {
+                            "description": "Elements: only the box (node) or only the arrow to its parent (edge). Omitted: both.",
+                            "type": "string",
+                            "enum": [
+                              "node",
+                              "edge"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "do",
+                          "targets"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "actions"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "op",
+              "mode",
+              "steps"
+            ],
+            "additionalProperties": false,
+            "description": "Write the presentation sequence."
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "format",
+    "version",
+    "operations"
+  ],
+  "additionalProperties": false,
+  "description": "Changes to an Unveilboard diagram, applied in order."
+}

@@ -2,7 +2,8 @@
 
 import { useLocale, useT } from '@/i18n/client'
 import type { DemoName } from '@/lib/demoNames'
-import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 import { Tldraw, useValue, type Editor, type TLComponents, type TLShape, type TLUiOverrides } from 'tldraw'
 import 'tldraw/tldraw.css'
 import { LaserOverlayUtil } from '@/lib/canvas/laser'
@@ -35,8 +36,17 @@ import { remoteDialogOpenAtom, startRemote, stopRemote } from '@/lib/remote/host
 import { RemoteDialog } from './RemoteDialog'
 import { ShortcutsHelp } from './ShortcutsHelp'
 import { Handout, handoutOpenAtom } from './Handout'
-import { MapImportDialog, mapImportOpenAtom } from './MapJsonDialog'
+import { AssistantDialog, MapImportDialog, assistantOpenAtom, mapImportOpenAtom } from './MapJsonDialog'
 import { loadPresetSettings, registerPresetSideEffects } from '@/lib/canvas/presets'
+import { installPageApi } from '@/lib/canvas/assistant'
+import { loadAiSettings, serverAiAtom } from '@/lib/ai/client'
+import { AiSettingsDialog, aiSettingsOpenAtom } from './AiSettingsDialog'
+import { SuggestionBadges, SuggestionBar } from './Suggestions'
+import { ElementAiPanel, elementAiAtom } from './ElementAi'
+import { SourceDialog, sourceDialogOpenAtom } from './SourceDialog'
+import { ReviewBadges, ReviewPanel } from './ReviewPanel'
+import { AiLauncher } from './AiLauncher'
+import { loadReview, reviewOpenAtom } from '@/lib/canvas/review'
 
 const overlayUtils = [LaserOverlayUtil]
 const shapeUtils = [SpotlightShapeUtil]
@@ -46,6 +56,8 @@ function CanvasBadges() {
     <>
       <StepBadges />
       <FoldBadges />
+      <SuggestionBadges />
+      <ReviewBadges />
       <NoteMarkers />
     </>
   )
@@ -57,6 +69,7 @@ const components: TLComponents = {
   InFrontOfTheCanvas: SpotlightOverlay,
   MainMenu,
   StylePanel: PresetStylePanel,
+  SharePanel: AiLauncher,
 }
 
 // Supprimer un nœud d'arbre supprime sa branche ; supprimer une boîte supprime ses détails.
@@ -78,8 +91,11 @@ const overrides: TLUiOverrides = {
 
 // En édition, une branche ou un détail repliés sont réellement masqués (ni affichés, ni sélectionnables).
 // En présentation, c'est la séquence qui décide (classes CSS).
-const getShapeVisibility = (shape: TLShape, editor: Editor) =>
-  modeAtom.get() === 'edit' && isHiddenInEdit(editor, shape) ? 'hidden' : 'inherit'
+// Les suggestions de l'IA en attente ne sont jamais présentées.
+const getShapeVisibility = (shape: TLShape, editor: Editor) => {
+  if (modeAtom.get() === 'edit') return isHiddenInEdit(editor, shape) ? 'hidden' : 'inherit'
+  return shape.meta.suggestion ? 'hidden' : 'inherit'
+}
 
 export default function Studio({
   docId,
@@ -87,6 +103,7 @@ export default function Studio({
   storage,
   licenseKey,
   publicSharing,
+  serverAi,
 }: {
   docId: string
   demo: DemoName | null
@@ -94,8 +111,15 @@ export default function Studio({
   licenseKey?: string
   /** Instance publique : publication d'un lien court ouverte à tous (partages publics). */
   publicSharing: boolean
+  /** IA de l'instance (clé côté serveur), si elle en a une. */
+  serverAi: { model: string; models: string[] } | null
 }) {
   const t = useT()
+  const router = useRouter()
+  const routerRef = useRef(router)
+  useEffect(() => {
+    routerRef.current = router
+  }, [router])
   const [editor, setEditor] = useState<Editor | null>(null)
   const mode = useValue(modeAtom)
   const unlocked = useValue(editUnlockedAtom)
@@ -117,12 +141,17 @@ export default function Studio({
     const stopFile = startFileSync(editor, docId)
     const stopTree = registerTreeSideEffects(editor)
     const stopPresets = registerPresetSideEffects(editor)
+    // window.unveilboard : lire et modifier le schéma, pour un agent qui pilote le navigateur.
+    const stopApi = installPageApi(editor, (url) => routerRef.current.push(url))
+    // Relecture critique gardée pour ce schéma (sur cet appareil).
+    loadReview(docId)
     void loadPresetSettings(settingsStore(storage))
     return () => {
       stop()
       stopFile()
       stopTree()
       stopPresets()
+      stopApi()
       modeAtom.set('edit')
       editUnlockedAtom.set(false)
       quickSequenceAtom.set(false)
@@ -132,9 +161,20 @@ export default function Studio({
       remoteDialogOpenAtom.set(false)
       handoutOpenAtom.set(false)
       mapImportOpenAtom.set(false)
+      assistantOpenAtom.set(false)
+      aiSettingsOpenAtom.set(false)
+      elementAiAtom.set(null)
+      sourceDialogOpenAtom.set(false)
+      reviewOpenAtom.set(false)
       stopRemote()
     }
   }, [editor, docId, demo, storage])
+
+  // IA : celle de l'instance, et les réglages de cet appareil.
+  useEffect(() => {
+    serverAiAtom.set(serverAi)
+    loadAiSettings(serverAi)
+  }, [serverAi])
 
   // L'interface de tldraw (menus, outils) suit la langue de l'app.
   const [locale] = useLocale()
@@ -175,6 +215,9 @@ export default function Studio({
         {editor && mode === 'edit' && quickSequence && <QuickSequence editor={editor} />}
         {editor && (mode === 'edit' || unlocked) && <TreeToolbar editor={editor} />}
         {editor && (mode === 'edit' || unlocked) && <RelationPicker editor={editor} />}
+        {editor && mode === 'edit' && <SuggestionBar editor={editor} />}
+        {editor && mode === 'edit' && <ElementAiPanel editor={editor} />}
+        {editor && mode === 'edit' && <ReviewPanel editor={editor} />}
         {editor && <SyncBanner />}
         {editor && <FileBanner />}
         {editor && <PresetManager editor={editor} />}
@@ -183,6 +226,9 @@ export default function Studio({
         {editor && <RemoteDialog editor={editor} />}
         {editor && <Handout editor={editor} />}
         {editor && <MapImportDialog editor={editor} />}
+        {editor && <AssistantDialog editor={editor} />}
+        {editor && <AiSettingsDialog />}
+        {editor && <SourceDialog editor={editor} />}
       </div>
       {editor && <PresentationHost editor={editor} docId={docId} />}
       {editor && mode === 'edit' && <SequencePanel editor={editor} />}

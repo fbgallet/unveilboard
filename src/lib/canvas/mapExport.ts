@@ -5,6 +5,7 @@
 
 import { renderPlaintextFromRichText, type Editor, type TLArrowBinding, type TLRichText, type TLShape, type TLShapeId } from 'tldraw'
 import { m } from '@/i18n/client'
+import { richTextToMarkdown, type RichNode } from '../map/markdown'
 import { MAP_FORMAT, MAP_VERSION, type MapElement, type MapLink, type MapOther, type MapVocabulary, type UnveilMap } from '../map/format'
 import { fromEngineSteps, type RefShapes, type ShapeOwner } from '../map/sequence'
 import { defaultPresets, MODALITIES, REASONINGS, type Modality, type Preset, type Reasoning } from '../presets/presets'
@@ -26,9 +27,16 @@ export function textOf(editor: Editor, shape: TLShape): string {
   return richText ? renderPlaintextFromRichText(editor, richText).trim() : ''
 }
 
+/** Texte d'une forme en Markdown (sa mise en forme comprise). */
+function markdownOf(shape: TLShape): string {
+  return richTextToMarkdown((shape.props as { richText?: TLRichText }).richText as RichNode | undefined)
+}
+
 export function exportMap(editor: Editor): MapExport {
   const { parent, children, edge } = getTreeIndex(editor)
-  const pageShapes = editor.getCurrentPageShapes()
+  // Les suggestions de l'IA en attente ne font pas partie du schéma.
+  const pageShapes = editor.getCurrentPageShapes().filter((s) => !s.meta.suggestion)
+  const pending = (id: TLShapeId) => !!editor.getShape(id)?.meta.suggestion
   const bounds = (id: TLShapeId) => editor.getShapePageBounds(id)
 
   // Éléments : les nœuds d'arbre et les boîtes (formes géométriques).
@@ -53,21 +61,23 @@ export function exportMap(editor: Editor): MapExport {
       const b = bounds(c)
       return b ? (horizontal ? b.midY : b.midX) : 0
     }
-    for (const c of [...(children.get(id) ?? [])].sort((a, b) => cross(a) - cross(b))) visit(c, horizontal)
+    for (const c of [...(children.get(id) ?? [])].filter((c) => !pending(c)).sort((a, b) => cross(a) - cross(b))) visit(c, horizontal)
   }
   for (const root of elementShapes.filter((s) => !parent.has(s.id)).sort(topLeft)) {
     visit(root.id, treeAxis(directionOf(editor, root.id)).horizontal)
   }
 
-  // Identifiants courts.
+  // Identifiants courts et stables : celui que la forme a reçu à l'import (meta.ref), sinon un
+  // identifiant tiré de celui de tldraw. Une IA peut ainsi désigner un élément d'un échange à l'autre.
   const refOf = new Map<TLShapeId, string>()
   const kindOf = new Map<string, RefShapes['kind']>()
-  const name = (id: TLShapeId, ref: string, kind: RefShapes['kind']) => {
+  const name = (id: TLShapeId, prefix: string, kind: RefShapes['kind']) => {
+    const ref = stableRef(editor.getShape(id)?.meta.ref, id, prefix, kindOf)
     refOf.set(id, ref)
     kindOf.set(ref, kind)
     return ref
   }
-  ordered.forEach((id, i) => name(id, `n${i + 1}`, 'element'))
+  ordered.forEach((id) => name(id, 'n', 'element'))
 
   const usedPresets = new Map<string, Preset>()
   const presetOf = (shape: TLShape | undefined, target: Preset['target']) => {
@@ -92,7 +102,8 @@ export function exportMap(editor: Editor): MapExport {
     const role = functionOf(editor, id)?.role
     return {
       id: refOf.get(id)!,
-      text: textOf(editor, shape),
+      // Texte des boîtes : leur mise en forme (gras, italique, listes…) en Markdown.
+      text: markdownOf(shape),
       ...(presetOf(shape, 'shape') && { type: shape.meta.preset as string }),
       ...(p && { parent: refOf.get(p)! }),
       ...(relation && { relation: relation.id }),
@@ -114,8 +125,6 @@ export function exportMap(editor: Editor): MapExport {
   // Liens : flèches hors des arbres, entre deux éléments ; les autres formes, pour le contexte.
   const links: MapLink[] = []
   const others: MapOther[] = []
-  let l = 0
-  let x = 0
   for (const shape of pageShapes) {
     if (refOf.has(shape.id) || edgeIds.has(shape.id)) continue
     if (shape.type === 'arrow') {
@@ -127,7 +136,7 @@ export function exportMap(editor: Editor): MapExport {
         const reasoning = shape.meta.reasoning as Reasoning | undefined
         const label = textOf(editor, shape)
         links.push({
-          id: name(shape.id, `l${++l}`, 'link'),
+          id: name(shape.id, 'l', 'link'),
           from,
           to,
           ...(relation && { relation: relation.id }),
@@ -138,7 +147,7 @@ export function exportMap(editor: Editor): MapExport {
       }
     }
     const text = textOf(editor, shape)
-    others.push({ id: name(shape.id, `x${++x}`, 'other'), kind: shape.type, ...(text && { text }) })
+    others.push({ id: name(shape.id, 'x', 'other'), kind: shape.type, ...(text && { text }) })
   }
 
   // Formes de chaque identifiant, et propriétaire de chaque forme (pour la séquence).
@@ -157,6 +166,8 @@ export function exportMap(editor: Editor): MapExport {
     format: MAP_FORMAT,
     version: MAP_VERSION,
     ...(seq?.title && { title: seq.title }),
+    // Langue du contenu, si le document la connaît (schéma importé ou généré).
+    ...(typeof editor.getDocumentSettings().meta.lang === 'string' && { lang: editor.getDocumentSettings().meta.lang as string }),
     vocabulary: [...usedPresets.values()].map(vocabularyEntry),
     elements,
     ...(links.length && { links }),
@@ -169,6 +180,23 @@ export function exportMap(editor: Editor): MapExport {
     }),
   }
   return { map, shapes }
+}
+
+const REF = /^\S{1,64}$/
+
+/** Identifiant court d'une forme : le sien s'il est libre, sinon tiré de son identifiant tldraw (FNV-1a). */
+function stableRef(own: unknown, shapeId: string, prefix: string, taken: Map<string, unknown>): string {
+  if (typeof own === 'string' && REF.test(own) && !taken.has(own)) return own
+  let h = 0x811c9dc5
+  for (let i = 0; i < shapeId.length; i++) h = Math.imul(h ^ shapeId.charCodeAt(i), 0x01000193)
+  const hash = (h >>> 0).toString(36).padStart(7, '0')
+  for (let len = 4; len <= hash.length; len++) {
+    const ref = prefix + hash.slice(0, len)
+    if (!taken.has(ref)) return ref
+  }
+  let n = 2
+  while (taken.has(`${prefix}${hash}${n}`)) n++
+  return `${prefix}${hash}${n}`
 }
 
 /** Entrée du vocabulaire : nom, définition, sens de lecture ; le style seulement pour les préréglages créés. */

@@ -290,9 +290,8 @@ function createNode(editor: Editor, parentId: TLShapeId, modelId: TLShapeId, nea
   return id
 }
 
-/** Tab : ajoute un enfant (et fait de la forme la racine d'un arbre si besoin). */
-export function addChild(editor: Editor, id: TLShapeId) {
-  editor.markHistoryStoppingPoint('ajouter un enfant')
+/** Place et côté d'un nouvel enfant de `id` : après les enfants existants (du même côté). */
+export function newChildPlacement(editor: Editor, id: TLShapeId): { near: Vec; side?: TreeSide } {
   const kids = getTreeIndex(editor).children.get(id) ?? []
   const b = editor.getShapePageBounds(id)!
   // Disposition « both » : un enfant de la racine va du côté le moins chargé.
@@ -309,6 +308,14 @@ export function addChild(editor: Editor, id: TLShapeId) {
     .sort((p, q) => q.maxY + q.maxX - (p.maxY + p.maxX))[0]
   const opensLeft = (side ?? nodeDirection(editor, id)) === 'left'
   const near = last ? { x: last.x + 1, y: last.y + 1 } : { x: opensLeft ? b.x - 72 - b.w : b.maxX + 72, y: b.y }
+  return { near, side }
+}
+
+/** Tab : ajoute un enfant (et fait de la forme la racine d'un arbre si besoin). */
+export function addChild(editor: Editor, id: TLShapeId) {
+  editor.markHistoryStoppingPoint('ajouter un enfant')
+  const kids = getTreeIndex(editor).children.get(id) ?? []
+  const { near, side } = newChildPlacement(editor, id)
   return createNode(editor, id, kids[0] ?? id, near, side)
 }
 
@@ -584,7 +591,9 @@ export function revealOrder(editor: Editor, anyNodeId: TLShapeId): { node: TLSha
     if (seen.has(id)) return
     seen.add(id)
     out.push({ node: id, edge: edge.get(id) })
-    for (const c of [...(children.get(id) ?? [])].sort((a, b) => cross(a) - cross(b))) visit(c)
+    // Les suggestions de l'IA en attente ne sont pas dévoilées.
+    const kids = [...(children.get(id) ?? [])].filter((c) => !editor.getShape(c)?.meta.suggestion)
+    for (const c of kids.sort((a, b) => cross(a) - cross(b))) visit(c)
   }
   visit(rootId)
   return out

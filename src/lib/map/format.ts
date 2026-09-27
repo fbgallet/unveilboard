@@ -32,7 +32,12 @@ const VocabularyId = z.string().min(1).max(64).regex(/^\S+$/)
 export const ElementSchema = z
   .object({
     id: Ref,
-    text: z.string().max(4000).describe('Text shown in the box (plain text; line breaks allowed).'),
+    text: z
+      .string()
+      .max(4000)
+      .describe(
+        'Text shown in the box: explicit and concise. Light Markdown: **bold**, *italic*, ~~strike~~, `code`, [link](url), bullet or numbered lists; one paragraph per line.'
+      ),
     type: VocabularyId.optional().describe(
       'Element type (what the element is): statement, belief (assumption), fact, concept, distinction, question, problem, example, quote, or a custom type from `vocabulary`. Omitted: the type given by the relation (its `childType`), or none.'
     ),

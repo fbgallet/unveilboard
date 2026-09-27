@@ -29,6 +29,7 @@ It was made for teaching: an audience follows the reasoning more easily when the
 - **Examples** on the home page (an argument tree, Kant and Constant on lying, in English or French; the water cycle in English; freedom in French), and a shortcuts help while presenting (<kbd>?</kbd>).
 - **Files**: save and open `.tldr` files. The sequence is stored inside the tldraw document, so a `.tldr` file keeps it. In Chrome and Edge, a diagram opened from a file, or saved to one, stays linked to it: every change is written back automatically (<kbd>Ctrl/⌘</kbd>+<kbd>S</kbd> saves at once), so you can work directly on a file in a synced folder (Google Drive, Dropbox, iCloud Drive, OneDrive). A file changed elsewhere is reloaded when you come back to the tab, and never overwritten without asking; reopening a linked file reopens its diagram instead of duplicating it.
 - **JSON format**: export a diagram as JSON (types, relations, trees, sequence, all named), or copy it for an AI; import a JSON diagram written by hand, by an AI or by another tool, laid out automatically. See [The JSON diagram format](docs/map-format.md).
+- **Working with an AI**: create a diagram, enrich it, write its sequence or review it. ☰ › “Prompt for an AI…” copies a complete prompt (the diagram, its vocabulary, the answer format) for the assistant of your choice, or asks directly the AI chosen in ☰ › “AI settings…”: OpenRouter with your own key (sign in with OpenRouter), a local or remote OpenAI-compatible server (Ollama, LM Studio…), or the instance's AI. The answer is checked (and sent back once for correction if needed), then applied as a single undoable change. ☰ › “Create a diagram from a text…” turns a pasted text, a text or Markdown file, a PDF or a photo (transcribed by the AI) into a diagram with its sequence, and checks every excerpt it cites against the text. ☰ › “Critical review…” lists remarks (automatic checks, and the AI's review) with corrections to apply one by one. From a selected box, “✦ AI…” asks the AI to connect new elements to it (objections, examples, assumptions…), as dimmed suggestions to accept (✓) or reject (✕), or directly. A browser agent can use `window.unveilboard`. See [Working with an AI](docs/map-format.md#working-with-an-ai).
 - **Dark mode**, and an **English and French interface**.
 
 ## Read-only sharing
@@ -167,6 +168,7 @@ Optional services and settings (details in `.env.example`):
 | `SHARING=off`, `SHARE_BLOCKLIST` | Stop publications; extra blocked terms |
 | `RESEND_API_KEY`, `REPORT_EMAIL`, `REPORT_FROM` | Reports and contact form, sent by email |
 | `LEGAL_PUBLISHER`, `LEGAL_LINKS`, `LEGAL_HOST` | Legal notice and privacy page (`/legal`); without `LEGAL_PUBLISHER`, no page |
+| `OPENROUTER_API_KEY` (or `AI_BASE_URL`, `AI_API_KEY`), `AI_MODEL`, `AI_MAX_TOKENS`, `AI_JSON_MODE` | AI of the instance, server side (cloud mode; local mode only with `AI_PUBLIC=on` and Upstash, with per-IP limits) |
 | `SITE_URL` | Address used in link previews (default `https://unveilboard.com`) |
 
 ## Saving and sync

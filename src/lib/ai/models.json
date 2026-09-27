@@ -1,0 +1,37 @@
+{
+  "about": "OpenRouter models offered in the AI settings and allowed for the instance's AI. Edit freely: `default` is used when nothing is chosen (and when AI_MODEL is not set); `transcription` (a multimodal model) reads photos and scanned PDFs; prices are in US dollars per million tokens (input / output), for information only. List taken from bac-philo-agent (model-catalog.ts), 2026-09.",
+  "default": "deepseek/deepseek-v4.1-flash",
+  "transcription": "openai/gpt-6-luna",
+  "models": [
+    {
+      "id": "deepseek/deepseek-v4.1-flash",
+      "label": "DeepSeek V4.1 flash",
+      "price": { "input": 0.3, "output": 1.2 }
+    },
+    {
+      "id": "openai/gpt-6-luna",
+      "label": "GPT-6 luna",
+      "price": { "input": 0.1, "output": 0.5 }
+    },
+    {
+      "id": "openai/gpt-6-sol",
+      "label": "GPT-6 sol",
+      "price": { "input": 2, "output": 10 }
+    },
+    {
+      "id": "z-ai/glm-5.3-flash",
+      "label": "GLM-5.3 flash",
+      "price": { "input": 0.15, "output": 0.5 }
+    },
+    {
+      "id": "anthropic/claude-opus-5.5",
+      "label": "Claude Opus 5.5",
+      "price": { "input": 4, "output": 20 }
+    },
+    {
+      "id": "google/gemini-3.8-flash",
+      "label": "Gemini 3.8 Flash",
+      "price": { "input": 0.75, "output": 3.75 }
+    }
+  ]
+}

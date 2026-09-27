@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { atom, getSnapshot, useValue, type Editor } from 'tldraw'
+import { withoutSuggestions } from '@/lib/share/suggestions'
 import { useLocale, useT } from '@/i18n/client'
 import { encodeShare, LONG_LINK_CHARS, withoutEmbeddedImages } from '@/lib/share/link'
 import { settingsStore } from '@/lib/storage'
@@ -58,7 +59,7 @@ function LinkSection({ editor }: { editor: Editor }) {
   async function create() {
     setError(null)
     try {
-      const { fragment, droppedImages } = await encodeShare(getSnapshot(editor.store).document)
+      const { fragment, droppedImages } = await encodeShare(withoutSuggestions(getSnapshot(editor.store).document))
       setResult({ url: `${location.origin}/p#${fragment}`, droppedImages })
     } catch (e) {
       setError(e instanceof Error ? e.message : t.common.genericError)
@@ -135,7 +136,7 @@ function publicBackend(docId: string, editor: Editor): PublishBackend {
     const share = await settings.get<Owned>(settingKey)
     return share && (!share.expiresAt || Date.parse(share.expiresAt) > Date.now()) ? share : null
   }
-  const body = () => JSON.stringify({ snapshot: withoutEmbeddedImages(getSnapshot(editor.store).document).snapshot })
+  const body = () => JSON.stringify({ snapshot: withoutEmbeddedImages(withoutSuggestions(getSnapshot(editor.store).document)).snapshot })
   return {
     load: owned,
     async publish(current) {

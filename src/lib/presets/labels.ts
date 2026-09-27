@@ -17,6 +17,11 @@ export function presetName(p: Preset, t: Messages): string {
   return localized(p.name, p.id, (m) => m.presetDefaults as Record<string, string>, t) ?? p.name
 }
 
+/** Étiquette écrite sur une flèche (le nom de la relation), dans la langue des messages donnés. */
+export function presetLabel(p: Preset, t: Messages): string | undefined {
+  return p.label === undefined ? undefined : (localized(p.label, p.id, (m) => m.presetDefaults as Record<string, string>, t) ?? p.label)
+}
+
 /** Fonction affichée d'une relation (« Objection »…). */
 export function presetRole(p: Preset, t: Messages): string | undefined {
   return localized(p.role, p.id, (m) => m.presetRoles, t)

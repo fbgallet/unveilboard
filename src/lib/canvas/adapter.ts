@@ -17,9 +17,15 @@ export function readSequence(editor: Editor): Sequence | null {
   return raw ? migrateSequence(raw) : null
 }
 
-export function writeSequence(editor: Editor, seq: Sequence) {
-  const meta = editor.getDocumentSettings().meta
-  editor.updateDocumentSettings({ meta: { ...meta, [META_KEY]: toJson(seq) as unknown as JsonObject } })
+/**
+ * Enregistre la séquence dans le document. tldraw écrit les réglages du document hors historique ;
+ * `undoable` l'inscrit dans l'historique (Ctrl+Z la rétablit avec les formes modifiées en même temps).
+ */
+export function writeSequence(editor: Editor, seq: Sequence, opts: { undoable?: boolean } = {}) {
+  const settings = editor.getDocumentSettings()
+  const meta = { ...settings.meta, [META_KEY]: toJson(seq) as unknown as JsonObject }
+  if (opts.undoable) editor.store.put([{ ...settings, meta }])
+  else editor.updateDocumentSettings({ meta })
 }
 
 /** Un cadre ou un groupe entraîne ses descendants ; les objets supprimés sont ignorés. */

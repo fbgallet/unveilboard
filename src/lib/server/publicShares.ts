@@ -2,6 +2,7 @@ import 'server-only'
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { storageMode } from '@/lib/storageMode'
 import { kv, kvConfigured } from './kv'
+import { withinLimits } from './rateLimit'
 
 // Partages publics (instance sans base de données) : n'importe quel visiteur peut publier un lien
 // court vers une copie de son schéma, contrôlée (src/lib/share/sanitize.ts), limitée en fréquence
@@ -37,20 +38,8 @@ export function extraBlockedTerms() {
 }
 
 /** Compte une publication pour cette adresse ; false si une limite est atteinte. */
-export async function allowPublication(request: Request) {
-  const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-  const ip = forwarded || request.headers.get('x-real-ip') || 'unknown'
-  // Adresse hachée : les compteurs ne gardent pas d'adresse IP en clair.
-  const who = createHash('sha256').update(ip).digest('hex').slice(0, 32)
-  const hour = Math.floor(Date.now() / 3600_000)
-  const day = Math.floor(hour / 24)
-  const store = kv()
-  const [perHour, perDay, all] = await Promise.all([
-    store.incr(`rl:${who}:h${hour}`, 3600),
-    store.incr(`rl:${who}:d${day}`, DAY),
-    store.incr(`rl:all:d${day}`, DAY),
-  ])
-  return perHour <= LIMITS.perIpHour && perDay <= LIMITS.perIpDay && all <= LIMITS.allDay
+export function allowPublication(request: Request) {
+  return withinLimits(request, 'rl', LIMITS)
 }
 
 export async function createPublicShare(title: string, snapshot: unknown) {

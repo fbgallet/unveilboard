@@ -17,7 +17,10 @@ import { storageModeAtom } from '@/lib/sync/documentSync'
 import { presetGuideOpenAtom, presetManagerOpenAtom } from './PresetTools'
 import { shareDialogOpenAtom } from './ShareDialog'
 import { handoutOpenAtom } from './Handout'
-import { downloadMapJson, mapImportOpenAtom, mapJsonText } from './MapJsonDialog'
+import { aiSettingsOpenAtom } from './AiSettingsDialog'
+import { sourceDialogOpenAtom } from './SourceDialog'
+import { reviewOpenAtom } from '@/lib/canvas/review'
+import { assistantOpenAtom, downloadMapJson, mapImportOpenAtom, mapJsonText } from './MapJsonDialog'
 import { useT } from '@/i18n/client'
 
 /** Menu principal de tldraw (en haut à gauche), précédé des commandes de fichier .tldr. */
@@ -69,9 +72,15 @@ export function MainMenu() {
         )}
         <TldrawUiMenuItem id="export-json" label={t.mapJson.menuExport} readonlyOk onSelect={() => downloadMapJson(editor)} />
         <TldrawUiMenuItem id="copy-json" label={t.mapJson.menuCopy} readonlyOk onSelect={() => void copyJson()} />
-        <TldrawUiMenuItem id="import-json" label={t.mapJson.menuImport} readonlyOk onSelect={() => void mapImportOpenAtom.set(true)} />
+        <TldrawUiMenuItem id="import-json" label={t.mapJson.menuImport} onSelect={() => void mapImportOpenAtom.set(true)} />
         <TldrawUiMenuItem id="share" label={t.share.menu} readonlyOk onSelect={() => void shareDialogOpenAtom.set(true)} />
         <TldrawUiMenuItem id="handout" label={t.handout.menu} readonlyOk onSelect={() => void handoutOpenAtom.set(true)} />
+      </TldrawUiMenuGroup>
+      <TldrawUiMenuGroup id="schema-ai">
+        <TldrawUiMenuItem id="assistant" label={t.assistant.menu} onSelect={() => void assistantOpenAtom.set(true)} />
+        <TldrawUiMenuItem id="review" label={t.review.menu} onSelect={() => void reviewOpenAtom.set(true)} />
+        <TldrawUiMenuItem id="from-source" label={t.source.menu} readonlyOk onSelect={() => void sourceDialogOpenAtom.set(true)} />
+        <TldrawUiMenuItem id="ai-settings" label={t.ai.settingsMenu} readonlyOk onSelect={() => void aiSettingsOpenAtom.set(true)} />
       </TldrawUiMenuGroup>
       <TldrawUiMenuGroup id="schema-presets">
         <TldrawUiMenuItem id="presets" label={t.presets.menu} onSelect={() => void presetManagerOpenAtom.set(true)} />

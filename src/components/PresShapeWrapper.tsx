@@ -26,7 +26,9 @@ export const PresShapeWrapper = forwardRef<HTMLDivElement, TLShapeWrapperProps>(
       },
       [id]
     )
-    const className = [props.className, pres?.className].filter(Boolean).join(' ')
+    // Suggestion de l'IA en attente : estompée (et étiquetée « suggestion », voir NatureTag).
+    const pending = props.shape.meta.suggestion ? 'ai-suggestion' : ''
+    const className = [props.className, pres?.className, pending].filter(Boolean).join(' ')
     const style = pres?.style ? { ...props.style, ...pres.style } : props.style
     return (
       <DefaultShapeWrapper ref={ref} {...props} style={style} className={className || undefined}>
@@ -68,16 +70,21 @@ function NatureTag({ shape }: { shape: TLShape }) {
     },
     [editor, shape.id, shape.meta.preset, shape.meta.modality, shape.meta.author, t]
   )
-  if (!tag) return null
+  const pending = !!shape.meta.suggestion
+  // Extrait introuvable dans la source : « à vérifier », écrit sur l'étiquette.
+  const unverified = !!shape.meta.excerptUnverified
+  if (!tag && !pending && !unverified) return null
   return (
     <>
-      {tag.text && (
-        <div className="nature-tag" style={{ color: tag.color }}>
-          {tag.text}
-          {tag.modality && <span className="nature-modality">{tag.modality}</span>}
+      {(tag?.text || pending || unverified) && (
+        <div className="nature-tag" style={{ color: tag?.color }}>
+          {pending && <span className="suggestion-pill">{t.suggestions.tag}</span>}
+          {unverified && <span className="unverified-pill">{t.source.toCheck}</span>}
+          {tag?.text}
+          {tag?.modality && <span className="nature-modality">{tag.modality}</span>}
         </div>
       )}
-      {tag.quote && <div className="quote-mark" aria-hidden>“</div>}
+      {tag?.quote && <div className="quote-mark" aria-hidden>“</div>}
     </>
   )
 }

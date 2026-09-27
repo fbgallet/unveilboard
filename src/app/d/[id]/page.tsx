@@ -6,6 +6,7 @@ import StudioLoader from '@/components/StudioLoader'
 import { isDemoName } from '@/lib/demoNames'
 import { tldrawLicenseKey } from '@/lib/licenseKey'
 import { publicSharingEnabled } from '@/lib/server/publicShares'
+import { serverAiAvailable } from '@/lib/server/ai'
 
 export default async function DocumentPage({ params, searchParams }: PageProps<'/d/[id]'>) {
   const storage = storageMode()
@@ -23,6 +24,7 @@ export default async function DocumentPage({ params, searchParams }: PageProps<'
       storage={storage}
       licenseKey={tldrawLicenseKey()}
       publicSharing={publicSharingEnabled()}
+      serverAi={serverAiAvailable()}
     />
   )
 }

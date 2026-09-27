@@ -28,6 +28,10 @@ export type IssueCode =
   | 'part_ignored'
   | 'no_note'
   | 'shown_but_hidden'
+  | 'unknown_element'
+  | 'wrong_format'
+  | 'excerpt_not_found'
+  | 'quote_not_found'
 
 export interface MapIssue {
   level: 'error' | 'warning'
@@ -197,6 +201,10 @@ const MESSAGES: Record<IssueCode, string> = {
   part_ignored: '`part` does not apply here; it will be ignored',
   no_note: 'This element has no note to show',
   shown_but_hidden: 'Shown by this step but still hidden: an ancestor is hidden or folded',
+  unknown_element: 'No element or link has this identifier in the current diagram',
+  wrong_format: 'Expected "format": "unveilboard/map" (a whole diagram) or "unveilboard/patch" (changes)',
+  excerpt_not_found: 'The excerpt is not in the source text: copy it character for character (or remove it and set "origin": "reconstruction")',
+  quote_not_found: 'This quotation is not in the source text: copy it exactly, or make it a statement',
 }
 
 /** Problème en une ligne, en anglais (pour une IA, ou les journaux). */
