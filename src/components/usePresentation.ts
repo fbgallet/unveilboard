@@ -5,6 +5,7 @@ import { react, type Editor, type TLCamera, type TLEventInfo } from 'tldraw'
 import { activeSpotlights, boundsOf, computeEditorStage, drawClip, moveCamera, readSequence, writeSequence } from '@/lib/canvas/adapter'
 import { stateOf } from '@/lib/sequence/compute'
 import { noteOf, panelNoteIds } from '@/lib/canvas/notes'
+import { swallowNextKeyUp } from '@/lib/keyboard'
 import { applyLaserTiming } from '@/lib/canvas/laser'
 import {
   activeSpotsAtom,
@@ -283,6 +284,7 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
           break
         case 'Tab':
           cycleNoteTab(editor, e.shiftKey ? -1 : 1)
+          swallowNextKeyUp('Tab')
           break
         case 'l':
         case 'L':

@@ -1601,3 +1601,127 @@ svg.preset-swatch {
 .narration-tab-close:hover {
   opacity: 1;
 }
+
+.relation-verb {
+  color: var(--color-stone-400);
+}
+
+/* Modalité d'un énoncé (descriptif / normatif) : pastille à côté de l'étiquette */
+.nature-modality {
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  opacity: 0.85;
+}
+
+/* Pastille « − » d'un nœud déplié (survolé ou sélectionné) : replier sa branche */
+.fold-badge-open {
+  min-width: 22px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 18px;
+}
+
+/* Définition modifiable d'un préréglage : seconde ligne de sa rangée dans le gestionnaire */
+.preset-row {
+  flex-wrap: wrap;
+}
+.preset-description {
+  flex-basis: 100%;
+  margin-left: 40px;
+  font-size: 11px;
+  color: var(--color-zinc-600);
+}
+.preset-guide-link {
+  float: right;
+  width: 16px;
+  height: 16px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0;
+  line-height: 13px;
+  text-align: center;
+}
+.relation-guide {
+  margin-top: 4px;
+  padding: 4px 6px 2px;
+  border-top: 1px solid var(--color-stone-200);
+  font-size: 11px;
+  text-align: left;
+  color: var(--color-stone-500);
+}
+.relation-guide:hover {
+  color: var(--color-amber-700);
+}
+
+/* Guide des natures et relations */
+.guide-overlay {
+  z-index: 850;
+}
+.guide-dialog {
+  width: min(1040px, calc(100% - 32px));
+}
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 10px;
+}
+.guide-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-zinc-200);
+  border-radius: 10px;
+  background: var(--color-zinc-50);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.guide-swatch .preset-swatch {
+  width: 36px;
+  height: 22px;
+}
+.guide-label {
+  margin-right: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-zinc-400);
+}
+.guide-example {
+  font-family: var(--font-serif-display, Georgia), serif;
+  font-style: italic;
+  color: var(--color-zinc-700);
+}
+
+.guide-reasonings {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 6px 16px;
+  font-size: 12.5px;
+}
+.guide-reasonings dt {
+  display: inline;
+  font-weight: 600;
+  color: var(--color-zinc-900);
+}
+.guide-reasonings dt::after {
+  content: ' — ';
+}
+.guide-reasonings dd {
+  display: inline;
+  color: var(--color-zinc-600);
+}
+
+.relation-more {
+  color: var(--color-stone-500);
+}
+.preset-more {
+  margin-right: 6px;
+}

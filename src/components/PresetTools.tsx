@@ -18,16 +18,20 @@ import {
   presetErrorAtom,
   presetSettingsAtom,
   savePresetSettings,
+  setReasoning,
   selectedPresetId,
   styleFromSelection,
   swatchColor,
 } from '@/lib/canvas/presets'
 import {
+  REASONINGS,
+  type Reasoning,
   MODAL_NATURES,
   MODALITIES,
   PRESET_GEOS,
   defaultPresetSettings,
   newPresetId,
+  offeredPresets,
   type Preset,
   type PresetSettings,
   type PresetTarget,
@@ -35,8 +39,16 @@ import {
 import { settingsStore } from '@/lib/storage'
 import { storageModeAtom } from '@/lib/sync/documentSync'
 import { useT } from '@/i18n/client'
+import { presetName, presetRole } from '@/lib/presets/labels'
+import type { Messages } from '@/i18n/config'
 
 export const presetManagerOpenAtom = atom<boolean>('presetManagerOpen', false)
+export const presetGuideOpenAtom = atom<boolean>('presetGuideOpen', false)
+
+/** Définition d'un préréglage : la sienne, sinon celle de départ dans la langue de l'interface. */
+export function presetDefinition(preset: Preset, t: Messages): string {
+  return preset.description || t.presetHelp[preset.id]?.definition || ''
+}
 
 const save = (next: PresetSettings) => savePresetSettings(settingsStore(storageModeAtom.get()), next)
 
@@ -60,15 +72,19 @@ function PresetPalette() {
       const shapes = editor.getSelectedShapes()
       const targets = new Set<PresetTarget>(shapes.map((s) => (s.type === 'arrow' ? 'arrow' : 'shape')))
       if (!shapes.length) targets.add('shape')
-      const common = presetSettingsAtom.get().items
-      const known = new Set(common.map((p) => p.id))
+      const settings = presetSettingsAtom.get()
+      const known = new Set(settings.items.map((p) => p.id))
       // Préréglages de ce schéma absents des préréglages communs (schéma venu d'ailleurs).
       const fromDoc = Object.values(documentPresets(editor)).filter((p) => !known.has(p.id))
+      // Profil (essentiel ou complet) et préréglages masqués ; celui de la sélection reste visible.
+      const offered = new Set(offeredPresets(settings).map((p) => p.id))
+      const selected = selectedPresetId(editor)
       return {
-        items: [...common, ...fromDoc].filter((p) => targets.has(p.target)),
+        items: [...settings.items, ...fromDoc].filter((p) => targets.has(p.target) && (offered.has(p.id) || !known.has(p.id) || p.id === selected)),
+        complete: settings.profile === 'complete',
         docOnly: new Set(fromDoc.map((p) => p.id)),
         active: selectedPresetId(editor) ?? armedPresetAtom.get(),
-        armed: presetById(editor, armedPresetAtom.get() ?? undefined)?.name,
+        armed: presetById(editor, armedPresetAtom.get() ?? undefined),
       }
     },
     [editor]
@@ -82,14 +98,24 @@ function PresetPalette() {
             key={p.id}
             className={`preset-chip ${view.active === p.id ? 'preset-chip-active' : ''} ${view.docOnly.has(p.id) ? 'preset-chip-doc' : ''}`}
             onClick={() => applyPreset(editor, p)}
-            title={view.docOnly.has(p.id) ? t.presets.docOnly(p.name) : p.name}
+            title={[view.docOnly.has(p.id) ? t.presets.docOnly(presetName(p, t)) : presetName(p, t), presetDefinition(p, t)].filter(Boolean).join(' — ')}
           >
             <Swatch editor={editor} preset={p} />
-            {p.name}
+            {presetName(p, t)}
           </button>
         ))}
       </div>
-      {view.armed && <p className="preset-armed">{t.presets.armed(view.armed)}</p>}
+      {view.armed && <p className="preset-armed">{t.presets.armed(presetName(view.armed, t))}</p>}
+      <button className="preset-manage preset-guide-link" onClick={() => presetGuideOpenAtom.set(true)} title={t.guide.open}>
+        ?
+      </button>
+      <button
+        className="preset-manage preset-more"
+        onClick={() => save({ ...presetSettingsAtom.get(), profile: view.complete ? 'essential' : 'complete' })}
+        title={view.complete ? t.presets.lessHint : t.presets.moreHint}
+      >
+        {view.complete ? t.presets.less : t.presets.more}
+      </button>
       <button className="preset-manage" onClick={() => presetManagerOpenAtom.set(true)}>
         {t.presets.manage}
       </button>
@@ -118,6 +144,7 @@ function Swatch({ editor, preset }: { editor: Editor; preset: Preset }) {
     diamond: <path d="M8 0.8 L15 5 L8 9.2 L1 5 Z" {...common} />,
     hexagon: <path d="M4 1 L12 1 L15 5 L12 9 L4 9 L1 5 Z" {...common} />,
     cloud: <path d="M4 9 A3 3 0 0 1 3.5 3.5 A3.5 3.5 0 0 1 10 2.5 A3 3 0 0 1 12.5 9 Z" {...common} />,
+    rhombus: <path d="M4 1 L15 1 L12 9 L1 9 Z" {...common} />,
   }[preset.style.geo ?? ''] ?? <rect x="1" y="1" width="14" height="8" rx="1.5" {...common} />
   return (
     <svg className="preset-swatch preset-swatch-shape" viewBox="0 0 16 10" aria-hidden>
@@ -152,7 +179,7 @@ export function PresetManager({ editor }: { editor: Editor }) {
   const update = (id: string, patch: Partial<Preset>) =>
     save({ ...settings, items: items.map((p) => (p.id === id ? { ...p, ...patch } : p)) })
   const remove = (p: Preset) => {
-    if (confirm(t.presets.confirmDelete(p.name)))
+    if (confirm(t.presets.confirmDelete(presetName(p, t))))
       save({ ...settings, items: items.filter((x) => x.id !== p.id) })
   }
   const move = (id: string, delta: -1 | 1) => {
@@ -179,13 +206,20 @@ export function PresetManager({ editor }: { editor: Editor }) {
         {items
           .filter((p) => p.target === target)
           .map((p) => (
-            <li key={p.id} className="preset-row">
+            <li key={p.id} className={`preset-row ${p.hidden ? 'opacity-50' : ''}`}>
+              <input
+                type="checkbox"
+                checked={!p.hidden}
+                onChange={(e) => update(p.id, { hidden: !e.target.checked || undefined })}
+                title={t.presets.showPreset}
+                aria-label={t.presets.showPreset}
+              />
               <Swatch editor={editor} preset={p} />
               <input
                 className="preset-input flex-1"
-                defaultValue={p.name}
+                defaultValue={presetName(p, t)}
                 aria-label={t.presets.name}
-                onBlur={(e) => e.target.value.trim() && e.target.value !== p.name && update(p.id, { name: e.target.value.trim() })}
+                onBlur={(e) => e.target.value.trim() && e.target.value !== presetName(p, t) && update(p.id, { name: e.target.value.trim() })}
               />
               {target === 'shape' && (
                 <>
@@ -230,7 +264,7 @@ export function PresetManager({ editor }: { editor: Editor }) {
                     {items
                       .filter((n) => n.target === 'shape')
                       .map((n) => (
-                        <option key={n.id} value={n.id}>{n.name}</option>
+                        <option key={n.id} value={n.id}>{presetName(n, t)}</option>
                       ))}
                   </select>
                 </>
@@ -255,6 +289,14 @@ export function PresetManager({ editor }: { editor: Editor }) {
               <button className="preset-icon" onClick={() => move(p.id, -1)} title={t.common.moveUp}>↑</button>
               <button className="preset-icon" onClick={() => move(p.id, 1)} title={t.common.moveDown}>↓</button>
               <button className="preset-icon" onClick={() => remove(p)} title={t.common.delete}>✕</button>
+              <input
+                className="preset-input preset-description"
+                defaultValue={p.description ?? ''}
+                placeholder={t.presetHelp[p.id]?.definition ?? t.presets.description}
+                aria-label={t.presets.description}
+                title={t.presets.description}
+                onBlur={(e) => e.target.value.trim() !== (p.description ?? '') && update(p.id, { description: e.target.value.trim() || undefined })}
+              />
             </li>
           ))}
       </ul>
@@ -269,7 +311,12 @@ export function PresetManager({ editor }: { editor: Editor }) {
       <div className="preset-dialog" role="dialog" aria-label={t.presets.title}>
         <header className="flex items-center justify-between">
           <h2 className="text-base font-semibold">{t.presets.title}</h2>
-          <button className="preset-icon" onClick={() => presetManagerOpenAtom.set(false)} aria-label={t.common.close}>✕</button>
+          <span className="flex items-center gap-2">
+            <button className="btn-xs" onClick={() => presetGuideOpenAtom.set(true)}>
+              {t.guide.title}
+            </button>
+            <button className="preset-icon" onClick={() => presetManagerOpenAtom.set(false)} aria-label={t.common.close}>✕</button>
+          </span>
         </header>
         <p className="text-xs text-zinc-500">
           {t.presets.intro}
@@ -285,7 +332,7 @@ export function PresetManager({ editor }: { editor: Editor }) {
                 {fromDoc.map((p) => (
                   <li key={p.id} className="preset-row">
                     <Swatch editor={editor} preset={p} />
-                    <span className="flex-1">{p.name}</span>
+                    <span className="flex-1">{presetName(p, t)}</span>
                     <button className="btn-xs" onClick={() => save({ ...settings, items: [...items, p] })}>
                       {t.presets.addToMine}
                     </button>
@@ -326,7 +373,7 @@ export function NatureFields({ editor, id }: { editor: Editor; id: TLShapeId }) 
       const preset = presetById(editor, shape?.meta.preset as string | undefined)
       if (!shape || !preset || preset.target !== 'shape') return null
       return {
-        name: preset.name,
+        name: presetName(preset, t),
         statement: MODAL_NATURES.includes(preset.id),
         author: typeof shape.meta.author === 'string' ? shape.meta.author : '',
         modality: typeof shape.meta.modality === 'string' ? shape.meta.modality : '',
@@ -365,5 +412,111 @@ export function NatureFields({ editor, id }: { editor: Editor; id: TLShapeId }) 
         </select>
       )}
     </div>
+  )
+}
+
+/**
+ * Guide des natures et relations : pour chacune, sa forme ou son trait, sa définition, son usage
+ * et un exemple. La forme dit la nature, la couleur la fonction.
+ */
+export function PresetGuide({ editor }: { editor: Editor }) {
+  const t = useT()
+  const open = useValue(presetGuideOpenAtom)
+  const items = useValue('guide items', () => presetSettingsAtom.get().items.filter((p) => !p.hidden), [])
+  if (!open) return null
+  const card = (p: Preset) => {
+    const help = t.presetHelp[p.id]
+    return (
+      <article key={p.id} className="guide-card">
+        <header className="flex items-center gap-3">
+          <span className="guide-swatch">
+            <Swatch editor={editor} preset={p} />
+          </span>
+          <h4 className="font-semibold text-zinc-900">
+            {presetName(p, t)}
+            {p.target === 'arrow' && p.role && (
+              <span className="font-normal text-zinc-500">
+                {' '}→ {presetRole(p, t)}
+              </span>
+            )}
+          </h4>
+        </header>
+        <p className="text-zinc-700">{presetDefinition(p, t)}</p>
+        {help?.use && (
+          <p className="text-zinc-600">
+            <span className="guide-label">{t.guide.use}</span> {help.use}
+          </p>
+        )}
+        {p.target === 'arrow' && (
+          <p className="text-[11px] text-zinc-500">{p.towardChild ? t.guide.towardChild : t.guide.towardParent}</p>
+        )}
+        {help?.example && (
+          <p className="guide-example">
+            <span className="guide-label">{t.guide.example}</span> {help.example}
+          </p>
+        )}
+      </article>
+    )
+  }
+  return (
+    <div className="preset-overlay guide-overlay" onPointerDown={(e) => e.target === e.currentTarget && presetGuideOpenAtom.set(false)}>
+      <div className="preset-dialog guide-dialog" role="dialog" aria-label={t.guide.title}>
+        <header className="flex items-center justify-between">
+          <h2 className="font-serif text-xl text-zinc-900">{t.guide.title}</h2>
+          <button className="preset-icon" onClick={() => presetGuideOpenAtom.set(false)} aria-label={t.guide.close}>
+            ✕
+          </button>
+        </header>
+        <p className="text-sm text-zinc-600">{t.guide.intro}</p>
+        <div className="overflow-y-auto">
+          <h3 className="preset-group-title">{t.guide.natures}</h3>
+          <div className="guide-grid">{items.filter((p) => p.target === 'shape').map(card)}</div>
+          <h3 className="preset-group-title mt-4">{t.guide.relations}</h3>
+          <div className="guide-grid">{items.filter((p) => p.target === 'arrow').map(card)}</div>
+          <h3 className="preset-group-title mt-4">{t.reasoning.guideTitle}</h3>
+          <p className="mb-2 text-xs text-zinc-500">{t.reasoning.guideIntro}</p>
+          <dl className="guide-reasonings">
+            {REASONINGS.map((r) => (
+              <div key={r}>
+                <dt>{t.reasoning.types[r]}</dt>
+                <dd>{t.reasoning.help[r]}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Type de raisonnement d'une flèche (déduction, analogie…) : précision facultative, inscrite dans son texte. */
+export function ReasoningField({ editor, id }: { editor: Editor; id: TLShapeId }) {
+  const t = useT()
+  const value = useValue(
+    'reasoning',
+    () => {
+      const shape = editor.getShape(id)
+      if (shape?.type !== 'arrow') return null
+      return typeof shape.meta.reasoning === 'string' ? shape.meta.reasoning : ''
+    },
+    [editor, id]
+  )
+  if (value === null) return null
+  return (
+    <label className="mt-1 flex items-center gap-2 px-1 text-[11px] text-zinc-500" title={t.reasoning.hint}>
+      {t.reasoning.label}
+      <select
+        className="preset-input flex-1"
+        value={value}
+        onChange={(e) => setReasoning(editor, id, (e.target.value || null) as Reasoning | null)}
+      >
+        <option value="">{t.reasoning.none}</option>
+        {REASONINGS.map((r) => (
+          <option key={r} value={r} title={t.reasoning.help[r]}>
+            {t.reasoning.types[r]}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }

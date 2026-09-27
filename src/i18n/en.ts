@@ -28,7 +28,7 @@ export const en = {
       before: 'Your diagrams are saved ',
       strong: 'in this browser only',
       after:
-        '. To back them up or move them: use “Save as…” (steps panel, or ☰ menu) in a diagram, then “Open a .tldr file” here, or drop the file on this page.',
+        '. To back them up or move them: use “Save as…” (steps panel, or ☰ menu) in a diagram, then “Open a .tldr file” here, or drop the file on this page. In Chrome and Edge, the file is then kept up to date: save it in a synced folder (Google Drive, Dropbox…) to find your diagram on any computer.',
     },
     newDiagram: '+ New diagram',
     createExample: 'Create the example (the water cycle)',
@@ -54,7 +54,7 @@ export const en = {
         truth: {
           title: 'Should we always tell the truth?',
           language: 'English or French',
-          text: 'An argument tree: Kant’s thesis, its justification and presupposition, Constant’s objection, Kant’s reply. The shape tells the nature, the color the function.',
+          text: 'An argument map: Kant’s thesis, its justification (a reductio) and assumption, Constant’s objection, and Kant’s replies, including a distinction. The shape tells the element type, the color its function.',
         },
         water: {
           title: 'The water cycle',
@@ -120,7 +120,7 @@ export const en = {
     back: 'My diagrams',
     saveAs: 'Save as…',
     saveAsHint:
-      'Save this diagram to a .tldr file (sequence included): backup, transfer, or opening on tldraw.com. Also in the ☰ menu.',
+      'Save this diagram to a .tldr file (sequence included): backup, transfer, or opening on tldraw.com. In Chrome and Edge, the file is then kept up to date automatically (Ctrl/⌘ + S). Also in the ☰ menu.',
     collapse: 'Collapse the panel',
     present: '▶ Present',
     presentFromStep: '▶ From step',
@@ -392,6 +392,10 @@ export const en = {
   presets: {
     docOnly: (name: string) => `${name} (preset of this diagram)`,
     manage: 'Manage presets…',
+    more: 'More…',
+    less: 'Less',
+    moreHint: 'Show all element types and relations',
+    lessHint: 'Show only the essentials',
     confirmDelete: (name: string) => `Delete the preset “${name}”? Shapes already styled won't change.`,
     promptArrow: 'Relation name (e.g. “leads to”):',
     promptShape: 'Preset name (e.g. “Thesis”):',
@@ -417,17 +421,19 @@ export const en = {
     modalities: { descriptive: 'descriptive', prescriptive: 'normative' },
     modality: 'Modality',
     noModality: '—',
-    author: 'Author',
-    authorPlaceholder: 'e.g. Spinoza, Ethics III',
+    author: 'Source (author, theory, position, reference)',
+    authorPlaceholder: 'Source: Spinoza, Ethics III; utilitarianism; common sense…',
+    description: 'Definition (tooltip and guide)',
     geometry: 'Shape',
-    geos: { rectangle: 'Rectangle', oval: 'Oval', ellipse: 'Ellipse', diamond: 'Diamond', hexagon: 'Hexagon', cloud: 'Cloud' },
+    geos: { rectangle: 'Rectangle', oval: 'Oval', ellipse: 'Ellipse', diamond: 'Diamond', hexagon: 'Hexagon', cloud: 'Cloud', rhombus: 'Parallelogram' },
     treeDirection: 'Direction in a tree',
     towardParent: '↑ toward the parent',
     towardChild: '↓ toward the child',
-    childNature: 'Nature of the new node (argument tree)',
+    childNature: 'Type of the new element (argument map)',
+    showPreset: 'Show in the palette and the relation choice (unchecked: hidden, but still usable in existing diagrams)',
     tag: 'Label',
-    tagHint: 'Show the name of the nature above the shape',
-    showTags: 'Show nature labels on the canvas',
+    tagHint: 'Show the name of the type above the shape',
+    showTags: 'Show labels (type or function) on the canvas',
     armed: (name: string) => `Draw a shape: it will be “${name}” (Esc to cancel)`,
     menu: 'Style presets…',
   },
@@ -435,8 +441,10 @@ export const en = {
   /** Préréglages de départ : noms des formes, et noms / étiquettes des flèches. */
   presetDefaults: {
     statement: 'Statement',
-    belief: 'Fundamental belief',
+    belief: 'Assumption',
+    fact: 'Evidence',
     concept: 'Concept',
+    distinction: 'Distinction',
     question: 'Question',
     problem: 'Problem',
     example: 'Example',
@@ -450,11 +458,143 @@ export const en = {
     explains: 'explains',
     defines: 'defines',
     raises: 'raises',
-    distinguishes: 'distinguishes',
+    distinguishes: 'is distinct from',
+    opposes: 'is opposed to',
+    relates: 'is akin to',
     implies: 'implies',
   },
 
   /** Fonction d'un nœud relié par une relation, dans un arbre argumentatif (étiquette). */
+  /** Guide to element types and relations: definition, use, example (default presets). */
+  presetHelp: {
+    statement: {
+      definition: 'What is explicitly asserted, and discussed, defended or criticized.',
+      use: 'Any claim at stake in the argument: thesis, premise, objection, conclusion. Its function (justification, objection…) comes from the relation that connects it.',
+      example: '“Technology makes us freer.”',
+    },
+    belief: {
+      definition: 'A belief that is often implicitly accepted, yet debatable, and that underlies common claims.',
+      use: 'A structuring element of our picture of the world (descriptive assumption) or of our values (normative assumption). We bring it to light to discuss it; it can be linked to a theory, position or philosophical option (“Source” field).',
+      example: '“Everyone is the author of their choices”: the assumption of free will, underlying the idea of responsibility.',
+    },
+    fact: {
+      definition: 'A datum, observation, result or document one relies on.',
+      use: 'The basis of reasoning: what supports, illustrates or tests a statement.',
+      example: '“Suicide rates vary across social groups” (Durkheim).',
+    },
+    concept: {
+      definition: 'A notion that is defined, analysed or distinguished from others.',
+      use: 'Clarify the terms of a problem, draw conceptual distinctions.',
+      example: 'Freedom (freedom of indifference, enlightened freedom).',
+    },
+    question: {
+      definition: 'A point of discussion between several points of view.',
+      use: 'Organise the debate: the positions at stake attach to it (“answers” relation).',
+      example: '“Is freedom an illusion?”',
+    },
+    problem: {
+      definition: 'What stands in the way, resists, or calls for a resolution.',
+      use: 'A tension, contradiction or paradox that drives the inquiry.',
+      example: 'If everything has a cause, how can we be responsible?',
+    },
+    example: {
+      definition: 'A particular case that illustrates, specifies or tests an idea.',
+      use: 'Make an idea concrete, or serve as a counterexample.',
+      example: 'The slave who knows himself free in thought (Epictetus).',
+    },
+    quote: {
+      definition: 'An author’s text, quoted verbatim.',
+      use: 'Ground the analysis in the letter of a text; author and reference in the “Source” field.',
+      example: '“Man is condemned to be free” (Sartre).',
+    },
+    supports: {
+      definition: 'Gives a reason to believe what is asserted.',
+      use: 'Connects a justification (premise, argument) to the thesis it backs.',
+      example: '“Every man desires the good” supports “No one does wrong willingly”.',
+    },
+    objects: {
+      definition: 'Opposes a claim, disputes its truth or scope.',
+      use: 'Connects an objection to what it attacks.',
+      example: '“I see the better and do the worse” objects to the Socratic thesis.',
+    },
+    refutes: {
+      definition: 'Shows that an objection or a thesis does not hold.',
+      use: 'Connects a refutation (a reply to an objection) to what it refutes.',
+      example: '“It is only a momentary ignorance” refutes the objection from akrasia.',
+    },
+    answers: {
+      definition: 'Offers an answer to a question.',
+      use: 'Connects a position to the question under debate.',
+      example: '“Yes, if being free means doing what one wants” answers “Are we free?”.',
+    },
+    explains: {
+      definition: 'Accounts for the causes or reasons of a fact, without trying to justify it.',
+      use: 'Connects an explanation to what it explains; unlike “supports”, which gives a reason to believe.',
+      example: '“Ignorance of causes” explains “the feeling of being free” (Spinoza).',
+    },
+    implies: {
+      definition: 'Has as a consequence, logical or practical.',
+      use: 'Connects a claim to what follows from it.',
+      example: 'Does “everything is determined” imply “no one is responsible”?',
+    },
+    presupposes: {
+      definition: 'Rests, without saying so, on an assumption.',
+      use: 'Bring to light what a claim takes for granted.',
+      example: '“Punishing the guilty” presupposes “they could have acted otherwise”.',
+    },
+    illustrates: {
+      definition: 'Gives an example of what is asserted.',
+      use: 'Connects an example (or a fact) to the idea it makes concrete.',
+      example: 'The tyrant who thinks he serves his interest illustrates the error about the good.',
+    },
+    defines: {
+      definition: 'Specifies the meaning of a notion.',
+      use: 'Connects a definition to the concept it defines.',
+      example: '“Being able to do what one wants” defines freedom in the common sense.',
+    },
+    raises: {
+      definition: 'Brings out a difficulty or a problem.',
+      use: 'Connects a claim to the problem it raises.',
+      example: 'Determinism raises the problem of responsibility.',
+    },
+    distinguishes: {
+      definition: 'Marks a difference between two notions where there is confusion.',
+      use: 'Connects two concepts that are often confused.',
+      example: 'Liberty is distinct from licence.',
+    },
+    opposes: {
+      definition: 'Opposes two notions: contraries (mutually exclusive but not exhaustive) or contradictories (one is the negation of the other).',
+      use: 'Connects two concepts in tension or opposition.',
+      example: 'Nature is opposed to culture.',
+    },
+    relates: {
+      definition: 'Brings together two neighbouring or kindred notions.',
+      use: 'Connects two close concepts, without conflating them.',
+      example: 'Freedom is akin to autonomy.',
+    },
+    distinction: {
+      definition: 'A difference drawn between two terms that are confused, or an opposition between them: dispelling an equivocation is often decisive in a discussion.',
+      use: 'A move in the argument: refute an objection, resolve a problem or answer a question by distinguishing what was conflated.',
+      example: 'Liberty ≠ licence: being free is not doing just anything.',
+    },
+  } as Record<string, { definition: string; use: string; example: string }>,
+
+  guide: {
+    title: 'Guide to element types and relations',
+    menu: 'Guide to element types and relations…',
+    open: 'Guide: what each element type and relation is for',
+    intro:
+      'In an argument map, the shape tells what an element is (its type), the color tells what it does in the argument (its function, given by the relation that connects it to its parent).',
+    natures: 'Element types (shapes)',
+    relations: 'Relations (arrows)',
+    use: 'Use',
+    example: 'Example',
+    functionLabel: 'Function of the connected element',
+    towardParent: 'points to the existing element',
+    towardChild: 'points to the new element',
+    close: 'Close',
+  },
+
   presetRoles: {
     supports: 'Justification',
     objects: 'Objection',
@@ -467,7 +607,37 @@ export const en = {
     defines: 'Definition',
     raises: 'Problem',
     distinguishes: 'Distinction',
+    opposes: 'Opposition',
+    relates: 'Related notion',
   } as Record<string, string>,
+
+  reasoning: {
+    label: 'Type of reasoning',
+    none: '—',
+    hint: 'Optional, written in the arrow’s text',
+    types: {
+      deduction: 'deduction',
+      induction: 'induction',
+      analogy: 'analogy',
+      abduction: 'best explanation',
+      absurd: 'reductio',
+      afortiori: 'a fortiori',
+      authority: 'authority',
+      example: 'by example',
+    },
+    help: {
+      deduction: 'The conclusion follows necessarily from the premises.',
+      induction: 'Generalises from particular cases.',
+      analogy: 'Concludes from one case to another, similar one.',
+      abduction: 'Retains the hypothesis that best explains the facts (abduction).',
+      absurd: 'Refutes a thesis by showing it leads to an absurdity (reductio ad absurdum).',
+      afortiori: 'What holds in one case holds all the more in another.',
+      authority: 'Relies on the competence or prestige of a source.',
+      example: 'Establishes or refutes through a particular case (counterexample).',
+    },
+    guideTitle: 'Types of reasoning',
+    guideIntro: 'Optional detail on a support or objection arrow: select the arrow, then choose in the side panel.',
+  },
 
   tree: {
     startTree: 'start a tree from this box',
@@ -476,14 +646,23 @@ export const en = {
     fold: '▾ Collapse',
     relayout: 'Tidy up',
     relayoutHint: 'Put each node back in its computed place (undoes manual moves)',
-    argument: 'Argument',
-    argumentHint: 'Argument tree: Tab offers a relation (supports, objects…) that styles and orients the branch, and gives its nature to the new node',
-    pickRelation: 'Relation of the new node',
-    noRelation: 'no relation',
+    argument: 'Argument map',
+    argumentHint: 'Argument map: this box becomes the thesis under discussion. Tab adds a justification, an objection, an example… to it (and to any node)',
+    argumentTabHint: 'add a justification, an objection…',
+    thesis: 'Thesis',
+    addToThesis: 'Add to the thesis',
+    addTo: 'Add to this node',
+    noRelation: 'a node with no relation',
+    moreRelations: 'More relations…',
+    revealMap: 'Reveal the map',
+    revealMapHint: 'Adds a step per element of the map (except those already scheduled) to the sequence, in tree order: branch by branch',
+    revealNothing: 'All the elements of this map already appear in the sequence.',
+    revealStep: 'Element',
     directions: { right: 'To the right', left: 'To the left', down: 'Downwards', up: 'Upwards', both: 'On both sides' },
     child: 'child',
     enter: 'Enter',
     sibling: 'sibling',
+    collapseBranch: 'Collapse the branch',
     expandBranch: 'Expand the branch',
   },
 
@@ -597,7 +776,21 @@ export const en = {
     typeDescription: 'tldraw diagram',
     defaultName: 'diagram',
     open: 'Open a .tldr file…',
+    save: 'Save (Ctrl/⌘ + S)',
     saveAs: 'Save as… (.tldr)',
+    unlink: 'Stop saving to this file',
+    allow: 'Allow saving',
+    linkedHint: (name: string) =>
+      `Changes are saved automatically to ${name} (click or Ctrl/⌘ + S to save now). Ctrl/⌘ + Shift + S: save to another file.`,
+    permissionHint: (name: string) =>
+      `Click to allow saving changes to ${name} again: the browser asks after each restart.`,
+    changedOutside: (name: string) =>
+      `${name} was modified elsewhere (another computer or app) and this diagram also has unsaved changes.`,
+    loadFile: 'Load the file',
+    keepMine: 'Keep mine (overwrite the file)',
+    reopenConflict: (name: string) =>
+      `${name} was modified elsewhere, and this diagram has changes not yet saved to it.\n\nOK: load the file (your changes are replaced).\nCancel: keep your version (it will overwrite the file).`,
+    missing: 'The linked file can no longer be found (moved or deleted?).',
   },
 }
 

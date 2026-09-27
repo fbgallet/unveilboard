@@ -9,7 +9,7 @@ import { readSequence, writeSequence } from '@/lib/canvas/adapter'
 import { SPOTLIGHT_TYPE } from '@/lib/canvas/spotlight'
 import { getTreeIndex } from '@/lib/canvas/tree'
 import { noteOf, resolveTextImage, setNote, storeTextImage } from '@/lib/canvas/notes'
-import { NatureFields } from './PresetTools'
+import { NatureFields, ReasoningField } from './PresetTools'
 import { MarkdownEditor } from './MarkdownEditor'
 import {
   addStep,
@@ -41,8 +41,7 @@ import {
   storeValue,
 } from '@/lib/presentation/store'
 import { enterPresentation, toggleQuickSequence } from './usePresentation'
-import { SyncIndicator } from './SyncIndicator'
-import { saveTldrAs } from '@/lib/storage/tldrSave'
+import { FileButton, SyncIndicator } from './SyncIndicator'
 import { ResizeHandle } from './ResizeHandle'
 import { useT } from '@/i18n/client'
 
@@ -150,13 +149,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
             >
               {t.share.button}
             </button>
-            <button
-              className="rounded px-1.5 text-xs text-zinc-400 hover:bg-zinc-200 hover:text-zinc-900"
-              onClick={() => void saveTldrAs(editor).catch((e) => alert(e instanceof Error ? e.message : e))}
-              title={t.panel.saveAsHint}
-            >
-              {t.panel.saveAs}
-            </button>
+            <FileButton />
             <button
               className="rounded px-1.5 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-900"
               onClick={() => setPanelOpen(false)}
@@ -227,6 +220,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
         </div>
         <p className="px-1 text-[11px] text-zinc-400">{selectionHint}</p>
         {selection.length === 1 && <NatureFields editor={editor} id={selection[0]} />}
+        {selection.length === 1 && <ReasoningField editor={editor} id={selection[0]} />}
         {selection.length === 1 && <NoteEditor editor={editor} id={selection[0]} images={images} />}
       </div>
 

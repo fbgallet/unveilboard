@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { renderPlaintextFromRichText, useEditor, useValue, type Editor, type TLRichText, type TLShape, type TLShapeId } from 'tldraw'
 import { noteOf, panelNoteIds, plannedNoteIds, resolveTextImage } from '@/lib/canvas/notes'
 import { presetById, swatchColor } from '@/lib/canvas/presets'
+import { presetName } from '@/lib/presets/labels'
 import { readSequence } from '@/lib/canvas/adapter'
 import {
   DEFAULT_LASER,
@@ -607,10 +608,10 @@ export function Legend({ editor }: { editor: Editor }) {
       const ids = new Set(editor.getCurrentPageShapes().map((s) => s.meta.preset as string | undefined))
       return [...ids].flatMap((id) => {
         const p = presetById(editor, id)
-        return p ? [{ id: p.id, name: p.name, arrow: p.target === 'arrow', color: swatchColor(editor, p), dash: p.style.dash }] : []
+        return p ? [{ id: p.id, name: presetName(p, t), arrow: p.target === 'arrow', color: swatchColor(editor, p), dash: p.style.dash }] : []
       })
     },
-    [editor]
+    [editor, t]
   )
   if (!visible || !items.length) return null
   const natures = items.filter((i) => !i.arrow)

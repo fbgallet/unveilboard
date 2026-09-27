@@ -22,12 +22,12 @@ L'app est née pour l'enseignement : on suit mieux un raisonnement quand le sch�
 - **Mode présentation** : clavier et télécommande de présentation, vue d'ensemble et recentrage, pointeur laser (couleur, épaisseur et durée réglables), calque occultant tracé à la main, légende, et mode « déverrouillé » pour retoucher le schéma en pleine présentation.
 - **En classe** : une fenêtre public pour le projecteur pendant que votre écran devient une vue présentateur, et une télécommande sur téléphone (voir plus bas).
 - **Séquençage rapide** : créer des objets et les rattacher à l'étape en cours, ou à une nouvelle étape avant ou après, d'un clic.
-- **Arbres, cartes mentales et arbres argumentatifs** sur des formes tldraw ordinaires, avec des préréglages de styles (natures et relations).
+- **Arbres, cartes mentales et arbres argumentatifs** sur des formes tldraw ordinaires, avec des préréglages de styles (types d'éléments et relations).
 - **Notes d'objet** : le développement d'un objet, affiché à la demande à côté de la narration.
 - **Partage en lecture seule** : un lien qui ouvre la présentation pour n'importe qui, et un lien court avec un QR code à projeter.
 - **Polycopié** : ☰ › « Polycopié (imprimer / PDF)… » donne une partie par étape, le schéma à ce stade (objets atténués en gris) et sa narration, à imprimer ou enregistrer en PDF pour les élèves.
 - **Exemples** sur l'accueil (un arbre argumentatif, Kant et Constant sur le mensonge, en français ou en anglais ; le cycle de l'eau en anglais ; la liberté en français), et une aide des raccourcis en présentation (<kbd>?</kbd>).
-- **Fichiers** : enregistrer et ouvrir des fichiers `.tldr`. La séquence est stockée dans le document tldraw : un fichier `.tldr` la garde.
+- **Fichiers** : enregistrer et ouvrir des fichiers `.tldr`. La séquence est stockée dans le document tldraw : un fichier `.tldr` la garde. Sur Chrome et Edge, un schéma ouvert depuis un fichier, ou enregistré dans un fichier, reste lié à lui : chaque modification y est écrite automatiquement (<kbd>Ctrl/⌘</kbd>+<kbd>S</kbd> enregistre aussitôt). On peut ainsi travailler directement sur un fichier d'un dossier synchronisé (Google Drive, Dropbox, iCloud Drive, OneDrive). Un fichier modifié ailleurs est rechargé au retour sur l'onglet, et jamais écrasé sans le demander ; rouvrir un fichier lié rouvre son schéma au lieu d'en créer un doublon.
 - **Mode sombre**, et **interface en anglais et en français**.
 
 ## Partage en lecture seule
@@ -69,20 +69,22 @@ Sélectionner une boîte : <kbd>Tab</kbd> ajoute un enfant (et commence un arbre
 
 - La mise en page est automatique ; un nœud déplacé à la main garde son décalage (et entraîne sa branche). « Réorganiser » efface les décalages.
 - Orientation : vers la droite, la gauche, le bas, le haut, ou des deux côtés (carte mentale équilibrée : un nouvel enfant de la racine va du côté le moins chargé, et une branche glissée de l'autre côté de la racine y reste).
-- Replier une branche la masque en édition. L'état replié du document est l'état de départ de la présentation ; les actions « Replier / Déplier la branche » le changent en cours de séquence. Replier ne déplace rien : la place de la branche reste réservée.
+- Replier une branche la masque en édition : pastille « − » sur un nœud sélectionné ou survolé, « +n » pour la rouvrir. L'état replié du document est l'état de départ de la présentation ; les actions « Replier / Déplier la branche » le changent en cours de séquence. Replier ne déplace rien : la place de la branche reste réservée.
 - Supprimer un nœud supprime sa branche (annulable).
-- **Arbre argumentatif** (bouton « Argumentatif ») : <kbd>Tab</kbd> propose une relation (touches 1 à 9 puis a, b…, 0 sans relation). La branche prend le style et le sens de la relation (par défaut vers le parent : « la prémisse soutient la thèse » ; vers l'enfant pour implique, présuppose, soulève), et le nouveau nœud la nature associée (Exemple pour « illustre », Croyance fondamentale pour « présuppose »…). <kbd>Entrée</kbd> ajoute un frère avec la même relation.
-- Dans un arbre argumentatif, **la forme dit la nature, la couleur dit la fonction** : un nœud relié prend la couleur de sa relation (trait et fond pâle) et son étiquette affiche sa fonction seule (Justification, Objection, Réfutation, Réponse, Explication, Implication, Présupposé, Exemple, Définition, Difficulté, Distinction). Le vert est réservé au soutien.
+- **Carte d'argument** (bouton « Carte d'argument ») : la boîte sélectionnée devient la thèse à discuter (étiquette « Thèse »). <kbd>Tab</kbd> propose ce qu'on lui ajoute (Justification · soutient, Objection · objecte…) (touches 1 à 9 puis a, b…, 0 sans relation). La branche prend le style et le sens de la relation (par défaut vers le parent : « la prémisse soutient la thèse » ; vers l'enfant pour implique, présuppose, soulève), et le nouveau nœud le type associé (Exemple pour « illustre », Présupposé pour « présuppose »…). <kbd>Entrée</kbd> ajoute un frère avec la même relation.
+- Dans un arbre argumentatif, **la forme dit le type, la couleur dit la fonction** : un nœud relié prend la couleur de sa relation (trait et fond pâle) et son étiquette affiche sa fonction seule (Justification, Objection, Réfutation, Réponse, Explication, Implication, Présupposé, Exemple, Définition, Difficulté, Distinction). Le vert est réservé au soutien.
 
 ## Préréglages de styles
 
-Des styles nommés, en tête du panneau de styles : des **natures** pour les formes (Énoncé, Croyance fondamentale, Concept, Question, Difficulté, Exemple, Citation) et des **relations** pour les flèches (soutient, objecte, réfute, répond à, explique, implique, présuppose, illustre, définit, soulève, distingue). Ce ne sont que des propriétés tldraw ordinaires (géométrie, couleur, trait…), plus une marque `meta.preset`.
+Pour construire une carte d'argument pas à pas, voir le guide [Construire une carte d'argument](docs/argument-maps.fr.md) : types d'éléments, relations, définitions et exemples.
 
-- Un clic applique le préréglage aux formes ou flèches sélectionnées ; sans sélection, une nature arme l'outil de formes : la prochaine forme tracée la reçoit.
-- Chaque nature a sa géométrie (Concept : ovale, Question : losange, Difficulté : hexagone, Croyance fondamentale : nuage, Citation : sans cadre, en serif, avec guillemets…) et une étiquette au-dessus de la forme (« ÉNONCÉ NORMATIF · Hobbes ») : auteur et modalité (descriptif / normatif) se saisissent dans le panneau de droite. Les étiquettes sont dessinées par l'application : sans elle, le schéma garde ses formes et ses couleurs.
+Des styles nommés, en tête du panneau de styles : des **types d'éléments** pour les formes (Énoncé, Présupposé, Fait, Concept, Distinction, Question, Difficulté, Exemple, Citation) et des **relations** pour les flèches (soutient, objecte, réfute, répond à, explique, implique, présuppose, illustre, définit, soulève, et entre concepts : se distingue de, s'oppose à, se rapproche de). Une flèche de soutien ou d'objection peut préciser son type de raisonnement (déduction, induction, analogie…). Ce ne sont que des propriétés tldraw ordinaires (géométrie, couleur, trait…), plus une marque `meta.preset`.
+
+- Un clic applique le préréglage aux formes ou flèches sélectionnées ; sans sélection, un type arme l'outil de formes : la prochaine forme tracée la reçoit.
+- Chaque type a sa géométrie (Concept : ovale, Question : losange, Difficulté : hexagone, Présupposé : nuage, Fait : parallélogramme, Citation : sans cadre, en serif, avec guillemets…) et une étiquette au-dessus de la forme (« ÉNONCÉ · Hobbes », avec la modalité en pastille : descriptif / normatif) : source (auteur, théorie, position) et modalité se saisissent dans le panneau de droite. Les étiquettes sont dessinées par l'application : sans elle, le schéma garde ses formes et ses couleurs.
 - Communs à tous les schémas : table `settings` en mode cloud, IndexedDB en mode local. Chaque schéma garde une copie des préréglages qu'il utilise, pour rester lisible ailleurs (et dans les liens partagés).
-- Menu ☰ › « Préréglages de styles… » : renommer, réordonner, forme et étiquette des natures, sens et nature de l'enfant des relations, mettre à jour ou créer d'après la sélection, masquer la palette ou les étiquettes, revenir aux préréglages de départ.
-- En présentation, <kbd>L</kbd> affiche la légende des natures et relations utilisées.
+- Menu ☰ › « Préréglages de styles… » : renommer, réordonner, forme et étiquette des types, sens et type de l'enfant des relations, mettre à jour ou créer d'après la sélection, masquer un préréglage (case à cocher : il reste utilisable dans les schémas existants), masquer la palette ou les étiquettes, revenir aux préréglages de départ.
+- En présentation, <kbd>L</kbd> affiche la légende des types et relations utilisés.
 
 ## Notes d'objet et narration
 

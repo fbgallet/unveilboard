@@ -1,29 +1,37 @@
 'use client'
 
-import { useEffect } from 'react'
-import { atom, useEditor, useValue, type Editor, type TLShapeId } from 'tldraw'
+import { useCallback, useEffect, useState } from 'react'
+import { atom, renderPlaintextFromRichText, useEditor, useValue, type Editor, type TLRichText, type TLShapeId } from 'tldraw'
+import { readSequence, writeSequence } from '@/lib/canvas/adapter'
+import { addStep, appearanceIndex } from '@/lib/sequence/edit'
 import {
   addChild,
   addChildWithRelation,
   addSibling,
+  functionOf,
   branchOf,
   directionOf,
   nodeDirection,
   getTreeIndex,
+  isThesisRoot,
   isArgumentTree,
   isFolded,
   isTreeNode,
   relayout,
+  revealOrder,
   rootOf,
   setArgumentTree,
   setDirection,
   toggleFold,
 } from '@/lib/canvas/tree'
 import { presetSettingsAtom, swatchColor } from '@/lib/canvas/presets'
-import type { Preset } from '@/lib/presets/presets'
+import { offeredPresets, relationsFor, type Preset } from '@/lib/presets/presets'
+import { presetName, presetRole } from '@/lib/presets/labels'
+import { presetDefinition, presetGuideOpenAtom } from './PresetTools'
 import { TREE_DIRECTIONS, type TreeDirection } from '@/lib/tree/layout'
 import { editUnlockedAtom, foldedBadgesAtom, modeAtom } from '@/lib/presentation/store'
 import { useT } from '@/i18n/client'
+import { swallowNextKeyUp } from '@/lib/keyboard'
 
 const ARROWS: Record<TreeDirection, string> = { right: '→', left: '←', down: '↓', up: '↑', both: '↔' }
 
@@ -81,6 +89,8 @@ export function useTreeKeyboard(editor: Editor) {
 function stop(e: KeyboardEvent) {
   e.preventDefault()
   e.stopPropagation()
+  // tldraw traite aussi Tab au relâchement (forme suivante) : on l'en empêche.
+  if (e.key === 'Tab') swallowNextKeyUp('Tab')
 }
 
 function isTypingTarget(target: EventTarget | null) {
@@ -113,6 +123,30 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
   if (!info) return null
   const id = info.id as TLShapeId
 
+  // Carte d'argument : une étape par élément non encore programmé, dans l'ordre de l'arbre.
+  const revealMap = () => {
+    const seq = readSequence(editor)
+    if (!seq) return
+    const shown = appearanceIndex(seq)
+    const items = revealOrder(editor, id).filter((i) => !shown.has(i.node))
+    if (!items.length) return void alert(t.tree.revealNothing)
+    let next = seq
+    for (const item of items) {
+      const shape = editor.getShape(item.node)
+      const text = shape && 'richText' in shape.props ? renderPlaintextFromRichText(editor, shape.props.richText as TLRichText) : ''
+      const title = text.split('\n')[0].trim()
+      ;[next] = addStep(next, next.steps.length, {
+        title: title.length > 48 ? `${title.slice(0, 47)}…` : title || t.tree.revealStep,
+        actions: [
+          { type: 'show', targets: [item.node], effect: 'rise' },
+          ...(item.edge ? [{ type: 'show' as const, targets: [item.edge], effect: 'draw' as const }] : []),
+        ],
+      })
+    }
+    editor.markHistoryStoppingPoint('dévoiler la carte')
+    writeSequence(editor, next)
+  }
+
   const argumentToggle = (
     <button
       className={`qa-btn ${info.argument ? 'qa-btn-on' : ''}`}
@@ -129,7 +163,7 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
       <div className="tree-toolbar">
         {argumentToggle}
         <span className="tree-hint">
-          <kbd>Tab</kbd> {t.tree.startTree}
+          <kbd>Tab</kbd> {info.argument ? t.tree.argumentTabHint : t.tree.startTree}
         </span>
       </div>
     )
@@ -152,6 +186,11 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
         {t.tree.relayout}
       </button>
       {argumentToggle}
+      {info.argument && (
+        <button className="qa-btn" onClick={revealMap} title={t.tree.revealMapHint}>
+          {t.tree.revealMap}
+        </button>
+      )}
       {/* Orientation de l'arbre */}
       <span className="tree-dirs">
         {TREE_DIRECTIONS.map((dir) => (
@@ -186,13 +225,17 @@ export function FoldBadges() {
       const folded = presenting
         ? foldedBadgesAtom.get()
         : [...children.keys()].filter((id) => isFolded(editor, id) && !editor.isShapeHidden(id))
-      return folded.flatMap((id) => {
+      // En édition, un nœud déplié survolé ou sélectionné montre « − » pour replier sa branche.
+      const active = new Set<string>([...editor.getSelectedShapeIds(), editor.getHoveredShapeId() ?? ''])
+      const unfolded = presenting ? [] : [...children.keys()].filter((id) => active.has(id) && !isFolded(editor, id) && !editor.isShapeHidden(id))
+      const badge = (id: string, fold: boolean) => {
         const b = editor.getShapePageBounds(id as TLShapeId)
         if (!b) return []
         const dir = nodeDirection(editor, id as TLShapeId)
         const at = { right: { x: b.maxX, y: b.midY }, left: { x: b.minX, y: b.midY }, down: { x: b.midX, y: b.maxY }, up: { x: b.midX, y: b.minY } }[dir]
-        return [{ id: id as TLShapeId, n: branchOf(editor, id as TLShapeId).length, ...at }]
-      })
+        return [{ id: id as TLShapeId, n: branchOf(editor, id as TLShapeId).length, fold, ...at }]
+      }
+      return [...folded.flatMap((id) => badge(id, false)), ...unfolded.flatMap((id) => badge(id, true))]
     },
     [editor]
   )
@@ -204,14 +247,14 @@ export function FoldBadges() {
       {badges.map((b) => (
         <button
           key={b.id}
-          className="fold-badge"
+          className={`fold-badge ${b.fold ? 'fold-badge-open' : ''}`}
           style={{ left: b.x, top: b.y, transform: `translate(-50%, -50%) scale(${1 / zoom})` }}
           disabled={presenting}
-          title={presenting ? undefined : t.tree.expandBranch}
+          title={presenting ? undefined : b.fold ? t.tree.collapseBranch : t.tree.expandBranch}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => toggleFold(editor, b.id)}
         >
-          +{b.n}
+          {b.fold ? '−' : `+${b.n}`}
         </button>
       ))}
     </>
@@ -228,7 +271,33 @@ const relationKey = (i: number) => (i < 9 ? String(i + 1) : String.fromCharCode(
 export function RelationPicker({ editor }: { editor: Editor }) {
   const t = useT()
   const nodeId = useValue(relationPickerAtom)
-  const relations = useValue('relations', () => presetSettingsAtom.get().items.filter((p) => p.target === 'arrow').slice(0, 35), [])
+  // « Plus… » : toutes les relations, pour ce choix-ci.
+  const [allFor, setAllFor] = useState<TLShapeId | null>(null)
+  const all = !!nodeId && allFor === nodeId
+  const setAll = useCallback(() => setAllFor(nodeId), [nodeId])
+  // Fermer le choix le remet à zéro (liste contextuelle à la prochaine ouverture).
+  const closePicker = useCallback(() => {
+    relationPickerAtom.set(null)
+    setAllFor(null)
+  }, [])
+  const relations = useValue(
+    'relations',
+    () => {
+      const settings = presetSettingsAtom.get()
+      const visible = settings.items.filter((p) => p.target === 'arrow' && !p.hidden)
+      if (all || !nodeId) return visible.slice(0, 35)
+      // Selon le profil, puis selon le nœud : sa fonction (relation à son parent), sinon son type.
+      const offered = new Set(offeredPresets(settings).map((p) => p.id))
+      const context = { functionId: functionOf(editor, nodeId)?.id, typeId: editor.getShape(nodeId)?.meta.preset as string | undefined }
+      return relationsFor(context, visible.filter((r) => offered.has(r.id))).slice(0, 35)
+    },
+    [editor, nodeId, all]
+  )
+  const hasMore = useValue(
+    'more relations',
+    () => presetSettingsAtom.get().items.filter((p) => p.target === 'arrow' && !p.hidden).length > relations.length,
+    [relations]
+  )
   const at = useValue(
     'picker position',
     () => {
@@ -241,40 +310,56 @@ export function RelationPicker({ editor }: { editor: Editor }) {
   useEffect(() => {
     if (!nodeId) return
     const pick = (relation: Preset | null) => {
-      relationPickerAtom.set(null)
+      closePicker()
       addChildWithRelation(editor, nodeId, relation)
     }
     function onKeyDown(e: KeyboardEvent) {
       const i = relations.findIndex((_, i) => relationKey(i) === e.key.toLowerCase())
-      if (e.key === 'Escape') relationPickerAtom.set(null)
+      if (e.key === 'Escape') closePicker()
       else if (e.key === '0') pick(null)
+      else if (e.key === '+' && hasMore) setAll()
       else if (i >= 0) pick(relations[i])
       else return
       stop(e)
     }
     window.addEventListener('keydown', onKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
-  }, [editor, nodeId, relations])
+  }, [editor, nodeId, relations, hasMore, setAll, closePicker])
 
   if (!nodeId || !at) return null
   const pick = (relation: Preset | null) => {
-    relationPickerAtom.set(null)
+    closePicker()
     addChildWithRelation(editor, nodeId, relation)
   }
+  // Ce qu'on ajoute (sa fonction) d'abord, la relation ensuite.
+  const title = isThesisRoot(editor, nodeId) ? t.tree.addToThesis : t.tree.addTo
   return (
-    <div className="relation-picker" style={{ left: at.x + 12, top: at.y }} role="menu" aria-label={t.tree.pickRelation}>
-      <p className="relation-picker-title">{t.tree.pickRelation}</p>
+    <div className="relation-picker" style={{ left: at.x + 12, top: at.y }} role="menu" aria-label={title}>
+      <p className="relation-picker-title">{title}</p>
       {relations.map((r, i) => (
-        <button key={r.id} className="relation-item" role="menuitem" onClick={() => pick(r)}>
+        <button key={r.id} className="relation-item" role="menuitem" onClick={() => pick(r)} title={presetDefinition(r, t)}>
           <kbd>{relationKey(i)}</kbd>
           <span className="relation-line" style={{ borderColor: swatchColor(editor, r), borderStyle: r.style.dash === 'dashed' ? 'dashed' : r.style.dash === 'dotted' ? 'dotted' : 'solid' }} />
-          {r.name}
+          <span>
+            {presetRole(r, t) ?? presetName(r, t)}
+            {r.role && <span className="relation-verb"> · {presetName(r, t)}</span>}
+          </span>
         </button>
       ))}
       <button className="relation-item" role="menuitem" onClick={() => pick(null)}>
         <kbd>0</kbd>
         <span className="relation-line" />
         {t.tree.noRelation}
+      </button>
+      {hasMore && (
+        <button className="relation-item relation-more" role="menuitem" onMouseDown={(e) => e.preventDefault()} onClick={setAll}>
+          <kbd>+</kbd>
+          <span className="relation-line" />
+          {t.tree.moreRelations}
+        </button>
+      )}
+      <button className="relation-guide" onMouseDown={(e) => e.preventDefault()} onClick={() => presetGuideOpenAtom.set(true)}>
+        ? {t.guide.open}
       </button>
     </div>
   )

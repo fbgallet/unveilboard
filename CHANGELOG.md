@@ -8,6 +8,7 @@ All notable changes to Unveilboard. The format follows [Keep a Changelog](https:
 - Handout: one section per step (the diagram at that step, dimmed shapes in grey, and the narration), to print or save as PDF.
 - Examples gallery on the home page, with a new bilingual argument tree (“Should we always tell the truth?”, Kant and Constant) built with the same functions as the editor.
 - Shortcuts help while presenting (`?` key, or the ⋯ menu).
+- Linked `.tldr` files (Chrome, Edge): a diagram opened from a file, or saved to one, keeps it up to date automatically (<kbd>Ctrl/⌘</kbd>+<kbd>S</kbd> to save at once, <kbd>Ctrl/⌘</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> to save elsewhere), so it can live in a synced folder (Google Drive, Dropbox…). Changes made elsewhere are reloaded, conflicts are asked about, and reopening the file no longer creates a duplicate.
 
 ### Changed
 - Horizontal argument trees are more widely spaced (220 px between levels), so relation labels ("presupposes", "illustrates") no longer break mid-word. Existing trees widen at their next layout.

@@ -308,6 +308,16 @@ export function addChild(editor: Editor, id: TLShapeId) {
 
 export const isArgumentTree = (editor: Editor, id: TLShapeId) => !!editor.getShape(rootOf(editor, id))?.meta.argument
 
+/** Racine d'une carte d'argument. */
+export const isArgumentRoot = (editor: Editor, id: TLShapeId) => !!editor.getShape(id)?.meta.argument
+
+/** Thèse à discuter : racine d'une carte d'argument de type Énoncé (ou sans type) ; une question reste une question. */
+export function isThesisRoot(editor: Editor, id: TLShapeId) {
+  const shape = editor.getShape(id)
+  const type = shape?.meta.preset
+  return !!shape?.meta.argument && (!type || type === 'statement')
+}
+
 export function setArgumentTree(editor: Editor, id: TLShapeId, on: boolean) {
   const rootId = rootOf(editor, id)
   const root = editor.getShape(rootId)
@@ -336,15 +346,31 @@ export function functionOf(editor: Editor, id: TLShapeId): Preset | undefined {
 }
 
 /**
- * Arbre argumentatif : le nœud relié prend la couleur de sa fonction (celle de la relation),
- * en trait et en fond pâle ; sa forme continue de dire sa nature.
+ * Couleur de la fonction d'un nœud : celle de sa relation, sauf « répond à » sous une objection,
+ * qui prend l'orange des réponses aux objections (sous une question, c'est une position : violet).
+ */
+export function functionColorOf(editor: Editor, id: TLShapeId): string | undefined {
+  const relation = functionOf(editor, id)
+  if (!relation) return undefined
+  if (relation.id === 'answers') {
+    const parent = getTreeIndex(editor).parent.get(id)
+    if (parent && functionOf(editor, parent)?.id === 'objects') return 'orange'
+  }
+  return relation.style.color
+}
+
+/**
+ * Carte d'argument : le nœud relié prend la couleur de sa fonction, en trait et en fond pâle
+ * (sa flèche aussi) ; sa forme continue de dire son type.
  */
 function colorByFunction(editor: Editor, arrow: TLShape) {
   const child = editor.getBindingsFromShape<TLArrowBinding>(arrow, 'arrow').find((b) => b.props.terminal === 'end')?.toId
   const shape = child && editor.getShape(child)
-  const relation = shape && functionOf(editor, shape.id)
-  const color = relation?.style.color
+  const color = shape && functionColorOf(editor, shape.id)
   if (!shape || !color || !('color' in shape.props)) return
+  if (arrow.type === 'arrow' && arrow.props.color !== color) {
+    editor.updateShape({ id: arrow.id, type: 'arrow', props: { color: color as typeof arrow.props.color } })
+  }
   if (shape.props.color === color && (!('fill' in shape.props) || shape.props.fill === 'solid')) return
   editor.updateShape({ id: shape.id, type: shape.type, props: { color, ...('fill' in shape.props && { fill: 'solid' }) } } as TLShapePartial)
 }
@@ -457,6 +483,12 @@ export function registerTreeSideEffects(editor: Editor) {
     editor.sideEffects.registerAfterChangeHandler('shape', (prev, next) => {
       // Relation posée ou changée sur une branche : couleur de fonction du nœud relié.
       if (next.type === 'arrow' && next.meta.branch && next.meta.preset !== prev.meta.preset) colorByFunction(editor, next)
+      // Nœud relié d'une carte d'argument dont on change le type : il garde la couleur de sa fonction.
+      if (next.type !== 'arrow' && next.meta.preset !== prev.meta.preset) {
+        const edgeId = getTreeIndex(editor).edge.get(next.id)
+        const arrow = edgeId && editor.getShape(edgeId)
+        if (arrow) colorByFunction(editor, arrow)
+      }
       if (layingOut || prev.type === 'arrow') return
       if (!isTreeNode(editor, next.id)) return
       const dx = next.x - prev.x
@@ -523,4 +555,31 @@ function queueRelayout(editor: Editor, id: TLShapeId) {
     })
   }
   set.add(id)
+}
+
+// ---------- Dévoiler une carte d'argument ----------
+
+/**
+ * Éléments d'une carte d'argument dans l'ordre où les dévoiler : la racine, puis chaque branche
+ * en profondeur (un argument, ses objections, leurs réponses…), les frères dans leur ordre
+ * d'affichage. Chaque élément vient avec la flèche qui le relie à son parent.
+ */
+export function revealOrder(editor: Editor, anyNodeId: TLShapeId): { node: TLShapeId; edge?: TLShapeId }[] {
+  const rootId = rootOf(editor, anyNodeId)
+  const { children, edge } = getTreeIndex(editor)
+  const horizontal = treeAxis(directionOf(editor, rootId)).horizontal
+  const cross = (id: TLShapeId) => {
+    const b = editor.getShapePageBounds(id)
+    return b ? (horizontal ? b.midY : b.midX) : 0
+  }
+  const out: { node: TLShapeId; edge?: TLShapeId }[] = []
+  const seen = new Set<TLShapeId>()
+  const visit = (id: TLShapeId) => {
+    if (seen.has(id)) return
+    seen.add(id)
+    out.push({ node: id, edge: edge.get(id) })
+    for (const c of [...(children.get(id) ?? [])].sort((a, b) => cross(a) - cross(b))) visit(c)
+  }
+  visit(rootId)
+  return out
 }

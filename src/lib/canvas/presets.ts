@@ -3,6 +3,7 @@
 // de ceux qu'il utilise (document.meta.presets), pour rester lisible ailleurs.
 
 import { m } from '@/i18n/client'
+import { LOCALES, messagesFor } from '@/i18n/config'
 import { viewerAtom } from '@/lib/presentation/store'
 import {
   ArrowShapeArrowheadEndStyle,
@@ -16,6 +17,7 @@ import {
   atom,
   react,
   getColorValue,
+  renderPlaintextFromRichText,
   toRichText,
   type Editor,
   type JsonObject,
@@ -31,10 +33,12 @@ import {
   normalizePresetSettings,
   type Preset,
   type PresetSettings,
+  type Reasoning,
   type PresetTarget,
   type StyleKey,
 } from '../presets/presets'
 import type { SettingsStore } from '../storage/types'
+import { toJson } from '../json'
 
 const STYLE_PROPS: Record<StyleKey, StyleProp<string>> = {
   geo: GeoShapeGeoStyle,
@@ -213,5 +217,33 @@ function keepDocumentCopy(editor: Editor, preset: Preset) {
   const current = documentPresets(editor)
   if (JSON.stringify(current[preset.id]) === JSON.stringify(preset)) return
   const meta = editor.getDocumentSettings().meta
-  editor.updateDocumentSettings({ meta: { ...meta, presets: { ...current, [preset.id]: preset } as unknown as JsonObject } })
+  editor.updateDocumentSettings({ meta: { ...meta, presets: toJson({ ...current, [preset.id]: preset }) as unknown as JsonObject } })
+}
+
+// ---------- Types de raisonnement ----------
+
+/** Libellés de tous les types de raisonnement, dans toutes les langues (pour les retirer d'un texte). */
+function reasoningLabels(): string[] {
+  return LOCALES.flatMap((l) => Object.values(messagesFor(l).reasoning.types))
+}
+
+/**
+ * Précise le type de raisonnement d'une flèche (null : aucun). Il est inscrit dans le texte de la
+ * flèche (« soutient · par analogie ») : visible partout, même sans l'application.
+ */
+export function setReasoning(editor: Editor, id: TLShape['id'], reasoning: Reasoning | null) {
+  const shape = editor.getShape(id)
+  if (!shape || shape.type !== 'arrow') return
+  const text = renderPlaintextFromRichText(editor, shape.props.richText).trim()
+  const suffix = new RegExp(`\\s*·\\s*(${reasoningLabels().map((l) => l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})$`)
+  const base = text.replace(suffix, '')
+  const label = reasoning ? m().reasoning.types[reasoning] : ''
+  const next = [base, label].filter(Boolean).join(' · ')
+  editor.markHistoryStoppingPoint('type de raisonnement')
+  editor.updateShape({
+    id,
+    type: 'arrow',
+    props: { richText: toRichText(next) },
+    meta: { ...shape.meta, reasoning: reasoning ?? null },
+  })
 }

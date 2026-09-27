@@ -4,7 +4,8 @@ import { forwardRef } from 'react'
 import { DefaultShapeWrapper, useEditor, useValue, type TLShape, type TLShapeWrapperProps } from 'tldraw'
 import { useT } from '@/i18n/client'
 import { presetById, presetSettingsAtom, swatchColor } from '@/lib/canvas/presets'
-import { functionOf } from '@/lib/canvas/tree'
+import { functionColorOf, functionOf, isThesisRoot } from '@/lib/canvas/tree'
+import { presetName, presetRole } from '@/lib/presets/labels'
 import { shapeClassesAtom } from '@/lib/presentation/store'
 
 /**
@@ -52,10 +53,18 @@ function NatureTag({ shape }: { shape: TLShape }) {
       const relation = functionOf(editor, shape.id)
       const author = typeof shape.meta.author === 'string' ? shape.meta.author.trim() : ''
       const quote = nature?.id === 'quote'
-      if (relation) return { text: [relation.role, author].filter(Boolean).join(' · '), color: swatchColor(editor, relation), quote }
-      if (!nature || nature.target !== 'shape' || nature.tag === false) return quote ? { text: '', color: '', quote } : null
+      // Modalité : une pastille à part (« normatif »), et non un adjectif accolé au nom de la nature,
+      // pour rester correcte dans toutes les langues (accord, place de l'adjectif).
       const modality = shape.meta.modality === 'descriptive' || shape.meta.modality === 'prescriptive' ? t.presets.modalities[shape.meta.modality] : ''
-      return { text: [[nature.name, modality].filter(Boolean).join(' '), author].filter(Boolean).join(' · '), color: swatchColor(editor, nature), quote }
+      const label = (name: string | undefined, color: string) => ({ text: [name, author].filter(Boolean).join(' · '), color, modality, quote })
+      if (relation) {
+        const color = functionColorOf(editor, shape.id) ?? relation.style.color
+        return label(presetRole(relation, t), swatchColor(editor, { ...relation, style: { ...relation.style, color } }))
+      }
+      // Racine d'une carte d'argument de type Énoncé : la thèse à discuter.
+      if (isThesisRoot(editor, shape.id)) return label(t.tree.thesis, nature ? swatchColor(editor, nature) : 'var(--color-stone-500)')
+      if (!nature || nature.target !== 'shape' || nature.tag === false) return quote ? { text: '', color: '', modality: '', quote } : null
+      return label(presetName(nature, t), swatchColor(editor, nature))
     },
     [editor, shape.id, shape.meta.preset, shape.meta.modality, shape.meta.author, t]
   )
@@ -65,6 +74,7 @@ function NatureTag({ shape }: { shape: TLShape }) {
       {tag.text && (
         <div className="nature-tag" style={{ color: tag.color }}>
           {tag.text}
+          {tag.modality && <span className="nature-modality">{tag.modality}</span>}
         </div>
       )}
       {tag.quote && <div className="quote-mark" aria-hidden>“</div>}

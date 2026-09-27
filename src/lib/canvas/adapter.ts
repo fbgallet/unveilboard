@@ -4,6 +4,7 @@
 import { Box, getArrowInfo, type Editor, type JsonObject, type TLArrowBinding, type TLShapeId } from 'tldraw'
 import { computeStage, latestShown, stateOf, stepFocusTargets, type Stage } from '../sequence/compute'
 import { migrateSequence } from '../sequence/migrate'
+import { toJson } from '../json'
 import type { Sequence, ShapeRef, StepCamera } from '../sequence/types'
 import { SPOTLIGHT_TYPE } from './spotlight'
 import { getTreeIndex } from './tree'
@@ -18,7 +19,7 @@ export function readSequence(editor: Editor): Sequence | null {
 
 export function writeSequence(editor: Editor, seq: Sequence) {
   const meta = editor.getDocumentSettings().meta
-  editor.updateDocumentSettings({ meta: { ...meta, [META_KEY]: seq as unknown as JsonObject } })
+  editor.updateDocumentSettings({ meta: { ...meta, [META_KEY]: toJson(seq) as unknown as JsonObject } })
 }
 
 /** Un cadre ou un groupe entraîne ses descendants ; les objets supprimés sont ignorés. */

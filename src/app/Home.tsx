@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { documentStore, forgetLocalCache } from '@/lib/storage'
-import { importTldrFile, pickTldrFile } from '@/lib/storage/tldrFile'
+import { droppedTldrFile, openTldrFile, pickTldrFile, type PickedFile } from '@/lib/storage/tldrFile'
 import type { DocumentSummary, StorageMode } from '@/lib/storage/types'
 import { logout } from './login/actions'
 import { useLocale, useT } from '@/i18n/client'
@@ -83,14 +83,15 @@ function useDocuments(storage: StorageMode) {
       router.push(example ? `/d/${id}?demo=${example}` : `/d/${id}`)
     })
 
-  const importFile = (file: File) =>
+  // Un fichier déjà ouvert rouvre son schéma ; sinon, il est importé (et lié, sur Chrome et Edge).
+  const openFile = (picked: PickedFile) =>
     run(async () => {
-      router.push(`/d/${await importTldrFile(store, file)}`)
+      router.push(`/d/${await openTldrFile(store, picked)}`)
     })
 
   const chooseFile = () =>
     void pickTldrFile()
-      .then((file) => file && importFile(file))
+      .then((picked) => picked && openFile(picked))
       .catch((e: Error) => setError(e.message))
 
   const remove = (doc: DocumentSummary) => {
@@ -115,8 +116,9 @@ function useDocuments(storage: StorageMode) {
     onDrop: (e: React.DragEvent) => {
       e.preventDefault()
       setDragging(false)
-      const file = e.dataTransfer.files[0]
-      if (file) void importFile(file)
+      void droppedTldrFile(e.dataTransfer)
+        .then((picked) => picked && openFile(picked))
+        .catch((err: Error) => setError(err.message))
     },
   }
 

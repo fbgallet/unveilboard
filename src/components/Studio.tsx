@@ -13,6 +13,7 @@ import { isHiddenInEdit } from '@/lib/canvas/visibility'
 import { activeStepIdAtom, editUnlockedAtom, modeAtom, quickSequenceAtom, stepIndexAtom } from '@/lib/presentation/store'
 import { assetStore } from '@/lib/sync/assetStore'
 import { startDocumentSync } from '@/lib/sync/documentSync'
+import { startFileSync } from '@/lib/sync/fileSync'
 import { documentStore, settingsStore } from '@/lib/storage'
 import type { StorageMode } from '@/lib/storage/types'
 import { PresShapeWrapper } from './PresShapeWrapper'
@@ -21,11 +22,11 @@ import { SequencePanel } from './SequencePanel'
 import { Legend, NarrationPanel, NoteMarkers, ProgressBar } from './PresenterUI'
 import { pinNarrationScale, usePresentation } from './usePresentation'
 import { QuickAssign, QuickSequence } from './QuickAssign'
-import { SyncBanner } from './SyncIndicator'
+import { FileBanner, SyncBanner } from './SyncIndicator'
 import { SpotlightOverlay } from './SpotlightOverlay'
 import { FoldBadges, RelationPicker, TreeToolbar, useTreeKeyboard } from './TreeTools'
 import { MainMenu } from './FileMenu'
-import { PresetManager, PresetStylePanel } from './PresetTools'
+import { PresetGuide, PresetManager, PresetStylePanel } from './PresetTools'
 import { ShareDialog, shareDialogOpenAtom } from './ShareDialog'
 import { ScreenControls } from './ScreenControls'
 import { useScreenPresenter } from './useScreenPresenter'
@@ -111,11 +112,14 @@ export default function Studio({
       // Anciens « détails » → notes, séquence au format courant.
       onLoaded: () => convertLegacyDetails(editor),
     })
+    // Fichier .tldr lié (ouvert ou enregistré depuis ce schéma), tenu à jour automatiquement.
+    const stopFile = startFileSync(editor, docId)
     const stopTree = registerTreeSideEffects(editor)
     const stopPresets = registerPresetSideEffects(editor)
     void loadPresetSettings(settingsStore(storage))
     return () => {
       stop()
+      stopFile()
       stopTree()
       stopPresets()
       modeAtom.set('edit')
@@ -170,7 +174,9 @@ export default function Studio({
         {editor && (mode === 'edit' || unlocked) && <TreeToolbar editor={editor} />}
         {editor && (mode === 'edit' || unlocked) && <RelationPicker editor={editor} />}
         {editor && <SyncBanner />}
+        {editor && <FileBanner />}
         {editor && <PresetManager editor={editor} />}
+        {editor && <PresetGuide editor={editor} />}
         {editor && <ShareDialog editor={editor} docId={docId} publicSharing={publicSharing} />}
         {editor && <RemoteDialog editor={editor} />}
         {editor && <Handout editor={editor} />}

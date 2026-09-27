@@ -74,9 +74,10 @@ function seedLiberty(editor: Editor): Sequence {
       y: -300,
       props: { richText: toRichText('La liberté est-elle une illusion ?'), size: 'xl', font: 'serif', autoSize: true },
     })
-    box(editor, S.question, -160, -140, 320, 90, 'Être libre, c’est…', 'black')
+    // Couleurs par familles : rouge la question, bleu les définitions, rouge l'objection, violet la thèse.
+    box(editor, S.question, -160, -140, 320, 90, 'Être libre, c’est…', 'red')
     box(editor, S.absence, -620, 60, 360, 130, '…faire ce que je veux, sans contrainte extérieure', 'blue')
-    box(editor, S.autonomy, 260, 60, 360, 130, '…obéir à la loi qu’on s’est soi-même prescrite (Rousseau)', 'green')
+    box(editor, S.autonomy, 260, 60, 360, 130, '…obéir à la loi qu’on s’est soi-même prescrite (Rousseau)', 'blue')
     box(
       editor,
       S.spinoza,
@@ -89,8 +90,8 @@ function seedLiberty(editor: Editor): Sequence {
     )
     box(editor, S.synthesis, -180, 620, 360, 120, 'La liberté comme compréhension de la nécessité ?', 'violet')
 
-    arrow(editor, S.qToAbsence, S.question, S.absence, 'black')
-    arrow(editor, S.qToAutonomy, S.question, S.autonomy, 'black')
+    arrow(editor, S.qToAbsence, S.question, S.absence, 'blue')
+    arrow(editor, S.qToAutonomy, S.question, S.autonomy, 'blue')
     arrow(editor, S.spinozaToAbsence, S.spinoza, S.absence, 'red', 'objecte', 'dashed')
     arrow(editor, S.spinozaToSynthesis, S.spinoza, S.synthesis, 'violet')
     arrow(editor, S.autonomyToSynthesis, S.autonomy, S.synthesis, 'violet')

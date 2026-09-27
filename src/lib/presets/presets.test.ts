@@ -1,9 +1,34 @@
 import { describe, expect, it } from 'vitest'
-import { defaultPresetSettings, normalizePresetSettings } from './presets'
+import { defaultPresetSettings, defaultPresets, normalizePresetSettings, offeredPresets, relationsFor } from './presets'
 
 const names = {} as Record<string, string>
 
 describe('normalizePresetSettings', () => {
+  it('v5 → v6 : « distingue » renommé, Distinction et relations entre concepts ajoutées à leur place', () => {
+    const n = { distinguishes: 'se distingue de' }
+    const v5 = {
+      version: 5,
+      items: [
+        { id: 'concept', name: 'Concept', target: 'shape', style: {} },
+        { id: 'distinguishes', name: 'distingue', target: 'arrow', style: {} },
+      ],
+    }
+    const v6 = normalizePresetSettings(v5, n)
+    expect(v6.items.map((p) => p.id)).toEqual(['concept', 'distinction', 'distinguishes', 'opposes', 'relates'])
+    expect(v6.items.find((p) => p.id === 'distinguishes')!.name).toBe('se distingue de')
+  })
+
+  it('v3 → v5 : « Croyance fondamentale » renommée si inchangée, « Fait » ajouté', () => {
+    const n = { belief: 'Présupposé', fact: 'Fait' }
+    const v3 = { version: 3, items: [{ id: 'belief', name: 'Croyance fondamentale', target: 'shape', style: {} }] }
+    const v4 = normalizePresetSettings(v3, n)
+    expect(v4.items.slice(0, 2).map((p) => [p.id, p.name])).toEqual([['belief', 'Présupposé'], ['fact', 'Fait']])
+    const v4saved = { version: 4, items: [{ id: 'belief', name: 'Postulat', target: 'shape', style: {} }] }
+    expect(normalizePresetSettings(v4saved, n).items[0].name).toBe('Présupposé')
+    const renamed = { version: 3, items: [{ id: 'belief', name: 'Doxa', target: 'shape', style: {} }] }
+    expect(normalizePresetSettings(renamed, n).items[0].name).toBe('Doxa')
+  })
+
   it('sans réglage enregistré : préréglages de départ', () => {
     expect(normalizePresetSettings(null, names)).toEqual(defaultPresetSettings(names))
   })
@@ -35,11 +60,52 @@ describe('normalizePresetSettings', () => {
       ],
     }
     const v3 = normalizePresetSettings(v2, names, roles)
-    expect(v3.version).toBe(3)
-    expect(v3.items.map((p) => p.id)).toEqual(['statement', 'belief', 'example', 'quote', 'objects', 'explains'])
+    expect(v3.version).toBe(8)
+    expect(v3.items.map((p) => p.id)).toEqual([
+      'statement', 'belief', 'fact', 'example', 'quote', 'objects', 'explains', 'distinction', 'opposes', 'relates',
+    ])
     expect(v3.items.find((p) => p.id === 'example')!.style.color).toBe('grey')
     // Couleur modifiée par l'utilisateur : conservée.
     expect(v3.items.find((p) => p.id === 'quote')!.style.color).toBe('violet')
     expect(v3.items.find((p) => p.id === 'objects')!.role).toBe('Objection')
+  })
+})
+
+describe('profil et contexte', () => {
+  const settings = defaultPresetSettings({})
+  const mine = { id: 'these-x', name: 'Thèse', target: 'shape' as const, style: {} }
+
+  it('Essentiel : dix préréglages de départ, plus ceux de l’utilisateur ; Complet : tout', () => {
+    expect(offeredPresets({ ...settings, items: [...settings.items, mine] }).map((p) => p.id)).toEqual([
+      'statement', 'concept', 'question', 'example', 'quote', 'supports', 'objects', 'answers', 'illustrates', 'distinguishes', 'these-x',
+    ])
+    expect(offeredPresets({ ...settings, profile: 'complete' }).length).toBe(defaultPresets({}).length)
+  })
+
+  it('relations selon le nœud : question, objection, concept', () => {
+    const relations = defaultPresets({}).filter((p) => p.target === 'arrow')
+    const ids = (c: { functionId?: string; typeId?: string }) => relationsFor(c, relations).map((r) => r.id)
+    expect(ids({ typeId: 'question' })).toContain('answers')
+    expect(ids({ typeId: 'question' })).not.toContain('supports')
+    expect(ids({ functionId: 'objects', typeId: 'statement' }).slice(0, 3)).toEqual(['answers', 'supports', 'objects'])
+    expect(ids({ typeId: 'concept' })).toEqual(expect.arrayContaining(['defines', 'distinguishes', 'opposes', 'relates']))
+    expect(ids({ typeId: 'statement' })).toContain('supports')
+  })
+})
+
+describe('v7 → v8 : familles de couleurs', () => {
+  it('recolore les couleurs de départ inchangées, garde les autres', () => {
+    const v7 = {
+      version: 7,
+      items: [
+        { id: 'statement', name: 'Énoncé', target: 'shape', style: { color: 'yellow' } },
+        { id: 'question', name: 'Question', target: 'shape', style: { color: 'green' } },
+        { id: 'relates', name: 'se rapproche de', target: 'arrow', style: { color: 'grey', dash: 'solid' } },
+      ],
+    }
+    const v8 = normalizePresetSettings(v7, {})
+    expect(v8.items.find((p) => p.id === 'statement')!.style.color).toBe('violet')
+    expect(v8.items.find((p) => p.id === 'question')!.style.color).toBe('green')
+    expect(v8.items.find((p) => p.id === 'relates')!.style).toMatchObject({ color: 'blue', dash: 'dotted' })
   })
 })
