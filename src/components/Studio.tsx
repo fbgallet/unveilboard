@@ -32,6 +32,8 @@ import { useScreenPresenter } from './useScreenPresenter'
 import { openScreen } from '@/lib/presentation/screen'
 import { remoteDialogOpenAtom, startRemote, stopRemote } from '@/lib/remote/host'
 import { RemoteDialog } from './RemoteDialog'
+import { ShortcutsHelp } from './ShortcutsHelp'
+import { Handout, handoutOpenAtom } from './Handout'
 import { loadPresetSettings, registerPresetSideEffects } from '@/lib/canvas/presets'
 
 const overlayUtils = [LaserOverlayUtil]
@@ -123,6 +125,7 @@ export default function Studio({
       activeStepIdAtom.set(null)
       shareDialogOpenAtom.set(false)
       remoteDialogOpenAtom.set(false)
+      handoutOpenAtom.set(false)
       stopRemote()
     }
   }, [editor, docId, demo, storage])
@@ -161,6 +164,7 @@ export default function Studio({
           />
         )}
         {editor && mode === 'present' && <Legend editor={editor} />}
+        {mode === 'present' && <ShortcutsHelp />}
         {editor && mode === 'present' && unlocked && <QuickAssign editor={editor} />}
         {editor && mode === 'edit' && quickSequence && <QuickSequence editor={editor} />}
         {editor && (mode === 'edit' || unlocked) && <TreeToolbar editor={editor} />}
@@ -169,6 +173,7 @@ export default function Studio({
         {editor && <PresetManager editor={editor} />}
         {editor && <ShareDialog editor={editor} docId={docId} publicSharing={publicSharing} />}
         {editor && <RemoteDialog editor={editor} />}
+        {editor && <Handout editor={editor} />}
       </div>
       {editor && <PresentationHost editor={editor} docId={docId} />}
       {editor && mode === 'edit' && <SequencePanel editor={editor} />}

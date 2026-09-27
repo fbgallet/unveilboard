@@ -159,6 +159,8 @@ export const DEFAULT_LASER: LaserSettings = { color: '#ff2a2a', width: 5, delayM
 
 export const laserSettingsAtom = atom<LaserSettings>('laserSettings', readStored('laserSettings', DEFAULT_LASER))
 export const laserPopoverOpenAtom = atom<boolean>('laserPopoverOpen', false)
+/** Aide des raccourcis de présentation (touche ?). */
+export const shortcutsHelpOpenAtom = atom<boolean>('shortcutsHelpOpen', false)
 /** Menu « ⋯ » de la barre de présentation ouvert (Échap le referme au lieu de quitter). */
 export const moreMenuOpenAtom = atom<boolean>('moreMenuOpen', false)
 /** Traces laser du présentateur, recopiées dans la fenêtre public du double affichage. */

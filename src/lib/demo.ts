@@ -1,11 +1,14 @@
 import { createShapeId, toRichText, type Editor, type TLShapeId } from 'tldraw'
 import { SEQUENCE_VERSION, type Sequence } from './sequence/types'
 import type { DemoName } from './demoNames'
+import { seedTruth } from './demoTruth'
 
-// Schémas de démonstration : « La liberté est-elle une illusion ? » (français)
-// et « The water cycle » (anglais, volontairement hors philosophie).
+// Schémas de démonstration : « La liberté est-elle une illusion ? » (français),
+// « The water cycle » (anglais, volontairement hors philosophie), et un arbre argumentatif
+// bilingue, « Faut-il toujours dire la vérité ? » (demoTruth.ts).
 
 export function seedDemo(editor: Editor, name: DemoName): Sequence {
+  if (name === 'truth') return seedTruth(editor)
   return name === 'water' ? seedWaterCycle(editor) : seedLiberty(editor)
 }
 

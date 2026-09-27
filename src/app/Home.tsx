@@ -11,9 +11,16 @@ import { useLocale, useT } from '@/i18n/client'
 import { LocaleSwitcher } from '@/components/LocaleSwitcher'
 import { HeroDemo } from '@/components/home/HeroDemo'
 import { Features } from '@/components/home/Features'
+import type { DemoName } from '@/lib/demoNames'
 import { Logo } from '@/components/Logo'
 
 const GITHUB_URL = 'https://github.com/fbgallet/unveilboard'
+
+/** Titre des schémas d'exemple : celui de leur séquence, dans leur langue (src/lib/demo.ts, demoTruth.ts). */
+function exampleTitle(name: DemoName, locale: string) {
+  if (name === 'truth') return locale === 'fr' ? 'Démo : Faut-il toujours dire la vérité ?' : 'Demo: Should we always tell the truth?'
+  return name === 'liberty' ? 'Démo : La liberté est-elle une illusion ?' : 'Demo: The water cycle'
+}
 
 /**
  * Accueil. Instance publique (mode local) : présentation de l'app, puis les schémas du visiteur.
@@ -67,12 +74,13 @@ function useDocuments(storage: StorageMode) {
     }
   }
 
-  const create = (demo: boolean) =>
+  /** demo : true pour l'exemple de la langue (la liberté en français, le cycle de l'eau en anglais), ou un exemple précis. */
+  const create = (demo: boolean | DemoName) =>
     run(async () => {
-      // L'exemple suit la langue : la liberté en français, le cycle de l'eau en anglais.
-      const example = locale === 'fr' ? 'liberty' : 'water'
-      const id = await store.create(demo ? t.home.exampleTitle : t.common.untitled)
-      router.push(demo ? `/d/${id}?demo=${example}` : `/d/${id}`)
+      const example: DemoName | null = demo === true ? (locale === 'fr' ? 'liberty' : 'water') : demo || null
+      const title = example ? exampleTitle(example, locale) : t.common.untitled
+      const id = await store.create(title)
+      router.push(example ? `/d/${id}?demo=${example}` : `/d/${id}`)
     })
 
   const importFile = (file: File) =>
@@ -164,6 +172,27 @@ function PublicHome({ docs, legal }: { docs: Documents; legal: boolean }) {
           {docs.error && <p className="mt-4 text-sm text-red-600">{docs.error}</p>}
         </div>
         <HeroDemo />
+      </section>
+
+      <section className="mx-auto max-w-5xl px-4 pb-16 sm:px-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-500">{l.examples.title}</h2>
+        <ul className="mt-4 grid gap-3 sm:grid-cols-3">
+          {(['truth', 'water', 'liberty'] as const).map((name) => (
+            <li key={name}>
+              <button
+                className="example-card"
+                disabled={docs.busy}
+                onClick={() => docs.create(name)}
+              >
+                <span className="flex items-baseline justify-between gap-3">
+                  <span className="font-serif text-lg text-stone-900">{l.examples.items[name].title}</span>
+                  <span className="shrink-0 text-xs text-stone-400">{l.examples.items[name].language}</span>
+                </span>
+                <span className="mt-1 block text-sm leading-relaxed text-stone-600">{l.examples.items[name].text}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       </section>
 
       {hasDocs && (

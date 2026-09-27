@@ -14,6 +14,7 @@ import { SpotlightOverlay } from './SpotlightOverlay'
 import { FoldBadges } from './TreeTools'
 import { enterPresentation, usePresentation } from './usePresentation'
 import { LogoMark } from './Logo'
+import { ShortcutsHelp } from './ShortcutsHelp'
 import { ReportButton } from './ReportButton'
 
 // Lecteur d'une présentation partagée : le document est chargé en mémoire (ni cache local, ni
@@ -93,6 +94,7 @@ export default function Viewer({
         {reportShareId && <ReportButton shareId={reportShareId} />}
         {editor && <ProgressBar editor={editor} />}
         {editor && <Legend editor={editor} />}
+        <ShortcutsHelp />
       </div>
       {editor && <PresentationHost editor={editor} />}
       {editor && <NarrationPanel editor={editor} />}

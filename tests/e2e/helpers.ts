@@ -25,5 +25,6 @@ export const hiddenShapes = (page: Page) => page.evaluate(() => document.querySe
 export async function fakeClientIp(page: Page) {
   const ip = `10.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}.1`
   // Seulement vers notre API : un en-tête ajouté aux requêtes du CDN de tldraw les ferait refuser (CORS).
-  await page.route('**/api/**', (route) => route.continue({ headers: { ...route.request().headers(), 'x-forwarded-for': ip } }))
+  // Sur tout le contexte : les autres onglets du test (lecteur d'un lien) ont la même adresse.
+  await page.context().route('**/api/**', (route) => route.continue({ headers: { ...route.request().headers(), 'x-forwarded-for': ip } }))
 }

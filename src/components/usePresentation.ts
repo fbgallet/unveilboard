@@ -31,6 +31,7 @@ import {
   viewerAtom,
   presentationStartedAtAtom,
   moreMenuOpenAtom,
+  shortcutsHelpOpenAtom,
   activeNoteAtom,
   narrationScaleAtom,
   narrationScaleDefaultAtom,
@@ -47,6 +48,7 @@ export function enterPresentation(fromIndex = -1) {
 export function exitPresentation() {
   laserPopoverOpenAtom.set(false)
   moreMenuOpenAtom.set(false)
+  shortcutsHelpOpenAtom.set(false)
   clearLiveSpot()
   modeAtom.set('edit')
   editUnlockedAtom.set(false)
@@ -250,6 +252,9 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
         case 'Backspace':
           goToStep(editor, index - 1)
           break
+        case '?':
+          shortcutsHelpOpenAtom.set(!shortcutsHelpOpenAtom.get())
+          break
         case 'Home':
           goToStep(editor, -1)
           break
@@ -298,9 +303,10 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
           toggleFullscreen()
           break
         case 'Escape':
-          if (laserPopoverOpenAtom.get() || moreMenuOpenAtom.get()) {
+          if (laserPopoverOpenAtom.get() || moreMenuOpenAtom.get() || shortcutsHelpOpenAtom.get()) {
             laserPopoverOpenAtom.set(false)
             moreMenuOpenAtom.set(false)
+            shortcutsHelpOpenAtom.set(false)
             break
           }
           // Échap défait d'abord l'outil en cours (calque, laser), puis quitte la présentation.

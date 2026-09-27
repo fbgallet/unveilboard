@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test'
+import { fakeClientIp } from './helpers'
 
 test('mentions légales : éditeur, confidentialité, formulaire de contact, lien depuis l’accueil', async ({ page }) => {
+  // Le formulaire est limité à 5 messages par jour et par adresse : une adresse par lancement.
+  await fakeClientIp(page)
   const response = await page.goto('/legal')
   test.skip(response?.status() === 404, 'LEGAL_PUBLISHER non défini sur ce serveur')
   await expect(page.getByRole('heading', { name: 'Legal notice and privacy' })).toBeVisible()

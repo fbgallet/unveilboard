@@ -194,8 +194,11 @@ export function relayout(editor: Editor, anyNodeId: TLShapeId, opts: { reset?: b
   }
   const rootBounds = editor.getShapePageBounds(rootId)
   if (!rootBounds) return
-  // Arbre argumentatif : niveaux plus espacés, pour les étiquettes des relations.
-  const gaps = editor.getShape(rootId)?.meta.argument ? { main: 170, cross: 44 } : TREE_GAPS
+  // Arbre argumentatif : niveaux plus espacés, pour les étiquettes des relations. À l'horizontale,
+  // l'étiquette se loge dans le dernier segment de la flèche coudée (la moitié de l'écart) : il faut
+  // de quoi y tenir « presupposes » sans couper le mot.
+  const horizontal = dir === 'right' || dir === 'left' || dir === 'both'
+  const gaps = editor.getShape(rootId)?.meta.argument ? { main: horizontal ? 220 : 170, cross: 44 } : TREE_GAPS
   const positions = layoutTree(rootId, { x: rootBounds.x, y: rootBounds.y }, nodes, dir, gaps)
 
   const updates: TLShapePartial[] = []

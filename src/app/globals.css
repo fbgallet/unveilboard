@@ -453,6 +453,38 @@ body {
   color: var(--color-stone-900);
 }
 
+/* Aide des raccourcis de présentation */
+.shortcuts-help {
+  width: min(680px, calc(100% - 32px));
+  overflow-y: auto;
+}
+.shortcuts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px 28px;
+}
+.shortcuts-help dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: baseline;
+  gap: 6px 12px;
+}
+.shortcuts-row {
+  display: contents;
+}
+.shortcuts-row dt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.shortcuts-row kbd {
+  font-size: 11px;
+  padding: 1px 5px;
+}
+.shortcuts-row dd {
+  color: var(--color-zinc-600);
+}
+
 /* Menu « ⋯ » de la barre de présentation */
 .more-menu {
   position: absolute;
@@ -969,6 +1001,131 @@ svg.preset-swatch {
   color: var(--color-zinc-800);
 }
 
+/* ---------- Polycopié (impression / PDF) ---------- */
+
+/* Toujours clair : il est fait pour le papier. */
+.handout-root {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  overflow-y: auto;
+  background: #f5f5f4;
+  color: #1c1917;
+  color-scheme: light;
+}
+.handout-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #e7e5e4;
+  background: rgb(255 255 255 / 0.95);
+  font-size: 13px;
+  color: #57534e;
+}
+.handout-toolbar span {
+  margin-right: auto;
+}
+.handout {
+  max-width: 800px;
+  margin: 24px auto;
+  padding: 40px 48px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+}
+.handout h1 {
+  font: 400 28px/1.2 var(--font-serif-display), Georgia, serif;
+}
+.handout-wait {
+  margin-top: 24px;
+  color: #78716c;
+}
+.handout-step {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #e7e5e4;
+  break-inside: avoid;
+}
+.handout-step h2 {
+  font: 400 20px/1.3 var(--font-serif-display), Georgia, serif;
+}
+.handout-step h2 span {
+  margin-right: 6px;
+  font: 600 11px/1 var(--font-geist-sans), sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #a8a29e;
+}
+.handout-figure {
+  position: relative;
+  width: 100%;
+  max-height: 11cm;
+  margin: 12px auto 0;
+}
+.handout-figure img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.handout-figure .handout-dimmed {
+  opacity: 0.22;
+  filter: grayscale(1);
+}
+.handout-text {
+  margin-top: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #44403c;
+}
+
+@media print {
+  /* Seul le polycopié s'imprime. */
+  body > *:not(.handout-root) {
+    display: none !important;
+  }
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+  .handout-root {
+    position: static;
+    overflow: visible;
+    background: #fff;
+  }
+  .handout-toolbar {
+    display: none;
+  }
+  .handout {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+  /* Deux étapes par page A4 en général. */
+  .handout-figure {
+    max-height: 8cm;
+  }
+  .handout-step {
+    margin-top: 16px;
+    padding-top: 12px;
+  }
+  .handout-figure img {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
+@page {
+  margin: 1.6cm;
+}
+
 /* ---------- Mentions légales ---------- */
 
 .legal {
@@ -1008,6 +1165,23 @@ svg.preset-swatch {
   border-radius: 8px;
   background: var(--color-white);
   color: var(--color-stone-900);
+}
+
+/* ---------- Accueil : exemples ---------- */
+
+.example-card {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--color-stone-200);
+  border-radius: 12px;
+  background: var(--color-white);
+  text-align: left;
+  transition: border-color 150ms;
+}
+.example-card:hover:not(:disabled) {
+  border-color: var(--color-amber-400);
 }
 
 /* ---------- Accueil : aperçu animé ---------- */

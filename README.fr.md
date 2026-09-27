@@ -25,6 +25,8 @@ L'app est née pour l'enseignement : on suit mieux un raisonnement quand le sch�
 - **Arbres, cartes mentales et arbres argumentatifs** sur des formes tldraw ordinaires, avec des préréglages de styles (natures et relations).
 - **Notes d'objet** : le développement d'un objet, affiché à la demande à côté de la narration.
 - **Partage en lecture seule** : un lien qui ouvre la présentation pour n'importe qui, et un lien court avec un QR code à projeter.
+- **Polycopié** : ☰ › « Polycopié (imprimer / PDF)… » donne une partie par étape, le schéma à ce stade (objets atténués en gris) et sa narration, à imprimer ou enregistrer en PDF pour les élèves.
+- **Exemples** sur l'accueil (un arbre argumentatif, Kant et Constant sur le mensonge, en français ou en anglais ; le cycle de l'eau en anglais ; la liberté en français), et une aide des raccourcis en présentation (<kbd>?</kbd>).
 - **Fichiers** : enregistrer et ouvrir des fichiers `.tldr`. La séquence est stockée dans le document tldraw : un fichier `.tldr` la garde.
 - **Mode sombre**, et **interface en anglais et en français**.
 
@@ -92,9 +94,9 @@ Le développement d'un objet (citation longue, explication) ne surcharge pas le 
 
 ## Raccourcis en présentation
 
-`→` / `Espace` / `PageDown` suivant · `←` / `PageUp` précédent · `Début` / `Fin` · `O` vue d'ensemble · `C` recentrer · `K` laser · `M` calque occultant · `N` narration · `+` / `−` / `0` (ou Ctrl + molette) taille du texte du panneau · `Tab` narration / notes · `L` légende · `F` plein écran · `Échap` quitter (le premier Échap désactive le laser)
+`→` / `Espace` / `PageDown` suivant · `←` / `PageUp` précédent · `Début` / `Fin` · `O` vue d'ensemble · `C` recentrer · `K` laser · `M` calque occultant · `N` narration · `+` / `−` / `0` (ou Ctrl + molette) taille du texte du panneau · `Tab` narration / notes · `L` légende · `F` plein écran · `?` aide des raccourcis · `Échap` quitter (le premier Échap désactive le laser)
 
-Le menu ⋯ de la barre de présentation regroupe les actions moins fréquentes : recentrer, déverrouiller, projeter sur un second écran, télécommande sur téléphone. Déverrouiller fait réapparaître l'interface tldraw pour retoucher le schéma ; seules `PageUp` / `PageDown` naviguent alors entre les étapes.
+Le menu ⋯ de la barre de présentation regroupe les actions moins fréquentes : recentrer, aide des raccourcis, déverrouiller, projeter sur un second écran, télécommande sur téléphone. Déverrouiller fait réapparaître l'interface tldraw pour retoucher le schéma ; seules `PageUp` / `PageDown` naviguent alors entre les étapes.
 
 ## Langues
 

@@ -15,6 +15,7 @@ import { saveTldrAs } from '@/lib/storage/tldrSave'
 import { storageModeAtom } from '@/lib/sync/documentSync'
 import { presetManagerOpenAtom } from './PresetTools'
 import { shareDialogOpenAtom } from './ShareDialog'
+import { handoutOpenAtom } from './Handout'
 import { useT } from '@/i18n/client'
 
 /** Menu principal de tldraw (en haut à gauche), précédé des commandes de fichier .tldr. */
@@ -48,6 +49,7 @@ export function MainMenu() {
           onSelect={() => void saveTldrAs(editor).catch(fail)}
         />
         <TldrawUiMenuItem id="share" label={t.share.menu} readonlyOk onSelect={() => void shareDialogOpenAtom.set(true)} />
+        <TldrawUiMenuItem id="handout" label={t.handout.menu} readonlyOk onSelect={() => void handoutOpenAtom.set(true)} />
       </TldrawUiMenuGroup>
       <TldrawUiMenuGroup id="schema-presets">
         <TldrawUiMenuItem id="presets" label={t.presets.menu} onSelect={() => void presetManagerOpenAtom.set(true)} />

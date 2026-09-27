@@ -30,6 +30,7 @@ import {
   stepIndexAtom,
   viewerAtom,
   moreMenuOpenAtom,
+  shortcutsHelpOpenAtom,
 } from '@/lib/presentation/store'
 import {
   clearLiveSpot,
@@ -236,6 +237,7 @@ export function ProgressBar({ editor, onProject, onRemote }: { editor: Editor; o
         <MoreMenu
           items={[
             { label: t.presenter.recenter, icon: 'recenter', onClick: recenter },
+            { label: t.help.menu, icon: 'help', onClick: () => shortcutsHelpOpenAtom.set(true) },
             ...(viewer
               ? []
               : [
@@ -467,6 +469,7 @@ type IconName =
   | 'screen'
   | 'phone'
   | 'more'
+  | 'help'
   | 'overview'
   | 'recenter'
   | 'laser'
@@ -480,6 +483,7 @@ type IconName =
 const ICONS: Record<IconName, ReactNode> = {
   prev: <path d="m15 18-6-6 6-6" />,
   screen: <path d="M3 4h18v12H3zM8 20h8M12 16v4" />,
+  help: <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01" />,
   more: <path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth="3" />,
   phone: <path d="M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM11 18h2" />,
   next: <path d="m9 18 6-6-6-6" />,

@@ -25,6 +25,8 @@ It was made for teaching: an audience follows the reasoning more easily when the
 - **Trees, mind maps and argument maps** on regular tldraw shapes, with style presets (natures and relations).
 - **Object notes**: the longer text about a shape, shown on demand next to the narration.
 - **Read-only sharing**: a link that opens the presentation for anyone, and a short link with a QR code to project.
+- **Handout**: ☰ › "Handout (print / PDF)…" gives one section per step, the diagram at that step (dimmed shapes in grey) and its narration, to print or save as PDF for students.
+- **Examples** on the home page (an argument tree, Kant and Constant on lying, in English or French; the water cycle in English; freedom in French), and a shortcuts help while presenting (<kbd>?</kbd>).
 - **Files**: save and open `.tldr` files. The sequence is stored inside the tldraw document, so a `.tldr` file keeps it.
 - **Dark mode**, and an **English and French interface**.
 
@@ -92,9 +94,9 @@ The development of an object (long quote, explanation) does not clutter the diag
 
 ## Presentation shortcuts
 
-`→` / `Space` / `PageDown` next · `←` / `PageUp` previous · `Home` / `End` · `O` overview · `C` recenter · `K` laser · `M` masking layer · `N` narration · `+` / `−` / `0` (or Ctrl + wheel) side panel text size · `Tab` narration / notes · `L` legend · `F` fullscreen · `Esc` exit (the first `Esc` turns the laser off)
+`→` / `Space` / `PageDown` next · `←` / `PageUp` previous · `Home` / `End` · `O` overview · `C` recenter · `K` laser · `M` masking layer · `N` narration · `+` / `−` / `0` (or Ctrl + wheel) side panel text size · `Tab` narration / notes · `L` legend · `F` fullscreen · `?` shortcuts help · `Esc` exit (the first `Esc` turns the laser off)
 
-The ⋯ menu of the presentation bar holds the less frequent actions: recenter, unlock, project on a second screen, phone remote. Unlocking brings back the tldraw interface to edit the diagram; only `PageUp` / `PageDown` then move between steps.
+The ⋯ menu of the presentation bar holds the less frequent actions: recenter, shortcuts help, unlock, project on a second screen, phone remote. Unlocking brings back the tldraw interface to edit the diagram; only `PageUp` / `PageDown` then move between steps.
 
 ## Languages
 

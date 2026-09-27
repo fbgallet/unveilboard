@@ -18,6 +18,11 @@ export function m(): Messages {
   return messagesFor(currentLocale)
 }
 
+/** Langue courante, pour le code hors React (par exemple, la langue d'un schéma d'exemple). */
+export function clientLocale(): Locale {
+  return currentLocale
+}
+
 interface I18nContextValue {
   locale: Locale
   t: Messages

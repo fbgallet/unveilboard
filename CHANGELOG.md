@@ -2,6 +2,17 @@
 
 All notable changes to Unveilboard. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Handout: one section per step (the diagram at that step, dimmed shapes in grey, and the narration), to print or save as PDF.
+- Examples gallery on the home page, with a new bilingual argument tree (“Should we always tell the truth?”, Kant and Constant) built with the same functions as the editor.
+- Shortcuts help while presenting (`?` key, or the ⋯ menu).
+
+### Changed
+- Horizontal argument trees are more widely spaced (220 px between levels), so relation labels ("presupposes", "illustrates") no longer break mid-word. Existing trees widen at their next layout.
+- CI generates Next's route types before type checking (`pnpm typecheck`).
+
 ## [0.2.0] - 2026-09-27
 
 ### Added
@@ -37,5 +48,6 @@ First public release, under the MIT license.
 - Local mode (browser storage, `.tldr` files) and cloud mode (Postgres, password), with optimistic locking and a local cache.
 - English and French interface, public home page.
 
+[Unreleased]: https://github.com/fbgallet/unveilboard/compare/v0.2.0...HEAD
 [0.2.0]: https://github.com/fbgallet/unveilboard/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/fbgallet/unveilboard/releases/tag/v0.1.0
