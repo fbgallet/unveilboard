@@ -6,12 +6,12 @@ import type { z } from 'zod'
 import { parseMap, type KnownVocabulary, type MapIssue } from './check'
 import { MAP_FORMAT, type UnveilMap } from './format'
 import { PATCH_FORMAT, PatchSchema, previewPatch, type MapPatch } from './patch'
-import { REVIEW_FORMAT, ReviewSchema, checkReview, type Remark, type Review } from './review'
+import { REVIEW_FORMAT, ReviewSchema, checkReview, type Remark, type Review, type StrengthNote } from './review'
 
 export type ReadResult =
   | { kind: 'map'; ok: true; map: UnveilMap; issues: MapIssue[] }
   | { kind: 'patch'; ok: true; patch: MapPatch; result: UnveilMap; issues: MapIssue[] }
-  | { kind: 'review'; ok: true; review: Review; remarks: Remark[]; issues: MapIssue[] }
+  | { kind: 'review'; ok: true; review: Review; remarks: Remark[]; strengths: StrengthNote[]; issues: MapIssue[] }
   | { kind: 'map' | 'patch' | 'review' | 'unknown'; ok: false; issues: MapIssue[] }
 
 /**
@@ -35,9 +35,9 @@ export function readJson(
   if (format === REVIEW_FORMAT && current) {
     const parsed = ReviewSchema.safeParse(data, opts.zodError && { error: opts.zodError })
     if (!parsed.success) return { kind: 'review', ok: false, issues: zodIssues(parsed.error.issues) }
-    const { remarks, issues } = checkReview(parsed.data, current, known, !!opts.strict)
+    const { remarks, strengths, issues } = checkReview(parsed.data, current, known, !!opts.strict)
     if (issues.some((i) => i.level === 'error')) return { kind: 'review', ok: false, issues }
-    return { kind: 'review', ok: true, review: parsed.data, remarks, issues }
+    return { kind: 'review', ok: true, review: parsed.data, remarks, strengths, issues }
   }
   if (format !== PATCH_FORMAT || !current) {
     return { kind: 'unknown', ok: false, issues: [{ level: 'error', code: 'wrong_format', path: 'format' }] }

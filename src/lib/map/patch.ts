@@ -64,6 +64,7 @@ const SequenceOp = z
     op: z.literal('sequence'),
     mode: z.enum(['replace', 'append']).describe('replace: the new steps replace the sequence; append: they are added at the end.'),
     title: z.string().max(200).optional(),
+    intro: z.string().max(20000).optional().describe('Welcome text shown when the presentation starts (Markdown).'),
     steps: z.array(StepSchema),
   })
   .describe('Write the presentation sequence.')
@@ -175,7 +176,7 @@ export function applyPatchToMap(map: UnveilMap, patch: MapPatch, missing: (op: n
       }
       case 'sequence': {
         const steps = op.mode === 'append' ? [...(sequence?.steps ?? []), ...op.steps] : op.steps
-        sequence = { ...sequence, steps }
+        sequence = { ...sequence, ...(op.intro !== undefined && { intro: op.intro }), steps }
         if (op.title) title = op.title
         break
       }

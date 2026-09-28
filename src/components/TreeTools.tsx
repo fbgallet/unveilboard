@@ -3,11 +3,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { atom, renderPlaintextFromRichText, useEditor, useValue, type Editor, type TLRichText, type TLShapeId } from 'tldraw'
 import { readSequence, writeSequence } from '@/lib/canvas/adapter'
-import { addStep, appearanceIndex } from '@/lib/sequence/edit'
+import { addStep, appearanceIndex, showAlongWith } from '@/lib/sequence/edit'
 import {
   addChild,
   addChildWithRelation,
+  addLinkedPremise,
+  addPremise,
   addSibling,
+  canLinkPremise,
+  isLinked,
   functionOf,
   branchOf,
   directionOf,
@@ -25,7 +29,7 @@ import {
   toggleFold,
 } from '@/lib/canvas/tree'
 import { presetSettingsAtom, swatchColor } from '@/lib/canvas/presets'
-import { offeredPresets, relationsFor, type Preset } from '@/lib/presets/presets'
+import { PREMISE, offeredPresets, relationsFor, type Preset } from '@/lib/presets/presets'
 import { presetName, presetRole } from '@/lib/presets/labels'
 import { presetDefinition, presetGuideOpenAtom } from './PresetTools'
 import { TREE_DIRECTIONS, type TreeDirection } from '@/lib/tree/layout'
@@ -46,13 +50,34 @@ function tab(editor: Editor, id: TLShapeId) {
   else addChild(editor, id)
 }
 
+/**
+ * Lie une prémisse au nœud. Quand une pastille prend sa place, elle apparaît dans la séquence en même
+ * temps que lui (sa flèche avec celle du nœud) : sinon, non programmée, elle surgirait avec le parent.
+ */
+function linkPremise(editor: Editor, id: TLShapeId) {
+  const { parent, edge } = getTreeIndex(editor)
+  const before = parent.get(id)
+  const oldEdge = edge.get(id)
+  addLinkedPremise(editor, id)
+  const after = getTreeIndex(editor)
+  const junction = after.parent.get(id)
+  const junctionEdge = junction && after.edge.get(junction)
+  const seq = readSequence(editor)
+  if (!seq || !junction || !junctionEdge || junction === before) return
+  let next = showAlongWith(seq, id, [junction])
+  if (oldEdge) next = showAlongWith(next, oldEdge, [junctionEdge])
+  writeSequence(editor, next)
+}
+
 /** Le document est modifiable : mode édition, ou présentation déverrouillée. */
 const canEdit = () => modeAtom.get() === 'edit' || editUnlockedAtom.get()
 
 /**
  * Raccourcis de l'arbre :
  * Tab ajoute un enfant (et commence un arbre sur n'importe quelle boîte) ;
- * Entrée ajoute un frère ; pendant la saisie, Entrée valide (Maj+Entrée : saut de ligne).
+ * Entrée ajoute un frère (sur une pastille de prémisses liées : une prémisse) ;
+ * Maj+Entrée lie une prémisse au nœud sélectionné ;
+ * pendant la saisie, Entrée valide (Maj+Entrée : saut de ligne).
  */
 export function useTreeKeyboard(editor: Editor) {
   useEffect(() => {
@@ -78,6 +103,12 @@ export function useTreeKeyboard(editor: Editor) {
       if (e.key === 'Tab') {
         stop(e)
         tab(editor, selected.id)
+      } else if (e.shiftKey && canLinkPremise(editor, selected.id)) {
+        stop(e)
+        linkPremise(editor, selected.id)
+      } else if (!e.shiftKey && isLinked(editor, selected.id)) {
+        stop(e)
+        addPremise(editor, selected.id)
       } else if (!e.shiftKey && getTreeIndex(editor).parent.has(selected.id)) {
         stop(e)
         addSibling(editor, selected.id)
@@ -117,6 +148,8 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
         inTree: true as const,
         kids: getTreeIndex(editor).children.get(shape.id)?.length ?? 0,
         folded: isFolded(editor, shape.id),
+        linkable: canLinkPremise(editor, shape.id),
+        junction: isLinked(editor, shape.id),
         dir: directionOf(editor, root),
       }
     },
@@ -132,16 +165,28 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
     const shown = appearanceIndex(seq)
     const items = revealOrder(editor, id).filter((i) => !shown.has(i.node))
     if (!items.length) return void alert(t.tree.revealNothing)
-    let next = seq
+    // Prémisses liées : la pastille et ses prémisses forment une seule étape.
+    const { parent } = getTreeIndex(editor)
+    const groups: (typeof items)[] = []
     for (const item of items) {
-      const shape = editor.getShape(item.node)
-      const text = shape && 'richText' in shape.props ? renderPlaintextFromRichText(editor, shape.props.richText as TLRichText) : ''
-      const title = text.split('\n')[0].trim()
+      const p = parent.get(item.node)
+      const last = groups.at(-1)
+      if (last && p && isLinked(editor, p) && last.some((i) => i.node === p)) last.push(item)
+      else groups.push([item])
+    }
+    const textOf = (node: TLShapeId) => {
+      const shape = editor.getShape(node)
+      return shape && 'richText' in shape.props ? renderPlaintextFromRichText(editor, shape.props.richText as TLRichText).split('\n')[0].trim() : ''
+    }
+    let next = seq
+    for (const group of groups) {
+      const title = group.map((i) => textOf(i.node)).find(Boolean) ?? ''
+      const edges = group.flatMap((i) => (i.edge ? [i.edge] : []))
       ;[next] = addStep(next, next.steps.length, {
         title: title.length > 48 ? `${title.slice(0, 47)}…` : title || t.tree.revealStep,
         actions: [
-          { type: 'show', targets: [item.node], effect: 'rise' },
-          ...(item.edge ? [{ type: 'show' as const, targets: [item.edge], effect: 'draw' as const }] : []),
+          { type: 'show', targets: group.map((i) => i.node), effect: 'rise' },
+          ...(edges.length ? [{ type: 'show' as const, targets: edges, effect: 'draw' as const }] : []),
         ],
       })
     }
@@ -195,6 +240,16 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
       >
         {t.tree.relayout}
       </button>
+      {info.linkable && (
+        <button className="qa-btn" onClick={() => linkPremise(editor, id)} title={t.tree.linkPremiseHint}>
+          {t.tree.linkPremise}
+        </button>
+      )}
+      {info.junction && (
+        <button className="qa-btn" onClick={() => addPremise(editor, id)} title={t.tree.addPremiseHint}>
+          {t.tree.addPremise}
+        </button>
+      )}
       {argumentToggle}
       {info.argument && (
         <button className="qa-btn" onClick={revealMap} title={t.tree.revealMapHint}>
@@ -299,7 +354,9 @@ export function RelationPicker({ editor }: { editor: Editor }) {
     () => {
       const settings = presetSettingsAtom.get()
       const visible = settings.items.filter((p) => p.target === 'arrow' && !p.hidden)
-      if (all || !nodeId) return visible.slice(0, 35)
+      // Sous une pastille de prémisses liées : une prémisse, ou une objection à l'inférence elle-même.
+      if (nodeId && isLinked(editor, nodeId)) return settings.items.filter((p) => p.id === PREMISE || p.id === 'objects')
+      if (all || !nodeId) return visible.filter((p) => p.id !== PREMISE).slice(0, 35)
       // Selon le profil, puis selon le nœud : sa fonction (relation à son parent), sinon son type.
       const offered = new Set(offeredPresets(settings).map((p) => p.id))
       const context = { functionId: functionOf(editor, nodeId)?.id, typeId: editor.getShape(nodeId)?.meta.preset as string | undefined }

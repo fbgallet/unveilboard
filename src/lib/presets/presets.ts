@@ -39,7 +39,7 @@ export interface Preset {
 }
 
 export interface PresetSettings {
-  version: 8
+  version: 9
   /** Section « Préréglages » affichée dans le panneau de styles. */
   enabled: boolean
   /** Étiquettes de nature affichées sur le canevas. */
@@ -63,6 +63,19 @@ export const MODALITIES = ['descriptive', 'prescriptive'] as const
 export type Modality = (typeof MODALITIES)[number]
 
 export const PRESETS_SETTING_KEY = 'presets'
+
+/**
+ * Prémisses liées : des prémisses qui ne soutiennent (ou n'objectent) qu'ensemble. Une petite
+ * pastille (type `linked`), reliée à la conclusion par la relation de l'argument (soutient,
+ * objecte…), porte les prémisses (relation `premise`, un trait fin sans étiquette). Une objection
+ * attachée à la pastille vise l'inférence elle-même, et non l'une des prémisses.
+ */
+export const LINKED = 'linked'
+export const PREMISE = 'premise'
+/** Taille de la pastille des prémisses liées. */
+export const LINKED_SIZE = { w: 18, h: 18 }
+/** Préréglages de structure : jamais dans la palette ni le choix de relation (commandes dédiées). */
+const STRUCTURAL_IDS = new Set([LINKED, PREMISE])
 
 const shape = (id: string, name: string, style: Preset['style']): Preset => ({ id, name, target: 'shape', style })
 const arrow = (id: string, name: string, style: Preset['style'], tree: Pick<Preset, 'towardChild' | 'childNature' | 'role'>): Preset => ({
@@ -97,6 +110,8 @@ export function defaultPresets(names: Record<string, string>, roles: Record<stri
     shape('problem', n('problem'), { geo: 'hexagon', color: 'red', fill: 'semi', dash: 'draw' }),
     shape('example', n('example'), { geo: 'rectangle', color: 'grey', fill: 'semi', dash: 'draw' }),
     shape('quote', n('quote'), { geo: 'rectangle', color: 'yellow', fill: 'none', dash: 'none', font: 'serif' }),
+    // Pastille des prémisses liées : sans étiquette de type ; sa couleur est celle de sa fonction.
+    { ...shape(LINKED, n(LINKED), { geo: 'ellipse', color: 'green', fill: 'fill', dash: 'solid', size: 's' }), tag: false },
     arrow('supports', n('supports'), { color: 'green' }, { childNature: 'statement', role: r('supports') }),
     arrow('objects', n('objects'), { color: 'red' }, { childNature: 'statement', role: r('objects') }),
     arrow('refutes', n('refutes'), { color: 'orange' }, { childNature: 'statement', role: r('refutes') }),
@@ -111,11 +126,13 @@ export function defaultPresets(names: Record<string, string>, roles: Record<stri
     arrow('distinguishes', n('distinguishes'), { color: 'blue', arrowheadStart: 'bar', arrowheadEnd: 'bar' }, { childNature: 'concept', role: r('distinguishes') }),
     arrow('opposes', n('opposes'), { color: 'blue', arrowheadStart: 'arrow', arrowheadEnd: 'arrow' }, { childNature: 'concept', role: r('opposes') }),
     arrow('relates', n('relates'), { color: 'blue', size: 's', dash: 'dotted', arrowheadStart: 'none', arrowheadEnd: 'none' }, { childNature: 'concept', role: r('relates') }),
+    // Prémisse d'une pastille de prémisses liées : un trait fin, sans pointe ni étiquette.
+    { ...arrow(PREMISE, n(PREMISE), { color: 'green', size: 's', arrowheadEnd: 'none' }, { childNature: 'statement', role: r(PREMISE) }), label: undefined },
   ]
 }
 
 export function defaultPresetSettings(names: Record<string, string>, roles: Record<string, string> = {}): PresetSettings {
-  return { version: 8, enabled: true, showTags: true, profile: 'essential', items: defaultPresets(names, roles) }
+  return { version: 9, enabled: true, showTags: true, profile: 'essential', items: defaultPresets(names, roles) }
 }
 
 /** Couleurs de départ changées en v8 (familles de couleurs de l'enseignant) : [id, ancienne, nouvelle]. */
@@ -154,7 +171,8 @@ const OLD_DISTINGUISHES_NAMES = ['distingue']
  * - v5 → v6 : type « Distinction », relations « s'oppose à » et « se rapproche de » ajoutés,
  *   « distingue » devient « se distingue de » ;
  * - v7 → v8 : familles de couleurs (énoncés violets, questions rouges, faits verts, relations entre
- *   concepts bleues), pour les couleurs qui n'avaient pas été changées.
+ *   concepts bleues), pour les couleurs qui n'avaient pas été changées ;
+ * - v8 → v9 : prémisses liées (type `linked`, relation `premise`) ajoutées.
  */
 export function normalizePresetSettings(
   raw: unknown,
@@ -199,6 +217,7 @@ export function normalizePresetSettings(
     ...(version < 3 ? ['belief', 'explains'] : []),
     ...(version < 4 ? ['fact'] : []),
     ...(version < 6 ? ['distinction', 'opposes', 'relates'] : []),
+    ...(version < 9 ? [LINKED, PREMISE] : []),
   ]
   {
     for (const id of added) {
@@ -210,7 +229,7 @@ export function normalizePresetSettings(
     }
   }
   const profile = r.profile === 'complete' ? 'complete' : 'essential'
-  return { version: 8, enabled: r.enabled !== false, showTags: r.showTags !== false, profile, items }
+  return { version: 9, enabled: r.enabled !== false, showTags: r.showTags !== false, profile, items }
 }
 
 export function newPresetId(name: string) {
@@ -244,9 +263,9 @@ export function isEssential(p: Preset) {
   return ESSENTIAL_IDS.has(p.id) || !DEFAULT_IDS.has(p.id)
 }
 
-/** Préréglages proposés, selon le profil (les préréglages masqués ne le sont jamais). */
+/** Préréglages proposés, selon le profil (les préréglages masqués et ceux de structure ne le sont jamais). */
 export function offeredPresets(settings: PresetSettings): Preset[] {
-  return settings.items.filter((p) => !p.hidden && (settings.profile === 'complete' || isEssential(p)))
+  return settings.items.filter((p) => !p.hidden && !STRUCTURAL_IDS.has(p.id) && (settings.profile === 'complete' || isEssential(p)))
 }
 
 /**

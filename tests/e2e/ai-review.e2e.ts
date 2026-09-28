@@ -119,3 +119,59 @@ test('vérifications automatiques, et relecture collée depuis un assistant', as
   await panel.locator('.review-item', { hasText: 'automatic check' }).getByRole('button', { name: 'Dismiss' }).click()
   await expect(panel.locator('.review-item')).toHaveCount(3)
 })
+
+test('relecture « solidité de l’argumentation » : axes choisis, sophisme nommé, force des raisons, textes lisibles', async ({ page }) => {
+  const bodies: Record<string, unknown>[] = []
+  const answer = {
+    format: 'unveilboard/review',
+    version: 1,
+    summary: 'La thèse repose sur `justification`, qui mériterait d’être défendue.',
+    remarks: [
+      {
+        id: 'f1',
+        kind: 'fallacy',
+        name: 'pente glissante',
+        priority: 'high',
+        targets: ['justification'],
+        message: 'De justification on passe à la ruine de toute parole sans étape intermédiaire.',
+      },
+    ],
+    strengths: [
+      { target: 'justification', strength: 'moderate', reason: 'Valable si l’on admet `thesis`.' },
+      { target: 'ghost', strength: 'weak', reason: 'Inconnu.' },
+    ],
+  }
+  await page.route(`${LOCAL}/**`, async (route: Route) => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS })
+    bodies.push(route.request().postDataJSON())
+    const body = `data: ${JSON.stringify({ model: 'fake', choices: [{ delta: { content: JSON.stringify(answer) } }] })}\n\ndata: [DONE]\n\n`
+    await route.fulfill({ body, headers: { ...CORS, 'content-type': 'text/event-stream' } })
+  })
+  await open(page)
+  const panel = await openPanel(page)
+  // Seulement la solidité de l'argumentation.
+  for (const name of ['Construction', 'Sources', 'Sequence']) await panel.getByRole('checkbox', { name }).uncheck()
+  await expect(panel.getByRole('checkbox', { name: 'Soundness of the argument' })).toBeDisabled()
+  await panel.getByRole('button', { name: 'Review with the AI' }).click()
+
+  const prompt = JSON.stringify(bodies[0])
+  expect(prompt).toContain('Soundness of the argument')
+  expect(prompt).not.toContain('Construction of the diagram')
+
+  const item = panel.locator('.review-item').first()
+  await expect(item).toContainText('Fallacy')
+  await expect(item).toContainText('pente glissante')
+  // L'identifiant n'apparaît pas au lecteur ; seul celui entre accents graves est remplacé (« justification » est un mot).
+  await expect(panel.locator('.patch-summary-text')).toContainText('La thèse repose sur “A lie cannot become a universal law')
+  const strengths = panel.locator('.review-strengths li')
+  await expect(strengths).toHaveCount(1)
+  await expect(strengths.first()).toContainText('moderate')
+  await expect(strengths.first()).toContainText('Valable si l’on admet “Yes: truthfulness is an unconditional duty”.')
+  await expect(page.locator('.review-badges .review-strength')).toHaveText('moderate')
+
+  // Le choix des axes est gardé.
+  await page.reload()
+  await page.waitForFunction(() => (window as unknown as { unveilboard?: unknown }).unveilboard)
+  const again = await openPanel(page)
+  await expect(again.getByRole('checkbox', { name: 'Construction' })).not.toBeChecked()
+})

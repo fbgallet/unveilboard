@@ -64,7 +64,7 @@ Identifiers (`id`) are short and free (no spaces), unique in the whole diagram: 
 | Field | Role |
 |---|---|
 | `id`, `text` | Identifier and text of the box, explicit and concise. Light Markdown: **bold**, *italic*, ~~strike~~, `code`, [link](url), bullet or numbered lists; one paragraph per line. The rest (headings, quotations, tables) goes in the note. |
-| `type` | Element type: `statement`, `belief` (assumption), `fact`, `concept`, `distinction`, `question`, `problem`, `example`, `quote`, or a type from the vocabulary. Omitted: the type given by the relation (an element that “illustrates” is an example), otherwise none. |
+| `type` | Element type: `statement`, `belief` (assumption), `fact`, `concept`, `distinction`, `question`, `problem`, `example`, `quote`, `linked` (linked premises: a dot with an empty `text`, whose children are premises with the `premise` relation, that only support or object together), or a type from the vocabulary. Omitted: the type given by the relation (an element that “illustrates” is an example), otherwise none. |
 | `parent` | Parent in a tree. Omitted: the element is a root, or a standalone box. |
 | `relation` | Relation that connects the element to its parent: `supports`, `objects`, `refutes`, `answers`, `explains`, `implies`, `presupposes`, `illustrates`, `defines`, `raises`, `distinguishes`, `opposes`, `relates`, or a relation from the vocabulary. Omitted: a plain branch (mind map). |
 | `reasoning` | Type of reasoning of that relation: `deduction`, `induction`, `analogy`, `abduction` (best explanation), `absurd` (reductio), `afortiori`, `authority`, `example`. |
@@ -90,6 +90,8 @@ Each entry describes a type (`"kind": "type"`) or a relation (`"kind": "relation
 A type or relation created by the user also carries its `style` (tldraw properties: `geo`, `color`, `fill`, `dash`, `size`, `font`, `arrowheadStart`, `arrowheadEnd`): imported on another instance, it is recreated identically.
 
 ## Sequence
+
+`sequence.intro` (optional, Markdown) is shown under the title when the presentation starts, before the first step: instructions, a question to the class, an outline.
 
 Each step has a `title`, an optional `narration` (Markdown), an optional `camera` (`follow`, the default: frame what the step shows; `overview`: the whole visible diagram; `keep`: do not move; `{ "mode": "area", "area": { "x", "y", "w", "h" } }`: a fixed rectangle in canvas coordinates, centred with the zoom fitted to its size) and `actions`:
 

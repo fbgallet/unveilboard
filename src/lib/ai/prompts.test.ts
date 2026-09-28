@@ -36,6 +36,32 @@ describe('consignes', () => {
   })
 })
 
+describe('relecture : ce qu’on en attend', () => {
+  it('par défaut, tout : construction, solidité (sophismes, biais, force des raisons), sources, séquence', () => {
+    const prompt = buildPrompt({ task: 'review', instruction: '', map, vocabulary, lang: 'fr', delivery: 'api' })
+    for (const part of ['### Construction of the diagram', '### Soundness of the argument', '### Sources and quotations', '### Sequence', '"strengths"', '`fallacy`']) {
+      expect(prompt).toContain(part)
+    }
+    expect(prompt).toContain('never by their id')
+  })
+
+  it('solidité seule : les autres axes sont laissés de côté, sortes de remarques comprises', () => {
+    const prompt = buildPrompt({ task: 'review', instruction: '', map, vocabulary, lang: 'fr', delivery: 'api', reviewFocus: ['reasoning'] })
+    expect(prompt).toContain('### Soundness of the argument')
+    expect(prompt).toContain('Look only at the aspects below')
+    expect(prompt).not.toContain('### Construction of the diagram')
+    expect(prompt).not.toContain('`wording`')
+    expect(prompt).toContain('"strengths"')
+  })
+
+  it('construction seule : ni sophismes ni force des raisons', () => {
+    const prompt = buildPrompt({ task: 'review', instruction: '', map, vocabulary, lang: 'fr', delivery: 'api', reviewFocus: ['structure'] })
+    expect(prompt).not.toContain('"strengths"')
+    expect(prompt).not.toContain('`fallacy`')
+    expect(prompt).toContain('`wording`')
+  })
+})
+
 describe('consignes : à partir d’un élément, ordre par défaut', () => {
   it('développer : élément de départ, extrait signalé, justification demandée', () => {
     const prompt = buildPrompt({ task: 'expand', instruction: 'Deux objections.', map, focus: 'thesis', partial: true, vocabulary, lang: 'fr', delivery: 'api' })

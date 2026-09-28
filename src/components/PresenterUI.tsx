@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import { renderPlaintextFromRichText, useEditor, useValue, type Editor, type TLPageId, type TLRichText, type TLShape, type TLShapeId } from 'tldraw'
 import { noteOf, panelNoteIds, plannedNoteIds, resolveTextImage } from '@/lib/canvas/notes'
 import { presetById, swatchColor } from '@/lib/canvas/presets'
@@ -132,7 +132,8 @@ export function NarrationPanel({ editor, top, onPinScale }: { editor: Editor; to
         </button>
       </div>
       {top}
-      <p className="pr-24 text-xs font-medium uppercase tracking-[0.2em] text-stone-400">{seq.title}</p>
+      {/* Au départ, le titre est affiché en grand : pas de rappel en petites capitales. */}
+      <p className={`pr-24 text-xs font-medium uppercase tracking-[0.2em] text-stone-400 ${step || note ? '' : 'invisible'}`}>{seq.title}</p>
       {tabs.length > 0 && (
         <nav className="narration-tabs" aria-label={t.presenter.panelTabs}>
           <button className={`narration-tab ${note ? '' : 'narration-tab-active'}`} onClick={() => activeNoteAtom.set(null)}>
@@ -175,7 +176,14 @@ export function NarrationPanel({ editor, top, onPinScale }: { editor: Editor; to
             </div>
           </>
         ) : (
-          <h2 className="font-serif text-[2.25em] leading-tight text-stone-900">{seq.title}</h2>
+          <>
+            <h2 className="font-serif text-[2.25em] leading-tight text-stone-900">{seq.title}</h2>
+            {seq.intro?.trim() && (
+              <div className="mt-[1.5em] space-y-[1em] text-[1.25em] leading-relaxed text-stone-700">
+                <Markdownish text={seq.intro} resolveSrc={resolveSrc} />
+              </div>
+            )}
+          </>
         )}
       </div>
     </aside>
@@ -315,16 +323,36 @@ function MoreMenu({ items }: { items: MoreItem[] }) {
     return () => window.removeEventListener('pointerdown', onDown, { capture: true })
   }, [open])
 
+  // Le menu s'ouvre vers la gauche depuis le bouton : sur un écran étroit, on le recale pour qu'il
+  // reste entièrement visible (8 px de marge), en largeur comme en hauteur.
+  const menuRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const menu = menuRef.current
+    if (!open || !menu) return
+    const fit = () => {
+      menu.style.right = ''
+      menu.style.maxHeight = ''
+      const rect = menu.getBoundingClientRect()
+      const margin = 8
+      const shift = rect.left < margin ? margin - rect.left : Math.min(0, window.innerWidth - margin - rect.right)
+      if (shift) menu.style.right = `${-shift}px`
+      if (rect.top < margin) menu.style.maxHeight = `${rect.height - (margin - rect.top)}px`
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [open])
+
   return (
     <div ref={ref} className="relative flex items-center">
       <ToolBtn onClick={() => setOpen(!open)} active={open || items.some((i) => i.active)} title={t.presenter.more} icon="more" />
       {open && (
-        <div className="more-menu" role="menu" aria-label={t.presenter.more}>
+        <div ref={menuRef} className="more-menu" role="menu" aria-label={t.presenter.more}>
           {items.map((item) => (
             <button
               key={item.label}
               role="menuitem"
-              className={`more-item ${item.active ? 'more-item-active' : ''} ${item.desktopOnly ? 'max-md:hidden' : ''}`}
+              className={`more-item ${item.active ? 'more-item-active' : ''} ${item.desktopOnly ? 'more-item-desktop' : ''}`}
               onClick={() => {
                 setOpen(false)
                 item.onClick()

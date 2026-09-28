@@ -6,8 +6,9 @@
 
 import { z } from 'zod'
 import { MapSchema, type UnveilMap } from '../map/format'
+import { FOCUS_OF_KIND, REMARK_KINDS, REVIEW_FOCUS, type ReviewFocus } from '../map/review'
 
-export const PROMPT_VERSION = 3
+export const PROMPT_VERSION = 4
 
 export const TASKS = ['create', 'enrich', 'sequence', 'review', 'edit', 'expand'] as const
 export type Task = (typeof TASKS)[number]
@@ -51,6 +52,8 @@ export interface PromptInput {
   withSequence?: boolean
   /** Développer au besoin dans la note des éléments (par défaut : oui) ; sinon, tout dans la boîte. */
   notes?: boolean
+  /** « review » : ce qu'on attend de la relecture (par défaut : tout). */
+  reviewFocus?: ReviewFocus[]
   vocabulary: VocabularyLine[]
   /** Langue du contenu à écrire (« fr », « en »…). */
   lang: string
@@ -73,6 +76,7 @@ export const PromptInputSchema = z.object({
   kind: z.enum(['auto', 'argument', 'mindmap']).optional(),
   withSequence: z.boolean().optional(),
   notes: z.boolean().optional(),
+  reviewFocus: z.array(z.enum(REVIEW_FOCUS)).max(REVIEW_FOCUS.length).optional(),
   vocabulary: z
     .array(
       z.object({
@@ -107,7 +111,11 @@ export function buildPrompt(input: PromptInput): string {
   const parts = [
     `<!-- Unveilboard prompt v${PROMPT_VERSION}, task: ${input.task} -->`,
     INTRO,
-    input.task === 'create' && input.source ? sourceTaskText(input) : TASK_TEXT[input.task].replace('{focus}', input.focus ?? ''),
+    input.task === 'create' && input.source
+      ? sourceTaskText(input)
+      : input.task === 'review'
+        ? reviewTaskText(input.reviewFocus ?? REVIEW_FOCUS)
+        : TASK_TEXT[input.task].replace('{focus}', input.focus ?? ''),
     input.instruction.trim() ? `## The user's request\n\n${input.instruction.trim()}` : '',
     input.task === 'create' && input.source ? sourceText(input.source) : '',
     input.task === 'sequence' && input.order?.length
@@ -118,7 +126,7 @@ export function buildPrompt(input: PromptInput): string {
       : '',
     vocabularyText(input.vocabulary),
     MAP_FORMAT_TEXT,
-    output === 'patch' ? PATCH_FORMAT_TEXT : output === 'review' ? REVIEW_FORMAT_TEXT : '',
+    output === 'patch' ? PATCH_FORMAT_TEXT : output === 'review' ? reviewFormatText(input.reviewFocus ?? REVIEW_FOCUS) : '',
     SEQUENCE_TEXT,
     rules(input.lang, input.notes !== false),
     input.map
@@ -143,26 +151,50 @@ Propose new elements for the diagram below, as requested (arguments, objections,
   sequence: `## Your task: write the presentation sequence
 
 Write the sequence that reveals the diagram below step by step, following the user's instructions if any: a clear order (usually the question or thesis first, then each line of argument with its objections and answers), a short title per step, and a narration the teacher can read or say (2 to 5 sentences, Markdown allowed). Replace the current sequence (\`"mode": "replace"\`) unless asked to extend it.`,
-  review: `## Your task: review the diagram critically
-
-Read the diagram below as a demanding philosophy teacher preparing a lesson would, and point out what should be improved, following the user's request if any:
-- **inconsistency**: elements that contradict each other, a conclusion that does not follow, a relation that says the opposite of the texts;
-- **gap**: a premise the argument needs but does not state, an objection left without answer, a thesis without justification, a key notion never defined;
-- **confusion**: an equivocation (a word taken in two senses), two distinct notions treated as one;
-- **type** / **relation**: a reason marked as an objection, an explanation marked as a justification, a question typed as a statement, an assumption typed as a statement, a wrong direction;
-- **structure**: an element attached to the wrong parent, a branch that belongs elsewhere;
-- **redundancy**: two elements that say the same thing;
-- **wording**: a box that holds several ideas or a whole paragraph (its development belongs in \`note\`), a vague or loaded formulation;
-- **sequence**: an order that does not follow the reasoning, a narration that is missing or merely repeats the boxes;
-- **faithfulness**: a quotation or a source that seems doubtful.
-
-Give each remark its \`targets\` (the ids concerned), a clear \`message\` (what is wrong and why, for the teacher) and a \`priority\`. When a correction is clear, give it as \`operations\` (the changes format below); when it is a matter of judgement, give only the remark. Do not repeat what the app already checks by itself (an objection without answer, a thesis without justification, a missing relation, an element shown before its parent, a box too long): focus on what needs understanding. Fewer, sharper remarks are better than many small ones; if the diagram is sound, say so in \`summary\`.`,
+  review: reviewTaskText([...REVIEW_FOCUS]),
   edit: `## Your task: change the diagram
 
 Change the diagram below as the user asks.`,
   expand: `## Your task: develop the diagram from one element
 
 Starting from the element \`{focus}\`, do what the user asks below. Add new elements connected to it: as its children, with the right relation and type (justifications, objections, answers, examples, assumptions, distinctions, definitions…), deeper when useful (an answer to a new objection), and cross-links (\`link\`) between new elements and existing ones when they are really related. Do not change, move or remove existing elements, and do not write the sequence. Give each added element and link a short \`rationale\` (one sentence, for the user): the user will accept or reject each of them. Propose a handful of strong elements rather than many weak ones.`,
+}
+
+/** Relecture critique : ce qu'on en attend (axes cochés par l'utilisateur), puis les règles communes. */
+function reviewTaskText(focus: readonly ReviewFocus[]) {
+  const on = new Set(focus.length ? focus : REVIEW_FOCUS)
+  const sections: Record<ReviewFocus, string> = {
+    structure: `### Construction of the diagram
+- **type** / **relation**: a reason marked as an objection, an explanation marked as a justification, a question typed as a statement, an assumption typed as a statement, a wrong direction;
+- **structure**: an element attached to the wrong parent, a branch that belongs elsewhere, premises that only work together but are attached separately (they should be linked premises);
+- **redundancy**: two elements that say the same thing;
+- **wording**: a box that holds several ideas or a whole paragraph (its development belongs in \`note\`), a vague or loaded formulation.`,
+    reasoning: `### Soundness of the argument
+Judge the reasoning, not whether you agree with its conclusions. Read charitably: before calling something a flaw, consider the strongest reasonable reading; if an unstated premise would repair it, say which one.
+- **inconsistency**: elements that contradict each other, a conclusion that does not follow, a relation that says the opposite of the texts;
+- **gap**: a premise the argument needs but does not state, a strong objection left without answer, a thesis without justification, a key notion never defined;
+- **confusion**: an equivocation (a word taken in two senses), two distinct notions treated as one;
+- **fallacy**: a reasoning that really commits a fallacy, with its usual \`name\` (hasty generalization, false dilemma, slippery slope, begging the question, straw man, ad hominem, appeal to an authority outside its field, post hoc, composition or division, appeal to nature…): say why this instance is fallacious;
+- **bias**: a one-sided treatment, with its \`name\` if it has one: the weakest objections chosen while stronger ones exist (straw man by selection), cherry-picked examples, loaded wording, a debatable assumption taken for granted;
+- **premise**: a premise that is doubtful, false, or itself needs support;
+- **inference**: premises that may be acceptable yet do not lead to the conclusion, or only weakly: say what is missing.
+
+Also rate, in \`strengths\`, each reason, objection and answer of the argument map (an element related by \`supports\`, \`objects\`, \`refutes\`, \`answers\` or \`explains\`): how much it does for the element it is attached to, \`weak\`, \`moderate\` or \`strong\`, with a one-sentence \`reason\`. For linked premises, rate the \`linked\` element (the premises together), not each premise.`,
+    sources: `### Sources and quotations
+- **faithfulness**: a quotation that seems inexact, a source or attribution that seems doubtful, a position ascribed to an author who did not hold it.`,
+    sequence: `### Sequence
+- **sequence**: an order that does not follow the reasoning, a narration that is missing or merely repeats the boxes.`,
+  }
+  const asked = REVIEW_FOCUS.filter((f) => on.has(f))
+  return `## Your task: review the diagram critically
+
+Read the diagram below as a demanding philosophy teacher preparing a lesson would, and point out what should be improved, following the user's request if any. ${
+    asked.length < REVIEW_FOCUS.length ? 'Look only at the aspects below; leave the others aside.' : 'Look at all the aspects below.'
+  }
+
+${asked.map((f) => sections[f]).join('\n\n')}
+
+Give each remark its \`targets\` (the ids concerned), a clear \`message\` (what is wrong and why, for the teacher, naming elements by their text, never by their id) and a \`priority\`. When a correction is clear, give it as \`operations\` (the changes format below); when it is a matter of judgement, give only the remark. Do not repeat what the app already checks by itself (an objection without answer, a thesis without justification, a missing relation, linked premises with a single premise, an element shown before its parent, a box too long): focus on what needs understanding. Fewer, sharper remarks are better than many small ones; if the diagram is sound, say so in \`summary\`.`
 }
 
 /** Créer un schéma à partir d'un texte : type de schéma, fidélité, séquence. */
@@ -232,6 +264,7 @@ const MAP_FORMAT_TEXT = `## The diagram format (JSON)
   - \`id\`: short and unique, without spaces (e.g. \`thesis\`, \`obj1\`). Parents come before their children; siblings are in display order.
   - \`parent\` + \`relation\`: the tree. An element without parent is a root (or a standalone box). Without \`relation\`, a plain branch (mind map).
   - \`type\`: omitted, the relation's default child type applies.
+  - **Linked premises**: when premises only support (or object to) a conclusion **together**, none being enough alone, do not attach them separately: add a \`"type": "linked"\` element with an empty \`text\`, child of the conclusion with the relation (\`supports\`, \`objects\`…), then each premise as its child with \`"relation": "premise"\`. An objection to the inference itself (the premises may be true, yet not lead to the conclusion) is a child of the \`linked\` element. Independent reasons stay separate children.
   - \`source\`: author, work, theory or position the element comes from.
   - \`note\`: a longer development in Markdown (a full quotation, an explanation), shown beside the diagram on demand.
   - \`tree\` (on a root only): \`{ "kind": "argument" | "mindmap", "direction"?: "right" | "left" | "down" | "up" | "both" }\`.
@@ -257,24 +290,33 @@ Do not rewrite the whole diagram: answer with changes, applied in order.
 
 Refer to existing elements by their \`id\` in the current diagram.`
 
-const REVIEW_FORMAT_TEXT = `## The review format (JSON)
+function reviewFormatText(focus: readonly ReviewFocus[]) {
+  const on = new Set(focus.length ? focus : REVIEW_FOCUS)
+  const kinds = REMARK_KINDS.filter((k) => FOCUS_OF_KIND[k] === null || on.has(FOCUS_OF_KIND[k]!))
+  const strengths = on.has('reasoning')
+  return `## The review format (JSON)
 
 \`\`\`
 { "format": "unveilboard/review", "version": 1, "summary": "…",
-  "remarks": [ { "id": "r1", "kind": "gap", "priority": "high" | "medium" | "low", "targets": [ids], "message": "…", "operations": [ … ]? } ] }
+  "remarks": [ { "id": "r1", "kind": "gap", "priority": "high" | "medium" | "low", "targets": [ids], "message": "…", "name"?: "…", "operations": [ … ]? } ]${
+    strengths ? ',\n  "strengths": [ { "target": id, "strength": "weak" | "moderate" | "strong", "reason": "…" } ]' : ''
+  } }
 \`\`\`
 
 - \`summary\`: your overall judgement in a few sentences (strengths, main problems), in the content language.
-- \`kind\`: \`inconsistency\`, \`gap\`, \`confusion\`, \`type\`, \`relation\`, \`structure\`, \`redundancy\`, \`wording\`, \`sequence\`, \`faithfulness\` or \`other\`.
+- \`kind\`: ${kinds.map((k) => `\`${k}\``).join(', ')}.${strengths ? '\n- `name`: for a `fallacy` or a `bias`, its usual name, in the content language.' : ''}
 - \`operations\` (optional): the correction, applied only if the user accepts it, independently of the other remarks:
   - \`{ "op": "add", "id", "text", "parent"?, "relation"?, "type"?, … }\`: a new element (a new \`id\`);
   - \`{ "op": "update", "id", "text"?, "type"?, "relation"?, "reasoning"?, "source"?, "modality"?, "note"? }\`: change fields (\`null\` removes one);
   - \`{ "op": "move", "id", "parent", "relation"? }\`: attach an element (with its branch) to another parent;
   - \`{ "op": "remove", "id" }\`: remove an element with its branch;
   - \`{ "op": "link", "id", "from", "to", "relation"? }\`: a new cross-link;
-  - \`{ "op": "sequence", "mode": "replace" | "append", "steps": [ Step… ] }\`: rewrite the sequence.
+  - \`{ "op": "sequence", "mode": "replace" | "append", "steps": [ Step… ] }\`: rewrite the sequence.${
+    strengths ? '\n- `strengths`: one entry per reason, objection and answer (see above); `reason` names elements by their text.' : ''
+  }
 
-Refer to existing elements by their \`id\` in the current diagram.`
+Refer to existing elements by their \`id\` in \`targets\` and \`operations\` only.`
+}
 
 const SEQUENCE_TEXT = `## The sequence
 
@@ -284,7 +326,8 @@ A **Step**: \`{ "title", "narration"?, "camera"?: "follow" | "overview" | "keep"
 - Targeting an element acts on its box **and** the arrow to its parent (\`show\` makes the box rise and draws the arrow). \`part\`: \`"node"\` or \`"edge"\` to act on one of them only.
 - **Visibility rule**: an element that no step shows is visible from the start, but only while its parent is visible. So showing a thesis shows its whole tree, except what later steps show. To reveal a tree progressively, show every element in its own step (or group elements that go together); never show a child before its parent.
 - \`camera\`: \`follow\` (default) frames what the step shows; use \`overview\` for the first and last steps.
-- \`narration\`: what the teacher says at that step (Markdown), not a repetition of the box.`
+- \`narration\`: what the teacher says at that step (Markdown), not a repetition of the box.
+- \`intro\` (on the sequence, optional): shown under the title before the first step (Markdown): the question to the class, instructions or an outline. Short.`
 
 /** Boîte et note : l'essentiel, explicite, dans la boîte ; la note précise, sans le remplacer. */
 function writingRules(notes: boolean) {
@@ -303,7 +346,8 @@ ${writingRules(notes)}
 - Write all content (texts, notes, titles, narration, summary) in ${name}, except quotations, kept in their language.
 - Be faithful: never invent a quotation, a source or a reference. A \`quote\` element must be an exact quotation with its \`source\`; when you are not sure of the exact words, write a \`statement\` without \`source\`. Mark your own reconstructions with \`"origin": "reconstruction"\`.
 - Use the vocabulary above (ids, not names). If a request really needs another type or relation, declare it in \`vocabulary\` (\`{ "id", "kind": "type" | "relation", "name", "description" }\`).
-- Nothing may rely on colors or positions: they are computed by the app.`
+- Nothing may rely on colors or positions: they are computed by the app.
+- Never write an element's \`id\` in text meant for the user (message, summary, reason, rationale, narration): the user does not see ids. Name the element by its text, briefly quoted.`
 }
 
 function deliveryText(output: 'map' | 'patch' | 'review', delivery: PromptInput['delivery'], pasteMenu: string) {

@@ -1,5 +1,5 @@
 import { devices, expect, test } from '@playwright/test'
-import { openExample } from './helpers'
+import { openExample, present } from './helpers'
 
 test('mode sombre : les panneaux suivent le thème de tldraw', async ({ page }) => {
   await openExample(page)
@@ -27,4 +27,22 @@ test('téléphone en portrait : la narration passe sous le schéma', async ({ pa
   const narration = await phone.locator('aside.narration').boundingBox()
   expect(narration!.y).toBeGreaterThanOrEqual(canvas!.y + canvas!.height - 1)
   expect(narration!.width).toBeGreaterThan(300)
+})
+
+test('téléphone : le menu « ⋯ » de la présentation reste entièrement à l’écran, sans les options réservées à l’ordinateur', async ({ browser }) => {
+  for (const device of ['iPhone 13', 'iPhone SE']) {
+    const phone = await (await browser.newContext({ ...devices[device] })).newPage()
+    await openExample(phone)
+    await present(phone)
+    await phone.locator('.progress').getByRole('button', { name: 'More' }).click()
+    const menu = phone.locator('.more-menu')
+    await expect(menu).toBeVisible()
+    await phone.waitForTimeout(300)
+    const box = (await menu.boundingBox())!
+    expect(box.x, device).toBeGreaterThanOrEqual(0)
+    expect(box.x + box.width, device).toBeLessThanOrEqual(phone.viewportSize()!.width)
+    expect(box.y, device).toBeGreaterThanOrEqual(0)
+    await expect(menu.getByRole('menuitem', { name: /Phone remote/ })).toBeHidden()
+    await phone.context().close()
+  }
 })

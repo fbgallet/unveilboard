@@ -75,6 +75,16 @@ Drawing a distinction is often decisive in a discussion: many objections fall on
 - **in the argument**, the **Distinction** element (“liberty ≠ licence”) is a move in its own right: it can *refute* an objection, *answer* a question or resolve a problem, with the usual relations;
 - **between concepts**, to map a field of notions: **is distinct from** (a difference where there is confusion), **is opposed to** (contraries, mutually exclusive but not exhaustive, or contradictories, one being the negation of the other), **is akin to** (kinship, proximity).
 
+## Linked premises
+
+Two reasons can support a thesis **each on its own** (convergent reasons: if one falls, the other still stands), or **only together** (linked premises: neither is enough alone). “All men are mortal” and “Socrates is a man” only prove “Socrates is mortal” together.
+
+- Select a justification (or an objection, an answer…) and click **“+ Linked premise”**, or <kbd>Shift</kbd>+<kbd>Enter</kbd>: a small **dot** takes its place and carries the relation (“supports”), the element becomes a premise and a new premise is added next to it.
+- On the dot, <kbd>Enter</kbd> adds a premise; on a premise, <kbd>Enter</kbd> adds another one.
+- Premises take the colour of the dot’s function (green when they support, red when they object) and sit close to it.
+- **Objecting to the inference**: an objection attached to the dot (<kbd>Tab</kbd> on the dot) disputes none of the premises, but the step from the premises to the conclusion.
+- When presenting, the dot appears with its premises; “Reveal the map” gives them a single step.
+
 ## Types of reasoning
 
 A support or objection arrow can specify **how** it supports or objects: select it, then choose in the side panel. The type is written in the arrow’s text (“supports · analogy”). It is optional: without it, nothing changes.

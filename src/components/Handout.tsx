@@ -61,6 +61,11 @@ function HandoutView({ editor }: { editor: Editor }) {
       </div>
       <article className="handout">
         <h1>{seq?.title}</h1>
+        {seq?.intro?.trim() && (
+          <div className="handout-text">
+            <Markdownish text={seq.intro} />
+          </div>
+        )}
         {!steps ? (
           <p className="handout-wait">{t.handout.preparing}</p>
         ) : (

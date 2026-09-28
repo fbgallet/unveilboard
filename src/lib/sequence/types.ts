@@ -62,6 +62,8 @@ export interface Sequence {
   version?: number
   id: string
   title: string
+  /** Texte d'accueil (Markdown), affiché au départ de la présentation, avant la première étape. */
+  intro?: string
   steps: Step[]
 }
 

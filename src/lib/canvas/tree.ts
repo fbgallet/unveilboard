@@ -23,7 +23,7 @@ import {
   type TLShapePartial,
 } from 'tldraw'
 import { applyPresetTo, presetById } from './presets'
-import type { Preset } from '../presets/presets'
+import { LINKED, PREMISE, type Preset } from '../presets/presets'
 import {
   TREE_DIRECTIONS,
   TREE_GAPS,
@@ -183,6 +183,9 @@ export function relayout(editor: Editor, anyNodeId: TLShapeId, opts: { reset?: b
       h: b.h,
       offset: opts.reset ? { x: 0, y: 0 } : offsetOf(editor.getShape(id)),
       children: [...(children.get(id) ?? [])].sort((a, b) => crossCenter(a) - crossCenter(b)),
+      // Prémisses liées : serrées contre leur pastille (leurs traits n'ont pas d'étiquette) ; une
+      // objection à l'inférence, elle, a une étiquette : il lui faut la place de l'écrire.
+      ...(isLinked(editor, id) && { gaps: onlyPremises(editor, id) ? LINKED_GAPS : { ...LINKED_GAPS, main: 150 } }),
     })
   }
   const sides = dir === 'both' ? sidesOf(editor, rootId) : undefined
@@ -223,6 +226,18 @@ export function relayout(editor: Editor, anyNodeId: TLShapeId, opts: { reset?: b
     layingOut = false
   }
 }
+
+/** Écarts entre une pastille de prémisses liées et ses prémisses. */
+const LINKED_GAPS = { main: 36, cross: 30 }
+
+/** Les enfants de la pastille sont-ils tous des prémisses ? */
+function onlyPremises(editor: Editor, id: TLShapeId) {
+  const { children, edge } = getTreeIndex(editor)
+  return (children.get(id) ?? []).every((c) => editor.getShape(edge.get(c)!)?.meta.preset === PREMISE)
+}
+
+/** Pastille de prémisses liées. */
+export const isLinked = (editor: Editor, id: TLShapeId) => editor.getShape(id)?.meta.preset === LINKED
 
 /** Les branches partent du bord du parent vers le bord opposé de l'enfant (tracé coudé net). */
 const ANCHORS = {
@@ -270,7 +285,8 @@ export function linkToParent(editor: Editor, parentId: TLShapeId, childId: TLSha
 
 /** Nouveau nœud relié à `parentId`, sur le modèle de `modelId`, placé près de `near`. */
 function createNode(editor: Editor, parentId: TLShapeId, modelId: TLShapeId, near: Vec, side?: TreeSide): TLShapeId {
-  const model = editor.getShape(modelId)
+  // Une pastille de prémisses liées ne sert pas de modèle : le nouveau nœud serait un point.
+  const model = isLinked(editor, modelId) ? undefined : editor.getShape(modelId)
   const props: Record<string, unknown> = { richText: toRichText('') }
   if (model?.type === 'geo') for (const k of STYLE_KEYS) props[k] = model.props[k]
   else Object.assign(props, { geo: 'rectangle', w: 200, h: 60 })
@@ -365,6 +381,11 @@ export function functionOf(editor: Editor, id: TLShapeId): Preset | undefined {
 export function functionColorOf(editor: Editor, id: TLShapeId): string | undefined {
   const relation = functionOf(editor, id)
   if (!relation) return undefined
+  // Une prémisse liée a la fonction de sa pastille (verte si elle soutient, rouge si elle objecte…).
+  if (relation.id === PREMISE) {
+    const parent = getTreeIndex(editor).parent.get(id)
+    return (parent && functionColorOf(editor, parent)) ?? relation.style.color
+  }
   if (relation.id === 'answers') {
     const parent = getTreeIndex(editor).parent.get(id)
     if (parent && functionOf(editor, parent)?.id === 'objects') return 'orange'
@@ -384,8 +405,19 @@ function colorByFunction(editor: Editor, arrow: TLShape) {
   if (arrow.type === 'arrow' && arrow.props.color !== color) {
     editor.updateShape({ id: arrow.id, type: 'arrow', props: { color: color as typeof arrow.props.color } })
   }
-  if (shape.props.color === color && (!('fill' in shape.props) || shape.props.fill === 'solid')) return
-  editor.updateShape({ id: shape.id, type: shape.type, props: { color, ...('fill' in shape.props && { fill: 'solid' }) } } as TLShapePartial)
+  // Fond pâle ; la pastille des prémisses liées, elle, est un point plein.
+  const fill = isLinked(editor, shape.id) ? 'fill' : 'solid'
+  if (shape.props.color !== color || ('fill' in shape.props && shape.props.fill !== fill)) {
+    editor.updateShape({ id: shape.id, type: shape.type, props: { color, ...('fill' in shape.props && { fill }) } } as TLShapePartial)
+  }
+  // Pastille de prémisses liées : ses prémisses suivent sa fonction.
+  if (isLinked(editor, shape.id)) {
+    const { children, edge } = getTreeIndex(editor)
+    for (const c of children.get(shape.id) ?? []) {
+      const e = editor.getShape(edge.get(c)!)
+      if (e) colorByFunction(editor, e)
+    }
+  }
 }
 
 /**
@@ -421,6 +453,63 @@ export function addSibling(editor: Editor, id: TLShapeId) {
   const arrow = newEdge && editor.getShape(newEdge)
   if (relation?.target === 'arrow' && arrow) applyPresetTo(editor, relation, [arrow])
   return sibling
+}
+
+/** Relations dont le nœud relié peut former, avec d'autres, des prémisses liées (des raisons, pas des exemples ou des concepts). */
+const LINKABLE = new Set(['supports', 'objects', 'refutes', 'answers', 'explains', PREMISE])
+
+/** Peut-on lier une prémisse à ce nœud ? Un nœud relié par une relation de raisonnement, dans une carte d'argument. */
+export function canLinkPremise(editor: Editor, id: TLShapeId) {
+  if (isLinked(editor, id)) return false
+  const relation = functionOf(editor, id)
+  return !!relation && LINKABLE.has(relation.id)
+}
+
+/** Pastille de prémisses liées : ajoute une prémisse (Entrée, ou « + Prémisse »). */
+export function addPremise(editor: Editor, junction: TLShapeId) {
+  const premise = presetById(editor, PREMISE)
+  return premise ? addChildWithRelation(editor, junction, premise) : null
+}
+
+/**
+ * Prémisses liées : ajoute une prémisse qui ne vaut qu'avec celle-ci. Sous une pastille, c'est une
+ * prémisse de plus ; sinon, une pastille prend la place du nœud (avec sa relation : soutient,
+ * objecte…) et porte désormais le nœud et la nouvelle prémisse. Renvoie la nouvelle prémisse.
+ */
+export function addLinkedPremise(editor: Editor, id: TLShapeId): TLShapeId | null {
+  const { parent, edge } = getTreeIndex(editor)
+  const parentId = parent.get(id)
+  if (!parentId) return null
+  if (isLinked(editor, parentId)) return addSibling(editor, id)
+  const linked = presetById(editor, LINKED)
+  const premise = presetById(editor, PREMISE)
+  const relation = presetById(editor, editor.getShape(edge.get(id)!)?.meta.preset as string | undefined)
+  if (!linked || !premise) return null
+  editor.markHistoryStoppingPoint('prémisses liées')
+  const b = editor.getShapePageBounds(id)!
+  const junction = createShapeId()
+  editor.run(() => {
+    const side = editor.getShape(id)?.meta.treeSide
+    editor.createShape({ id: junction, type: 'geo', x: b.x, y: b.midY, props: { richText: toRichText('') }, meta: side ? { treeSide: side } : {} })
+    applyPresetTo(editor, linked, [editor.getShape(junction)!])
+    // La pastille reprend la branche du nœud (sa relation et sa fonction) ; le nœud devient prémisse.
+    const oldEdge = editor.getShape(edge.get(id)!)
+    const junctionEdge = linkToParent(editor, parentId, junction)
+    // Son texte (« soutient · par analogie ») qualifie l'inférence : il passe à la pastille.
+    if (oldEdge?.type === 'arrow') {
+      editor.updateShape({ id: junctionEdge, type: 'arrow', props: { richText: oldEdge.props.richText }, meta: { reasoning: oldEdge.meta.reasoning ?? null } })
+    }
+    if (relation?.target === 'arrow') applyPresetTo(editor, relation, [editor.getShape(junctionEdge)!])
+    if (oldEdge) {
+      const start = editor.getBindingsFromShape<TLArrowBinding>(oldEdge, 'arrow').find((b) => b.props.terminal === 'start')
+      if (start) editor.updateBinding({ ...start, toId: junction })
+      editor.updateShape({ id: oldEdge.id, type: 'arrow', props: { richText: toRichText('') }, meta: { reasoning: null } })
+      applyPresetTo(editor, premise, [editor.getShape(oldEdge.id)!])
+    }
+    const shape = editor.getShape(id)
+    if (shape?.meta.treeOffset) editor.updateShape({ id, type: shape.type, meta: { ...shape.meta, treeOffset: null } })
+  })
+  return addSibling(editor, id)
 }
 
 export function toggleFold(editor: Editor, id: TLShapeId) {

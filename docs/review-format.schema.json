@@ -33,6 +33,10 @@
               "inconsistency",
               "gap",
               "confusion",
+              "fallacy",
+              "bias",
+              "premise",
+              "inference",
               "type",
               "relation",
               "structure",
@@ -66,7 +70,12 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 2000,
-            "description": "The remark, for the teacher: what is wrong and why, in a few sentences."
+            "description": "The remark, for the teacher: what is wrong and why, in a few sentences. Elements are named by their text, never by their id."
+          },
+          "name": {
+            "description": "fallacy or bias: its usual name (e.g. \"hasty generalization\"), in the content language.",
+            "type": "string",
+            "maxLength": 120
           },
           "operations": {
             "description": "The correction, if any: changes applied in order when the user accepts it.",
@@ -532,6 +541,11 @@
                       "type": "string",
                       "maxLength": 200
                     },
+                    "intro": {
+                      "description": "Welcome text shown when the presentation starts (Markdown).",
+                      "type": "string",
+                      "maxLength": 20000
+                    },
                     "steps": {
                       "type": "array",
                       "items": {
@@ -694,6 +708,43 @@
           "kind",
           "targets",
           "message"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "strengths": {
+      "description": "Soundness of the argument: the strength of each reason, objection and answer.",
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^\\S+$",
+            "description": "A reason, objection or answer: how much it does for the element it is attached to."
+          },
+          "strength": {
+            "type": "string",
+            "enum": [
+              "weak",
+              "moderate",
+              "strong"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 600,
+            "description": "Why, in one or two sentences."
+          }
+        },
+        "required": [
+          "target",
+          "strength",
+          "reason"
         ],
         "additionalProperties": false
       }

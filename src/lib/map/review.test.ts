@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { defaultPresets } from '../presets/presets'
 import { MapSchema, type UnveilMap } from './format'
 import { readJson } from './read'
-import { autoRemarks, summarizeOperations } from './review'
+import { autoRemarks, nameRefs, summarizeOperations } from './review'
 import truthFr from '../examples/truth.fr.json'
 
 const presets = defaultPresets({})
@@ -64,6 +64,31 @@ describe('relecture (unveilboard/review)', () => {
     ])
     // L'exemple : l'objection a ses réponses, la thèse sa justification.
     expect(autoRemarks(map)).toEqual([])
+  })
+
+  it('prémisses liées : la pastille soutient la thèse, une réponse à l’une des prémisses répond à l’objection, une seule prémisse est signalée', () => {
+    const m: UnveilMap = {
+      format: 'unveilboard/map',
+      version: 1,
+      elements: [
+        { id: 't', text: 'Socrate est mortel', tree: { kind: 'argument' } },
+        { id: 'l', type: 'linked', text: '', parent: 't', relation: 'supports' },
+        { id: 'p1', text: 'Tout homme est mortel', parent: 'l', relation: 'premise' },
+        { id: 'p2', text: 'Socrate est un homme', parent: 'l', relation: 'premise' },
+        { id: 'o', type: 'linked', text: '', parent: 't', relation: 'objects' },
+        { id: 'op', text: 'Les dieux sont immortels', parent: 'o', relation: 'premise' },
+        { id: 'a', text: 'Socrate n’est pas un dieu', parent: 'op', relation: 'answers' },
+      ],
+    }
+    expect(autoRemarks(m).map((r) => `${r.code}:${r.targets}`)).toEqual(['linked_alone:o'])
+  })
+
+  it('identifiants laissés par le modèle remplacés par le texte des éléments', () => {
+    const names: Record<string, string> = { def1: 'Mentir, c’est dire le faux', presup1: 'La parole engage', example: 'Le meurtrier à la porte' }
+    const nameOf = (id: string) => names[id]
+    expect(nameRefs('La définition def1 suppose `presup1`.', nameOf)).toBe('La définition “Mentir, c’est dire le faux” suppose “La parole engage”.')
+    // Un mot ordinaire n'est remplacé qu'entre accents graves ; un identifiant inconnu reste tel quel.
+    expect(nameRefs('Cet example, et `example`, pas obj9.', nameOf)).toBe('Cet example, et “Le meurtrier à la porte”, pas obj9.')
   })
 
   it('résumé des corrections : éléments désignés par leur texte', () => {

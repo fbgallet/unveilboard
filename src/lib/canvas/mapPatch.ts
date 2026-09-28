@@ -161,6 +161,7 @@ function applyOperation(
         ...current,
         version: SEQUENCE_VERSION,
         ...(op.title && { title: op.title }),
+        ...(op.intro !== undefined && { intro: op.intro || undefined }),
         steps: op.mode === 'append' ? [...current.steps, ...steps] : steps,
       }, { undoable: true })
       return

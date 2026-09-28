@@ -75,6 +75,16 @@ Distinguer est souvent décisif dans une discussion : bien des objections tomben
 - **dans l'argument**, l'élément **Distinction** (« liberté ≠ licence ») est un coup à part entière : il peut *réfuter* une objection, *répondre* à une question ou lever une difficulté, avec les relations habituelles ;
 - **entre concepts**, pour cartographier un champ notionnel : **se distingue de** (différence là où il y a confusion), **s'oppose à** (contraires, qui s'excluent sans épuiser les possibles, ou contradictoires, dont l'un est la négation de l'autre), **se rapproche de** (parenté, proximité).
 
+## Prémisses liées
+
+Deux raisons peuvent soutenir une thèse **chacune de son côté** (raisons convergentes : si l'une tombe, l'autre tient encore), ou **seulement ensemble** (prémisses liées : aucune ne suffit seule). « Tout homme est mortel » et « Socrate est un homme » ne prouvent « Socrate est mortel » qu'ensemble.
+
+- Sélectionnez une justification (ou une objection, une réponse…) et cliquez **« + Prémisse liée »**, ou <kbd>Maj</kbd>+<kbd>Entrée</kbd> : une petite **pastille** prend sa place et porte la relation (« soutient »), l'élément devient une prémisse et une nouvelle prémisse s'ajoute à côté.
+- Sur la pastille, <kbd>Entrée</kbd> ajoute une prémisse ; sur une prémisse, <kbd>Entrée</kbd> en ajoute une autre.
+- Les prémisses prennent la couleur de la fonction de la pastille (vertes si elles soutiennent, rouges si elles objectent) et s'affichent serrées contre elle.
+- **Objecter à l'inférence** : une objection attachée à la pastille (<kbd>Tab</kbd> sur la pastille) ne conteste aucune des prémisses, mais le passage des prémisses à la conclusion.
+- En présentation, la pastille apparaît avec ses prémisses ; « Dévoiler la carte » leur consacre une seule étape.
+
 ## Types de raisonnement
 
 Une flèche de soutien ou d'objection peut préciser **comment** elle soutient ou objecte : sélectionnez-la, puis choisissez dans le panneau de droite. Le type s'inscrit dans le texte de la flèche (« soutient · analogie »). C'est facultatif : sans précision, rien ne change.

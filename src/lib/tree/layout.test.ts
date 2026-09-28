@@ -23,6 +23,16 @@ describe('layoutTree', () => {
     expect(pos.has('r')).toBe(false)
   })
 
+  it('un nœud peut resserrer ses propres enfants (prémisses liées sous leur pastille)', () => {
+    const tight = new Map(nodes)
+    tight.set('a', { ...node(['a1', 'a2'], 10, 10), gaps: { main: 20, cross: 4 } })
+    const pos = layoutTree('r', { x: 0, y: 0 }, tight, 'right', gaps)
+    // Bande de a : 40 + 4 + 40 = 84 ; ses enfants à 20 de lui, les autres écarts inchangés.
+    expect(pos.get('a2')!.y - pos.get('a1')!.y).toBe(44)
+    expect(pos.get('a1')!.x).toBe(pos.get('a')!.x + 10 + 20)
+    expect(pos.get('b')!.y - pos.get('a1')!.y).toBe(84 + 10)
+  })
+
   it('vers le bas : les axes sont échangés', () => {
     const pos = layoutTree('r', { x: 0, y: 0 }, nodes, 'down', gaps)
     expect(pos.get('a1')!.y).toBe(2 * (40 + 50))

@@ -120,7 +120,8 @@ function remoteState(editor: Editor): RemoteState {
     index,
     total: seq?.steps.length ?? 0,
     stepTitle: step?.title ?? '',
-    narration: step?.narration ?? '',
+    // Avant la première étape : le texte d'accueil.
+    narration: step ? step.narration : (seq?.intro ?? ''),
     nextTitle: seq?.steps[index + 1]?.title ?? null,
     elapsedMs: Date.now() - presentationStartedAtAtom.get(),
   }

@@ -28,6 +28,8 @@ import {
 } from 'tldraw'
 import {
   ARROW_STYLE_KEYS,
+  LINKED,
+  LINKED_SIZE,
   PRESETS_SETTING_KEY,
   SHAPE_STYLE_KEYS,
   defaultPresetSettings,
@@ -150,6 +152,8 @@ export function applyPresetTo(editor: Editor, preset: Preset, shapes: TLShape[],
         props.labelPosition = 0.85
       }
       if (label && shape.type === 'arrow' && !hasText(shape.props.richText)) props.richText = toRichText(label)
+      // Pastille des prémisses liées : un point, sans texte.
+      if (preset.id === LINKED && shape.type === 'geo') Object.assign(props, { ...LINKED_SIZE, richText: toRichText('') })
       return { id: shape.id, type: shape.type, props, meta: { ...shape.meta, preset: preset.id } }
     })
     editor.updateShapes(updates)

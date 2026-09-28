@@ -10,6 +10,7 @@ import { formatIssue } from '../map/check'
 import type { UnveilMap } from '../map/format'
 import { stashPendingMap } from '../map/pending'
 import { readJson, type ReadResult } from '../map/read'
+import type { ReviewFocus } from '../map/review'
 import { documentStore } from '../storage'
 import { storageModeAtom } from '../sync/documentSync'
 import { exportMap } from './mapExport'
@@ -53,6 +54,8 @@ export interface PromptOptions {
   focus?: TLShapeId
   /** « expand » : envoyer tout le schéma (sinon, l'élément, ses ancêtres et sa branche). Par défaut : oui. */
   wholeMap?: boolean
+  /** « review » : ce qu'on attend de la relecture. */
+  reviewFocus?: ReviewFocus[]
 }
 
 /** Demande pour une tâche, sur le schéma ouvert (le schéma et la sélection compris). */
@@ -70,6 +73,7 @@ export function editorPromptInput(editor: Editor, task: Task, instruction: strin
     ...(focus && { focus }),
     ...(partial && { partial }),
     ...(task === 'sequence' && exported && { order: defaultOrder(editor, exported.map, refOf) }),
+    ...(task === 'review' && opts.reviewFocus && { reviewFocus: opts.reviewFocus }),
     vocabulary: promptVocabulary(),
     lang: map?.lang ?? clientLocale(),
     delivery: opts.delivery ?? 'clipboard',

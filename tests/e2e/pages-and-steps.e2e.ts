@@ -6,7 +6,7 @@ import { openExample, present, stepCounter } from './helpers'
 type Win = { editor: import('tldraw').Editor }
 
 const badges = (page: Page) => page.locator('.step-badge')
-const stepCards = (page: Page) => page.locator('aside ol > li.rounded-lg')
+const stepCards = (page: Page) => page.locator('aside ol > li[data-step]')
 
 test('chaque page a sa séquence : pastilles et étapes ne passent pas d’une page à l’autre', async ({ page }) => {
   await openExample(page)
@@ -187,4 +187,34 @@ test('caméra : la zone se redimensionne et se déplace à la souris', async ({ 
   expect(moved.w).toBe(resized.w)
   // Le geste n'a rien sélectionné ni déplacé sur le canevas.
   expect(await page.evaluate(() => (window as unknown as Win).editor.getSelectedShapeIds().length)).toBe(0)
+})
+
+test('départ : texte d’accueil sous le titre (affiché une fois), propre à chaque page, repris dans le JSON', async ({ page }) => {
+  await openExample(page)
+  const start = page.locator('aside li[data-start]')
+  await expect(start).toContainText('Start')
+  await start.click()
+  await start.locator('textarea').fill('What makes **rain** fall?')
+  await expect(start.locator('textarea')).toHaveValue('What makes **rain** fall?')
+
+  await present(page)
+  const narration = page.locator('aside.narration')
+  await expect(narration.locator('h2')).toHaveText('Demo: The water cycle')
+  await expect(narration.locator('strong')).toHaveText('rain')
+  // Le rappel du titre en petites capitales est masqué au départ, visible aux étapes.
+  await expect(narration.locator('p.uppercase')).toBeHidden()
+  await page.keyboard.press('ArrowRight')
+  await expect(narration.locator('p.uppercase')).toBeVisible()
+  await page.keyboard.press('Escape')
+
+  const map = await page.evaluate(() => (window as unknown as { unveilboard: { getMap(): { sequence?: { intro?: string } } } }).unveilboard.getMap())
+  expect(map.sequence?.intro).toBe('What makes **rain** fall?')
+
+  // Autre page : pas de texte d'accueil.
+  await page.evaluate(() => {
+    const { editor } = window as unknown as Win
+    editor.createPage({ name: 'Second' })
+    editor.setCurrentPage(editor.getPages().at(-1)!.id)
+  })
+  await expect(page.locator('aside li[data-start]')).toContainText('+ Welcome text (optional)')
 })

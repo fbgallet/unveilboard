@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { LogoMark } from './Logo'
 import { shareDialogOpenAtom } from './ShareDialog'
@@ -254,6 +254,12 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
           if (e.target === e.currentTarget) activeStepIdAtom.set(null)
         }}
       >
+        <StartCard
+          intro={seq.intro ?? ''}
+          images={images}
+          onChange={(intro) => save({ ...seq, intro: intro || undefined })}
+          onPresent={() => enterPresentation(-1)}
+        />
         {seq.steps.map((step, i) => (
           <StepCard
             key={step.id}
@@ -298,6 +304,49 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
   )
 }
 
+/**
+ * Départ de la présentation, avant la première étape : le titre du schéma et un texte d'accueil
+ * facultatif (consigne, question posée, plan de la séance). Replié, il n'en montre que la première ligne.
+ */
+function StartCard(p: { intro: string; images: TextImages; onChange(intro: string): void; onPresent(): void }) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const firstLine = p.intro.split('\n').find((l) => l.trim())?.trim()
+  return (
+    <li
+      data-start
+      className={`rounded-lg border border-dashed bg-white/60 p-2 transition ${open ? 'border-amber-400' : 'border-zinc-300 hover:border-zinc-400'}`}
+      onClick={() => setOpen(!open)}
+      title={t.step.startHint}
+    >
+      <div className="flex items-center gap-2">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-amber-400 text-[10px] text-amber-600" aria-hidden>
+          ▶
+        </span>
+        <span className="min-w-0 flex-1 truncate font-medium">{t.step.startTitle}</span>
+        <div className="flex shrink-0 text-zinc-400">
+          <IconBtn title={t.step.presentFromStart} onClick={p.onPresent}>▶</IconBtn>
+        </div>
+      </div>
+      {!open && (
+        <p className={`mt-1 truncate px-1 text-xs ${firstLine ? 'text-zinc-600' : 'text-zinc-400'}`}>{firstLine ?? t.step.introEmpty}</p>
+      )}
+      {open && (
+        <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+          <MarkdownEditor
+            value={p.intro}
+            onChange={p.onChange}
+            placeholder={t.step.introPlaceholder}
+            rows={4}
+            title={t.step.startTitle}
+            {...p.images}
+          />
+        </div>
+      )}
+    </li>
+  )
+}
+
 interface StepCardProps {
   images: TextImages
   step: Step
@@ -325,6 +374,7 @@ function StepCard(p: StepCardProps) {
   const { step } = p
   return (
     <li
+      data-step={p.index + 1}
       className={`rounded-lg border bg-white p-2 shadow-sm transition ${
         p.active ? 'border-amber-400 ring-2 ring-amber-200' : 'border-zinc-200 hover:border-zinc-300'
       }`}

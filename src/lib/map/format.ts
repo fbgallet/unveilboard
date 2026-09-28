@@ -162,6 +162,11 @@ export const MapSchema = z
     sequence: z
       .object({
         narrationScale: z.number().optional(),
+        intro: z
+          .string()
+          .max(20000)
+          .optional()
+          .describe('Welcome text shown under the title when the presentation starts, before the first step (Markdown).'),
         steps: z.array(StepSchema),
       })
       .optional()

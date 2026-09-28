@@ -64,7 +64,7 @@ Les identifiants (`id`) sont courts et libres (sans espace), uniques dans tout l
 | Champ | Rôle |
 |---|---|
 | `id`, `text` | Identifiant et texte de la boîte, explicite et concis. Markdown léger : **gras**, *italique*, ~~barré~~, `code`, [lien](adresse), listes à puces ou numérotées ; un paragraphe par ligne. Le reste (titres, citations, tableaux) va dans la note. |
-| `type` | Type d'élément : `statement` (énoncé), `belief` (présupposé), `fact`, `concept`, `distinction`, `question`, `problem` (difficulté), `example`, `quote` (citation), ou un type du vocabulaire. Absent : le type que donne la relation (un élément qui « illustre » est un exemple), sinon aucun. |
+| `type` | Type d'élément : `statement` (énoncé), `belief` (présupposé), `fact`, `concept`, `distinction`, `question`, `problem` (difficulté), `example`, `quote` (citation), `linked` (prémisses liées : une pastille au `text` vide, dont les enfants sont des prémisses reliées par `premise`, qui ne soutiennent ou n'objectent qu'ensemble), ou un type du vocabulaire. Absent : le type que donne la relation (un élément qui « illustre » est un exemple), sinon aucun. |
 | `parent` | Parent dans un arbre. Absent : l'élément est une racine, ou une boîte isolée. |
 | `relation` | Relation qui relie l'élément à son parent : `supports`, `objects`, `refutes`, `answers`, `explains`, `implies`, `presupposes`, `illustrates`, `defines`, `raises`, `distinguishes`, `opposes`, `relates`, ou une relation du vocabulaire. Absente : une simple branche (carte mentale). |
 | `reasoning` | Type de raisonnement de cette relation : `deduction`, `induction`, `analogy`, `abduction` (meilleure explication), `absurd`, `afortiori`, `authority`, `example`. |
@@ -90,6 +90,8 @@ Chaque entrée décrit un type (`"kind": "type"`) ou une relation (`"kind": "rel
 Un type ou une relation créés par l'utilisateur y portent aussi leur `style` (propriétés tldraw : `geo`, `color`, `fill`, `dash`, `size`, `font`, `arrowheadStart`, `arrowheadEnd`) : à l'import sur une autre instance, ils sont recréés à l'identique.
 
 ## La séquence
+
+`sequence.intro` (facultatif, Markdown) s'affiche sous le titre au lancement de la présentation, avant la première étape : consigne, question posée à la classe, plan de la séance.
 
 Chaque étape a un `title`, une `narration` facultative (Markdown), une `camera` facultative (`follow`, par défaut : cadrer ce que l'étape montre ; `overview` : tout le schéma visible ; `keep` : ne pas bouger ; `{ "mode": "area", "area": { "x", "y", "w", "h" } }` : un rectangle fixe en coordonnées du canevas, centré, le zoom adapté à sa taille) et des `actions` :
 

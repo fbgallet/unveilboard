@@ -31,6 +31,8 @@ export interface TreeNode {
   children: string[]
   /** Disposition « both », enfants de la racine : côté de la branche. */
   side?: TreeSide
+  /** Écarts propres entre ce nœud et ses enfants (ex. : prémisses liées, resserrées sous leur pastille). */
+  gaps?: { main: number; cross: number }
 }
 
 export const TREE_GAPS = { main: 72, cross: 24 }
@@ -59,7 +61,8 @@ export function layoutTree(
     const node = nodes.get(id)!
     visiting.add(id)
     const kids = childrenOf(id)
-    const kidsBand = kids.reduce((sum, c) => sum + measure(c), 0) + gaps.cross * Math.max(0, kids.length - 1)
+    const g = node.gaps ?? gaps
+    const kidsBand = kids.reduce((sum, c) => sum + measure(c), 0) + g.cross * Math.max(0, kids.length - 1)
     visiting.delete(id)
     const size = Math.max(crossSize(node), kidsBand)
     band.set(id, size)
@@ -72,18 +75,19 @@ export function layoutTree(
     const node = nodes.get(id)!
     visiting.add(id)
     const kids = childrenOf(id).filter((c) => !only || (nodes.get(c)!.side ?? 'right') === only)
-    const kidsBand = kids.reduce((sum, c) => sum + band.get(c)!, 0) + gaps.cross * Math.max(0, kids.length - 1)
+    const g = node.gaps ?? gaps
+    const kidsBand = kids.reduce((sum, c) => sum + band.get(c)!, 0) + g.cross * Math.max(0, kids.length - 1)
     let cursor = pos[cross] + crossSize(node) / 2 - kidsBand / 2
     for (const c of kids) {
       const child = nodes.get(c)!
       const slot = {
-        [main]: sign > 0 ? pos[main] + mainSize(node) + gaps.main : pos[main] - gaps.main - mainSize(child),
+        [main]: sign > 0 ? pos[main] + mainSize(node) + g.main : pos[main] - g.main - mainSize(child),
         [cross]: cursor + (band.get(c)! - crossSize(child)) / 2,
       } as unknown as Vec
       const actual = { x: slot.x + child.offset.x, y: slot.y + child.offset.y }
       out.set(c, actual)
       place(c, actual, sign)
-      cursor += band.get(c)! + gaps.cross
+      cursor += band.get(c)! + g.cross
     }
     visiting.delete(id)
   }

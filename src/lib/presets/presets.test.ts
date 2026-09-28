@@ -14,7 +14,7 @@ describe('normalizePresetSettings', () => {
       ],
     }
     const v6 = normalizePresetSettings(v5, n)
-    expect(v6.items.map((p) => p.id)).toEqual(['concept', 'distinction', 'distinguishes', 'opposes', 'relates'])
+    expect(v6.items.map((p) => p.id)).toEqual(['concept', 'distinction', 'distinguishes', 'opposes', 'relates', 'premise', 'linked'])
     expect(v6.items.find((p) => p.id === 'distinguishes')!.name).toBe('se distingue de')
   })
 
@@ -60,9 +60,9 @@ describe('normalizePresetSettings', () => {
       ],
     }
     const v3 = normalizePresetSettings(v2, names, roles)
-    expect(v3.version).toBe(8)
+    expect(v3.version).toBe(9)
     expect(v3.items.map((p) => p.id)).toEqual([
-      'statement', 'belief', 'fact', 'example', 'quote', 'objects', 'explains', 'distinction', 'opposes', 'relates',
+      'statement', 'belief', 'fact', 'example', 'quote', 'linked', 'objects', 'explains', 'distinction', 'opposes', 'relates', 'premise',
     ])
     expect(v3.items.find((p) => p.id === 'example')!.style.color).toBe('grey')
     // Couleur modifiée par l'utilisateur : conservée.
@@ -75,11 +75,14 @@ describe('profil et contexte', () => {
   const settings = defaultPresetSettings({})
   const mine = { id: 'these-x', name: 'Thèse', target: 'shape' as const, style: {} }
 
-  it('Essentiel : dix préréglages de départ, plus ceux de l’utilisateur ; Complet : tout', () => {
+  it('Essentiel : dix préréglages de départ, plus ceux de l’utilisateur ; Complet : tout, sauf ceux de structure', () => {
     expect(offeredPresets({ ...settings, items: [...settings.items, mine] }).map((p) => p.id)).toEqual([
       'statement', 'concept', 'question', 'example', 'quote', 'supports', 'objects', 'answers', 'illustrates', 'distinguishes', 'these-x',
     ])
-    expect(offeredPresets({ ...settings, profile: 'complete' }).length).toBe(defaultPresets({}).length)
+    const complete = offeredPresets({ ...settings, profile: 'complete' }).map((p) => p.id)
+    expect(complete).toHaveLength(defaultPresets({}).length - 2)
+    expect(complete).not.toContain('linked')
+    expect(complete).not.toContain('premise')
   })
 
   it('relations selon le nœud : question, objection, concept', () => {

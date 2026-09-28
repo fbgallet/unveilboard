@@ -321,6 +321,11 @@
         "narrationScale": {
           "type": "number"
         },
+        "intro": {
+          "description": "Welcome text shown under the title when the presentation starts, before the first step (Markdown).",
+          "type": "string",
+          "maxLength": 20000
+        },
         "steps": {
           "type": "array",
           "items": {

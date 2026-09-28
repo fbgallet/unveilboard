@@ -5,7 +5,7 @@
 import { atom, type Editor, type TLShapeId } from 'tldraw'
 import type { MapIssue } from '../map/check'
 import { PATCH_FORMAT, PATCH_VERSION } from '../map/patch'
-import type { Remark } from '../map/review'
+import { REVIEW_FOCUS, type Remark, type ReviewFocus, type StrengthNote } from '../map/review'
 import { readPasted } from './assistant'
 import { exportMap } from './mapExport'
 import { applyPatch } from './mapPatch'
@@ -13,12 +13,40 @@ import { applyPatch } from './mapPatch'
 export interface ReviewState {
   summary?: string
   remarks: Remark[]
+  /** Solidité de l'argumentation : force estimée de chaque raison, objection ou réponse. */
+  strengths?: StrengthNote[]
 }
 
 export const reviewOpenAtom = atom<boolean>('reviewOpen', false)
 export const reviewAtom = atom<ReviewState>('review', { remarks: [] })
 /** Document ouvert (clé de la relecture gardée). */
 export const reviewDocAtom = atom<string | null>('reviewDoc', null)
+
+/** Ce qu'on attend de la relecture (axes cochés), gardé sur cet appareil. Par défaut : tout. */
+export const reviewFocusAtom = atom<ReviewFocus[]>('reviewFocus', readFocus())
+
+function readFocus(): ReviewFocus[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem('reviewFocus') ?? 'null') as unknown
+    const focus = Array.isArray(raw) ? REVIEW_FOCUS.filter((f) => raw.includes(f)) : []
+    return focus.length ? focus : [...REVIEW_FOCUS]
+  } catch {
+    return [...REVIEW_FOCUS]
+  }
+}
+
+/** Coche ou décoche un axe (il en reste toujours au moins un). */
+export function toggleReviewFocus(focus: ReviewFocus) {
+  const current = reviewFocusAtom.get()
+  const next = current.includes(focus) ? current.filter((f) => f !== focus) : REVIEW_FOCUS.filter((f) => f === focus || current.includes(f))
+  if (!next.length) return
+  reviewFocusAtom.set(next)
+  try {
+    localStorage.setItem('reviewFocus', JSON.stringify(next))
+  } catch {
+    // stockage indisponible : le choix vaut pour la séance
+  }
+}
 
 const key = (docId: string) => `review:${docId}`
 
@@ -38,7 +66,7 @@ function save(next: ReviewState) {
   const docId = reviewDocAtom.get()
   if (!docId) return
   try {
-    if (next.remarks.length || next.summary) localStorage.setItem(key(docId), JSON.stringify(next))
+    if (next.remarks.length || next.summary || next.strengths?.length) localStorage.setItem(key(docId), JSON.stringify(next))
     else localStorage.removeItem(key(docId))
   } catch {
     // stockage indisponible : la relecture dure le temps de la séance
@@ -46,8 +74,8 @@ function save(next: ReviewState) {
 }
 
 /** Nouvelle relecture de l'IA : remplace la précédente, et ouvre le panneau. */
-export function setReview(summary: string | undefined, remarks: Remark[]) {
-  save({ ...(summary && { summary }), remarks })
+export function setReview(summary: string | undefined, remarks: Remark[], strengths: StrengthNote[] = []) {
+  save({ ...(summary && { summary }), remarks, ...(strengths.length && { strengths }) })
   reviewOpenAtom.set(true)
 }
 

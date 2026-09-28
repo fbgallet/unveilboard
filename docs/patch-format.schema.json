@@ -546,6 +546,11 @@
                 "type": "string",
                 "maxLength": 200
               },
+              "intro": {
+                "description": "Welcome text shown when the presentation starts (Markdown).",
+                "type": "string",
+                "maxLength": 20000
+              },
               "steps": {
                 "type": "array",
                 "items": {

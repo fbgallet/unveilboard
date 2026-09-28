@@ -109,6 +109,17 @@ function withoutDuplicateShows(seq: Sequence, keepStepId: string, actions: Step[
   }
 }
 
+/** Partout où `ref` apparaît (actions « show »), fait apparaître aussi `extra`, avec le même effet. */
+export function showAlongWith(seq: Sequence, ref: ShapeRef, extra: ShapeRef[]): Sequence {
+  return {
+    ...seq,
+    steps: seq.steps.map((step) => ({
+      ...step,
+      actions: step.actions.map((a) => (a.type === 'show' && a.targets.includes(ref) ? { ...a, targets: [...new Set([...a.targets, ...extra])] } : a)),
+    })),
+  }
+}
+
 /** Retire des objets de toutes les actions d'une étape (les actions vidées disparaissent). */
 export function removeTargets(seq: Sequence, stepId: string, ids: ShapeRef[]): Sequence {
   const removed = new Set(ids)

@@ -12,26 +12,34 @@ import { getTreeIndex } from './tree'
 const META_KEY = 'sequence'
 
 /**
- * Séquence enregistrée dans le document : titre et réglages communs, étapes propres à chaque page.
- * `steps` garde les étapes d'une page (`stepsPage`, la première à l'enregistrement) : un document
- * d'une seule page reste lisible tel quel par les versions antérieures. `pages` a celles des autres.
- * Avant les séquences par page, les étapes étaient communes (`steps` sans `stepsPage`) : elles
- * reviennent à la page de leurs objets.
+ * Séquence enregistrée dans le document : titre et réglages communs, étapes et texte d'accueil propres
+ * à chaque page. `steps` et `intro` sont ceux d'une page (`stepsPage`, la première à l'enregistrement) :
+ * un document d'une seule page reste lisible tel quel par les versions antérieures. `pages` et `intros`
+ * ont ceux des autres pages. Avant les séquences par page, les étapes étaient communes (`steps` sans
+ * `stepsPage`) : elles reviennent à la page de leurs objets.
  */
 interface StoredSequence extends Sequence {
   stepsPage?: string
   pages?: Record<string, Step[]>
+  intros?: Record<string, string>
 }
+
+/** Ce qui est propre à une page. */
+type PageSequence = Pick<Sequence, 'steps' | 'intro'>
 
 function readStored(editor: Editor): StoredSequence | null {
   const raw = editor.getDocumentSettings().meta[META_KEY] as unknown as StoredSequence | undefined
   return raw ? migrateSequence(raw) : null
 }
 
-function stepsByPage(editor: Editor, stored: StoredSequence): Record<string, Step[]> {
-  const byPage: Record<string, Step[]> = { ...stored.pages }
-  if (stored.steps.length) byPage[stored.stepsPage ?? legacyPageOf(editor, stored.steps)] = stored.steps
-  return byPage
+function byPage(editor: Editor, stored: StoredSequence): Record<string, PageSequence> {
+  const pages: Record<string, PageSequence> = {}
+  for (const [id, steps] of Object.entries(stored.pages ?? {})) pages[id] = { steps }
+  for (const [id, intro] of Object.entries(stored.intros ?? {})) pages[id] = { steps: pages[id]?.steps ?? [], intro }
+  if (stored.steps.length || stored.intro) {
+    pages[stored.stepsPage ?? legacyPageOf(editor, stored.steps)] = { steps: stored.steps, intro: stored.intro }
+  }
+  return pages
 }
 
 /** Page des anciennes étapes communes : celle du premier objet ciblé qui existe encore. */
@@ -43,21 +51,24 @@ function legacyPageOf(editor: Editor, steps: Step[]): TLPageId {
   return editor.getPages()[0]?.id ?? editor.getCurrentPageId()
 }
 
-/** Séquence d'une page (par défaut, la page courante) : ses étapes, avec le titre et les réglages du document. */
+/** Séquence d'une page (par défaut, la page courante) : ses étapes et son accueil, avec le titre et les réglages du document. */
 export function readSequence(editor: Editor, pageId: TLPageId = editor.getCurrentPageId()): Sequence | null {
   const stored = readStored(editor)
   if (!stored) return null
-  const seq: StoredSequence = { ...stored, steps: stepsByPage(editor, stored)[pageId] ?? [] }
+  const page = byPage(editor, stored)[pageId]
+  const seq: StoredSequence = { ...stored, steps: page?.steps ?? [], intro: page?.intro }
+  if (!seq.intro) delete seq.intro
   delete seq.stepsPage
   delete seq.pages
+  delete seq.intros
   return seq
 }
 
 /** Pages du document qui ont des étapes, dans l'ordre des pages. */
 export function pagesWithSteps(editor: Editor): TLPageId[] {
   const stored = readStored(editor)
-  const pages = stored ? stepsByPage(editor, stored) : {}
-  return editor.getPages().filter((p) => pages[p.id]?.length).map((p) => p.id)
+  const pages = stored ? byPage(editor, stored) : {}
+  return editor.getPages().filter((p) => pages[p.id]?.steps.length).map((p) => p.id)
 }
 
 /**
@@ -67,10 +78,18 @@ export function pagesWithSteps(editor: Editor): TLPageId[] {
 export function writeSequence(editor: Editor, seq: Sequence, opts: { undoable?: boolean } = {}) {
   const settings = editor.getDocumentSettings()
   const stored = readStored(editor)
-  const byPage = { ...(stored && stepsByPage(editor, stored)), [editor.getCurrentPageId()]: seq.steps }
+  const all = { ...(stored && byPage(editor, stored)), [editor.getCurrentPageId()]: { steps: seq.steps, intro: seq.intro } }
   const [first, ...others] = editor.getPages().map((p) => p.id)
-  const pages = Object.fromEntries(others.filter((id) => byPage[id]?.length).map((id) => [id, byPage[id]]))
-  const value: StoredSequence = { ...seq, steps: byPage[first] ?? [], stepsPage: first, ...(Object.keys(pages).length && { pages }) }
+  const pages = Object.fromEntries(others.filter((id) => all[id]?.steps.length).map((id) => [id, all[id].steps]))
+  const intros = Object.fromEntries(others.filter((id) => all[id]?.intro).map((id) => [id, all[id].intro!]))
+  const value: StoredSequence = {
+    ...seq,
+    steps: all[first]?.steps ?? [],
+    intro: all[first]?.intro || undefined,
+    stepsPage: first,
+    ...(Object.keys(pages).length && { pages }),
+    ...(Object.keys(intros).length && { intros }),
+  }
   const meta = { ...settings.meta, [META_KEY]: toJson(value) as unknown as JsonObject }
   if (opts.undoable) editor.store.put([{ ...settings, meta }])
   else editor.updateDocumentSettings({ meta })

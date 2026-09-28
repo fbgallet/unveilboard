@@ -511,6 +511,77 @@ button.review-badge {
 .review-target:hover {
   background: var(--color-violet-100);
 }
+/* Ce qu'on attend de la relecture : des cases à cocher en pastilles. */
+.review-focus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.review-focus legend {
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: var(--color-zinc-500);
+}
+.review-focus-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 5px;
+  border: 1px solid var(--color-zinc-200);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--color-zinc-600);
+  cursor: pointer;
+}
+.review-focus-on {
+  border-color: var(--color-violet-300);
+  background: var(--color-violet-50);
+  color: var(--color-violet-800);
+}
+.review-focus-item input {
+  accent-color: var(--color-violet-600);
+}
+.review-name {
+  font-style: italic;
+  color: var(--color-zinc-600);
+}
+/* Force estimée d'une raison ou d'une objection. */
+.review-strength {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--color-white);
+}
+.review-strength-weak {
+  background: var(--color-red-600);
+}
+.review-strength-moderate {
+  background: var(--color-amber-600);
+}
+.review-strength-strong {
+  background: var(--color-emerald-600);
+}
+.review-strengths summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+.review-strengths ul {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+.review-strengths li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
 .review-fix {
   display: grid;
   gap: 2px;
@@ -816,7 +887,9 @@ button.review-badge {
   right: 0;
   display: flex;
   flex-direction: column;
-  min-width: 260px;
+  min-width: min(260px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
+  overflow-y: auto;
   padding: 6px;
   border-radius: 12px;
   border: 1px solid var(--color-stone-200);
@@ -837,6 +910,17 @@ button.review-badge {
 }
 .more-item:hover {
   background: var(--color-stone-100);
+}
+@media (width < 48rem) {
+  /* Sans objet sur petit écran (second écran, téléphone). Règle ici : .more-item l'emporte sur max-md:hidden. */
+  .more-item-desktop {
+    display: none;
+  }
+  /* Libellés longs : retour à la ligne plutôt que coupés, le menu étant limité à la largeur de l'écran. */
+  .more-item span {
+    min-width: 0;
+    white-space: normal;
+  }
 }
 .more-item svg {
   flex-shrink: 0;

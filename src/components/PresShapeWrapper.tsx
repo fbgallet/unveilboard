@@ -6,6 +6,7 @@ import { useT } from '@/i18n/client'
 import { presetById, presetSettingsAtom, swatchColor } from '@/lib/canvas/presets'
 import { functionColorOf, functionOf, isThesisRoot } from '@/lib/canvas/tree'
 import { presetName, presetRole } from '@/lib/presets/labels'
+import { LINKED } from '@/lib/presets/presets'
 import { shapeClassesAtom } from '@/lib/presentation/store'
 
 /**
@@ -52,6 +53,8 @@ function NatureTag({ shape }: { shape: TLShape }) {
     () => {
       if (!presetSettingsAtom.get().showTags) return null
       const nature = presetById(editor, shape.meta.preset as string | undefined)
+      // Pastille de prémisses liées : un point, sans étiquette (la fonction se lit sur sa flèche).
+      if (nature?.id === LINKED) return null
       const relation = functionOf(editor, shape.id)
       const author = typeof shape.meta.author === 'string' ? shape.meta.author.trim() : ''
       const quote = nature?.id === 'quote'
