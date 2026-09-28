@@ -26,10 +26,20 @@ export type StepAction =
 
 export type StepActionType = StepAction['type']
 
-export type CameraMode = 'follow' | 'overview' | 'keep'
+export type CameraMode = 'follow' | 'overview' | 'area' | 'keep'
+
+/** Rectangle en coordonnées de page. */
+export interface Area {
+  x: number
+  y: number
+  w: number
+  h: number
+}
 
 export interface StepCamera {
   mode: CameraMode
+  /** Mode « zone » : rectangle cadré (centré, zoom adapté à sa taille). */
+  area?: Area
   /** Marge (px écran) autour de la zone cadrée. */
   padding?: number
   /** Zoom maximal, pour éviter de zoomer à outrance sur un petit objet. */
@@ -68,4 +78,4 @@ export function emptySequence(title = 'New sequence'): Sequence {
 
 // Les libellés (actions, caméra, effets) sont dans src/i18n : t.actions, t.camera, t.effects.
 export const EFFECTS: Effect[] = ['fade', 'draw', 'rise', 'none']
-export const CAMERA_MODES: CameraMode[] = ['follow', 'overview', 'keep']
+export const CAMERA_MODES: CameraMode[] = ['follow', 'overview', 'area', 'keep']

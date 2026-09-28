@@ -26,7 +26,9 @@ function defaultEffect(shapes: RefShapes, part: 'node' | 'edge'): Effect {
 
 function cameraOf(camera: MapStep['camera']): StepCamera {
   if (!camera) return { mode: 'follow' }
-  return typeof camera === 'string' ? { mode: camera } : { ...camera }
+  // Une zone sans rectangle n'a rien à cadrer : on suit l'étape.
+  if (typeof camera === 'string') return { mode: camera === 'area' ? 'follow' : camera }
+  return camera.mode === 'area' && !camera.area ? { ...camera, mode: 'follow' } : { ...camera }
 }
 
 /** Étapes du format → étapes du moteur. Les identifiants inconnus sont ignorés. */
@@ -83,7 +85,7 @@ export function fromEngineSteps(
 ): MapStep[] {
   return steps.map((step) => {
     const camera = step.camera ?? { mode: 'follow' }
-    const plainCamera = camera.padding === undefined && camera.maxZoom === undefined
+    const plainCamera = camera.padding === undefined && camera.maxZoom === undefined && camera.area === undefined
     return {
       title: step.title,
       ...(step.narration && { narration: step.narration }),

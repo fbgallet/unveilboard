@@ -336,13 +336,14 @@
                 "maxLength": 20000
               },
               "camera": {
-                "description": "follow (default): frame what the step shows; overview: the whole visible diagram; keep: do not move.",
+                "description": "follow (default): frame what the step shows; overview: the whole visible diagram; area: a fixed rectangle (object form, with `area`); keep: do not move.",
                 "anyOf": [
                   {
                     "type": "string",
                     "enum": [
                       "follow",
                       "overview",
+                      "area",
                       "keep"
                     ]
                   },
@@ -354,6 +355,7 @@
                         "enum": [
                           "follow",
                           "overview",
+                          "area",
                           "keep"
                         ]
                       },
@@ -362,6 +364,33 @@
                       },
                       "maxZoom": {
                         "type": "number"
+                      },
+                      "area": {
+                        "description": "area mode: the rectangle to frame, in canvas coordinates.",
+                        "type": "object",
+                        "properties": {
+                          "x": {
+                            "type": "number"
+                          },
+                          "y": {
+                            "type": "number"
+                          },
+                          "w": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          },
+                          "h": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          }
+                        },
+                        "required": [
+                          "x",
+                          "y",
+                          "w",
+                          "h"
+                        ],
+                        "additionalProperties": false
                       }
                     },
                     "required": [

@@ -65,7 +65,7 @@ test('serveur compatible OpenAI : réglages, essai, demande avec correction, app
 
   // Demande : la première réponse est fausse, la seconde (après correction) est bonne.
   await page.getByTestId('main-menu.button').click()
-  await page.getByText('Prompt for an AI…').click()
+  await page.getByText('Create or change the diagram with AI…').click()
   const dialog = page.getByRole('dialog', { name: 'Work with an AI' })
   await expect(dialog.getByText('AI: OpenAI-compatible server (Ollama, LM Studio…) · fake-model')).toBeVisible()
   await dialog.getByRole('button', { name: 'Ask the AI' }).click()
@@ -96,7 +96,7 @@ test('serveur injoignable : message d’erreur explicite', async ({ page }) => {
   await page.reload()
   await page.waitForFunction(() => (window as unknown as { unveilboard?: unknown }).unveilboard)
   await page.getByTestId('main-menu.button').click()
-  await page.getByText('Prompt for an AI…').click()
+  await page.getByText('Create or change the diagram with AI…').click()
   const dialog = page.getByRole('dialog', { name: 'Work with an AI' })
   await dialog.getByRole('button', { name: 'Ask the AI' }).click()
   await expect(dialog.getByRole('alert')).toContainText('The AI could not be reached')

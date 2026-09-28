@@ -14,17 +14,19 @@ import { MarkdownEditor } from './MarkdownEditor'
 import {
   addStep,
   addTargets,
-  appearanceIndex,
+  appearances,
   moveStep,
   removeAction,
   removeStep,
   updateAction,
+  stepUses,
   updateStep,
 } from '@/lib/sequence/edit'
 import {
   CAMERA_MODES,
   EFFECTS,
   emptySequence,
+  type Area,
   type CameraMode,
   type Effect,
   type Sequence,
@@ -95,7 +97,10 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
     [editor]
   )
   const canNote = useValue('can note', () => selection.some((id) => !!noteOf(editor.getShape(id))), [editor, selection])
-  const appears = appearanceIndex(seq)
+  const appears = appearances(seq)
+  const uses = stepUses(seq)
+  // Document à plusieurs pages : chaque page a sa séquence (le titre reste celui du document).
+  const pageName = useValue('page name', () => (editor.getPages().length > 1 ? editor.getCurrentPage().name : null), [editor])
 
   const save = (next: Sequence) => writeSequence(editor, next)
   const activeIndex = seq.steps.findIndex((s) => s.id === activeId)
@@ -119,9 +124,22 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
     if (activeIndex >= 0) save(addTargets(seq, seq.steps[activeIndex].id, 'show', [id]))
   }
 
+  /** Zone caméra : ce que montre le canevas, ou la sélection avec une petite marge. */
+  function areaFrom(source: 'view' | 'selection'): Area {
+    const box = source === 'selection' ? editor.getSelectionPageBounds()?.clone().expandBy(32) : null
+    const { x, y, w, h } = box ?? editor.getViewportPageBounds()
+    return { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) }
+  }
+
+  const selectionUsage = () => {
+    const id = selection[0]
+    const shown = appears.get(id) ?? []
+    const others = (uses.get(id) ?? []).filter((n) => !shown.includes(n))
+    return [shown.length ? t.panel.appearsAtStep(shown) : '', others.length ? t.panel.usedAtSteps(others) : ''].filter(Boolean).join(' ')
+  }
   const selectionHint =
-    selection.length === 1 && appears.has(selection[0])
-      ? t.panel.appearsAtStep(appears.get(selection[0])!)
+    selection.length === 1 && uses.has(selection[0])
+      ? selectionUsage()
       : selection.length
         ? t.panel.selected(selection.length)
         : t.panel.selectHint
@@ -165,6 +183,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
           value={seq.title}
           onChange={(e) => save({ ...seq, title: e.target.value })}
         />
+        {pageName !== null && <p className="-mt-1 px-1 text-[11px] text-zinc-400">{t.panel.pageSteps(pageName)}</p>}
         <div className="flex gap-2">
           <button className="btn-primary flex-1" onClick={() => enterPresentation(-1)} disabled={!seq.steps.length}>
             {t.panel.present}
@@ -255,6 +274,8 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
             onMove={(d) => save(moveStep(seq, step.id, d))}
             onDelete={() => save(removeStep(seq, step.id))}
             onPresent={() => enterPresentation(i)}
+            onCaptureArea={(source) => save(updateStep(seq, step.id, { camera: { ...step.camera, mode: 'area', area: areaFrom(source) } }))}
+            onShowArea={(area) => editor.zoomToBounds(Box.From(area), { inset: 0, animation: { duration: 300 } })}
           />
         ))}
         {!seq.steps.length && (
@@ -291,6 +312,8 @@ interface StepCardProps {
   onMove(delta: -1 | 1): void
   onDelete(): void
   onPresent(): void
+  onCaptureArea(source: 'view' | 'selection'): void
+  onShowArea(area: Area): void
 }
 
 function StepCard(p: StepCardProps) {
@@ -376,18 +399,45 @@ function StepCard(p: StepCardProps) {
               </button>
             ))}
           </div>
-          <label className="flex items-center gap-2 text-xs text-zinc-600">
-            {t.step.camera}
-            <select
-              className="rounded border border-zinc-200 bg-white px-1 py-0.5"
-              value={step.camera.mode}
-              onChange={(e) => p.onChange({ camera: { ...step.camera, mode: e.target.value as CameraMode } })}
-            >
-              {CAMERA_MODES.map((k) => (
-                <option key={k} value={k}>{t.camera[k]}</option>
-              ))}
-            </select>
-          </label>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+            <label className="flex items-center gap-2">
+              {t.step.camera}
+              <select
+                className="rounded border border-zinc-200 bg-white px-1 py-0.5"
+                value={step.camera.mode}
+                onChange={(e) => {
+                  const mode = e.target.value as CameraMode
+                  // Zone définie : d'emblée la sélection, ou à défaut la vue actuelle ; ajustable ensuite.
+                  if (mode === 'area' && !step.camera.area) p.onCaptureArea(p.selection.length ? 'selection' : 'view')
+                  else p.onChange({ camera: { ...step.camera, mode } })
+                }}
+              >
+                {CAMERA_MODES.map((k) => (
+                  <option key={k} value={k}>{t.camera[k]}</option>
+                ))}
+              </select>
+            </label>
+            {step.camera.mode === 'area' && (
+              <span className="flex items-center gap-1">
+                <button className="btn-xs" onClick={() => p.onCaptureArea('view')} title={t.step.areaFromViewHint}>
+                  {t.step.areaFromView}
+                </button>
+                <button
+                  className="btn-xs"
+                  disabled={!p.selection.length}
+                  onClick={() => p.onCaptureArea('selection')}
+                  title={p.selection.length ? t.step.areaFromSelectionHint : t.step.selectObjects}
+                >
+                  {t.step.areaFromSelection}
+                </button>
+                {step.camera.area && (
+                  <button className="btn-xs" onClick={() => p.onShowArea(step.camera.area!)} title={t.step.areaGoHint}>
+                    {t.step.areaGo}
+                  </button>
+                )}
+              </span>
+            )}
+          </div>
           <MarkdownEditor
             value={step.narration}
             onChange={(narration) => p.onChange({ narration })}

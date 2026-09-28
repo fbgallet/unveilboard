@@ -200,6 +200,22 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
     })
   }, [editor, keyboard])
 
+  // Changement de page pendant la présentation : chaque page a sa séquence, qui reprend au début.
+  // La fenêtre public reçoit la page et l'étape du présentateur.
+  useEffect(() => {
+    if (!keyboard) return
+    let page = editor.getCurrentPageId()
+    return react('presentation page', () => {
+      const current = editor.getCurrentPageId()
+      if (current === page) return
+      page = current
+      if (modeAtom.get() !== 'present') return
+      clearLiveSpot()
+      overviewAtom.set(false)
+      stepIndexAtom.set(-1)
+    })
+  }, [editor, keyboard])
+
   // Fenêtre redimensionnée (téléphone tourné, panneau replié par le navigateur) : on recadre l'étape.
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined

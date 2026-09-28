@@ -1,29 +1,77 @@
 // Seul module qui connaît tldraw côté moteur de présentation.
 // Si le moteur de canevas change un jour, c'est ce fichier qu'il faudra réécrire.
 
-import { Box, getArrowInfo, type Editor, type JsonObject, type TLArrowBinding, type TLShapeId } from 'tldraw'
+import { Box, getArrowInfo, type Editor, type JsonObject, type TLArrowBinding, type TLPageId, type TLShapeId } from 'tldraw'
 import { computeStage, latestShown, stateOf, stepFocusTargets, type Stage } from '../sequence/compute'
 import { migrateSequence } from '../sequence/migrate'
 import { toJson } from '../json'
-import type { Sequence, ShapeRef, StepCamera } from '../sequence/types'
+import type { Sequence, ShapeRef, Step, StepCamera } from '../sequence/types'
 import { SPOTLIGHT_TYPE } from './spotlight'
 import { getTreeIndex } from './tree'
 
 const META_KEY = 'sequence'
 
-export function readSequence(editor: Editor): Sequence | null {
-  const meta = editor.getDocumentSettings().meta
-  const raw = meta[META_KEY] as unknown as Sequence | undefined
+/**
+ * Séquence enregistrée dans le document : titre et réglages communs, étapes propres à chaque page.
+ * `steps` garde les étapes d'une page (`stepsPage`, la première à l'enregistrement) : un document
+ * d'une seule page reste lisible tel quel par les versions antérieures. `pages` a celles des autres.
+ * Avant les séquences par page, les étapes étaient communes (`steps` sans `stepsPage`) : elles
+ * reviennent à la page de leurs objets.
+ */
+interface StoredSequence extends Sequence {
+  stepsPage?: string
+  pages?: Record<string, Step[]>
+}
+
+function readStored(editor: Editor): StoredSequence | null {
+  const raw = editor.getDocumentSettings().meta[META_KEY] as unknown as StoredSequence | undefined
   return raw ? migrateSequence(raw) : null
 }
 
+function stepsByPage(editor: Editor, stored: StoredSequence): Record<string, Step[]> {
+  const byPage: Record<string, Step[]> = { ...stored.pages }
+  if (stored.steps.length) byPage[stored.stepsPage ?? legacyPageOf(editor, stored.steps)] = stored.steps
+  return byPage
+}
+
+/** Page des anciennes étapes communes : celle du premier objet ciblé qui existe encore. */
+function legacyPageOf(editor: Editor, steps: Step[]): TLPageId {
+  for (const id of steps.flatMap((s) => s.actions.flatMap((a) => a.targets))) {
+    const shape = editor.getShape(id as TLShapeId)
+    if (shape) return editor.getAncestorPageId(shape) ?? editor.getCurrentPageId()
+  }
+  return editor.getPages()[0]?.id ?? editor.getCurrentPageId()
+}
+
+/** Séquence d'une page (par défaut, la page courante) : ses étapes, avec le titre et les réglages du document. */
+export function readSequence(editor: Editor, pageId: TLPageId = editor.getCurrentPageId()): Sequence | null {
+  const stored = readStored(editor)
+  if (!stored) return null
+  const seq: StoredSequence = { ...stored, steps: stepsByPage(editor, stored)[pageId] ?? [] }
+  delete seq.stepsPage
+  delete seq.pages
+  return seq
+}
+
+/** Pages du document qui ont des étapes, dans l'ordre des pages. */
+export function pagesWithSteps(editor: Editor): TLPageId[] {
+  const stored = readStored(editor)
+  const pages = stored ? stepsByPage(editor, stored) : {}
+  return editor.getPages().filter((p) => pages[p.id]?.length).map((p) => p.id)
+}
+
 /**
- * Enregistre la séquence dans le document. tldraw écrit les réglages du document hors historique ;
+ * Enregistre la séquence de la page courante dans le document. tldraw écrit les réglages du document hors historique ;
  * `undoable` l'inscrit dans l'historique (Ctrl+Z la rétablit avec les formes modifiées en même temps).
  */
 export function writeSequence(editor: Editor, seq: Sequence, opts: { undoable?: boolean } = {}) {
   const settings = editor.getDocumentSettings()
-  const meta = { ...settings.meta, [META_KEY]: toJson(seq) as unknown as JsonObject }
+  const stored = readStored(editor)
+  const byPage = { ...(stored && stepsByPage(editor, stored)), [editor.getCurrentPageId()]: seq.steps }
+  const [first, ...others] = editor.getPages().map((p) => p.id)
+  const pages = Object.fromEntries(others.filter((id) => byPage[id]?.length).map((id) => [id, byPage[id]]))
+  const value: StoredSequence = { ...seq, steps: byPage[first] ?? [], stepsPage: first, ...(Object.keys(pages).length && { pages }) }
+  const meta = { ...settings.meta, [META_KEY]: toJson(value) as unknown as JsonObject }
   if (opts.undoable) editor.store.put([{ ...settings, meta }])
   else editor.updateDocumentSettings({ meta })
 }
@@ -126,7 +174,7 @@ export function activeSpotlights(editor: Editor, seq: Sequence, index: number, s
   return latestShown(seq, index, visible, resolveTargets(editor))
 }
 
-const DEFAULT_CAMERA: Required<StepCamera> = { mode: 'follow', padding: 96, maxZoom: 1.4 }
+const DEFAULT_CAMERA: Required<Omit<StepCamera, 'area'>> = { mode: 'follow', padding: 96, maxZoom: 1.4 }
 
 export function moveCamera(
   editor: Editor,
@@ -141,6 +189,9 @@ export function moveCamera(
   if (mode === 'keep') return
 
   let bounds: Box | null = null
+  // Zone définie : cadrée telle quelle, sans marge ni plafond de zoom.
+  const area = mode === 'area' ? cam.area : undefined
+  if (area) bounds = Box.From(area)
   if (mode === 'follow' && step) bounds = boundsOf(editor, stepFocusTargets(step, resolveTargets(editor), stage))
   if (!bounds) bounds = boundsOf(editor, visibleShapeIds(editor, stage))
   if (!bounds) return
@@ -149,9 +200,9 @@ export function moveCamera(
   // et la barre de progression, posée sur le bas du canevas, ne doit rien masquer.
   const viewport = editor.getViewportScreenBounds()
   const height = Math.max(viewport.h - PROGRESS_BAR_HEIGHT, 1)
-  const inset = Math.min(cam.padding, Math.round(Math.min(viewport.w, height) * 0.12))
+  const inset = area ? 0 : Math.min(cam.padding, Math.round(Math.min(viewport.w, height) * 0.12))
   const fit = Math.min((viewport.w - 2 * inset) / Math.max(bounds.w, 1), (height - 2 * inset) / Math.max(bounds.h, 1))
-  const z = Math.max(0.05, Math.min(fit, mode === 'overview' ? 1 : cam.maxZoom))
+  const z = Math.max(0.05, area ? Math.min(fit, 8) : Math.min(fit, mode === 'overview' ? 1 : cam.maxZoom))
   editor.setCamera(
     { x: viewport.w / 2 / z - bounds.midX, y: height / 2 / z - bounds.midY, z },
     { animation: { duration: 700, easing: easeInOutCubic } }

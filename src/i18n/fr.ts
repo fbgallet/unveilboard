@@ -141,7 +141,10 @@ export const fr: Messages = {
     numbers: 'Numéros',
     hideNumbers: 'Masquer les numéros d’étape sur le canevas',
     showNumbers: 'Afficher les numéros d’étape sur le canevas',
-    appearsAtStep: (n) => `Cet objet apparaît à l’étape ${n}.`,
+    appearsAtStep: (steps) =>
+      steps.length > 1 ? `Cet objet apparaît aux étapes ${steps.join(', ')} (caché entre-temps).` : `Cet objet apparaît à l’étape ${steps[0]}.`,
+    usedAtSteps: (steps) => `Également utilisé ${steps.length > 1 ? 'aux étapes' : 'à l’étape'} ${steps.join(', ')}.`,
+    pageSteps: (name) => `Étapes de la page « ${name} »`,
     selected: (n) => `${plural(n, 'objet sélectionné', 'objets sélectionnés')}.`,
     selectHint: 'Sélectionnez des objets sur le canevas pour les ajouter à une étape.',
     noSteps: 'Aucune étape. Sélectionnez des objets puis « Étape ».',
@@ -174,6 +177,13 @@ export const fr: Messages = {
     addSelection: (label) => `Ajouter la sélection : ${label}`,
     selectObjects: 'Sélectionnez des objets',
     camera: 'Caméra',
+    cameraAreaLabel: (n) => `Caméra · étape ${n}`,
+    areaFromView: 'Vue actuelle',
+    areaFromViewHint: 'Cadrer ce que montre le canevas en ce moment',
+    areaFromSelection: 'Sélection',
+    areaFromSelectionHint: 'Cadrer les objets sélectionnés',
+    areaGo: 'Voir',
+    areaGoHint: 'Afficher cette zone sur le canevas',
     narrationPlaceholder: 'Narration affichée à la classe (**gras**, *italique*, > citation)',
   },
 
@@ -196,7 +206,17 @@ export const fr: Messages = {
   camera: {
     follow: 'Suivre',
     overview: 'Vue d’ensemble',
+    area: 'Zone définie',
     keep: 'Ne pas bouger',
+  },
+
+  seqMenu: {
+    title: 'Séquence',
+    showAt: 'Faire apparaître à l’étape',
+    newStep: 'Nouvelle étape à la fin',
+    activeStep: (n) => `Étape active (${n})`,
+    removeFromActive: (n) => `Retirer de l’étape ${n}`,
+    removeFromSequence: 'Retirer de la séquence',
   },
 
   effects: {
@@ -207,6 +227,7 @@ export const fr: Messages = {
   },
 
   presenter: {
+    page: 'Page : chaque page a sa propre séquence',
     hideNarration: 'Masquer la narration (N)',
     hideNarrationLabel: 'Masquer la narration',
     previous: 'Précédent (←)',
@@ -852,7 +873,7 @@ export const fr: Messages = {
   },
 
   assistant: {
-    menu: 'Consigne pour une IA…',
+    menu: 'Créer ou modifier le schéma avec l’IA…',
     title: 'Travailler avec une IA',
     intro:
       'Unveilboard rédige une consigne complète (le schéma, son vocabulaire, le format de réponse) : collez-la dans l’IA de votre choix (ChatGPT, Claude, Le Chat, un modèle local…) ou donnez-la à un agent qui pilote votre navigateur, puis collez sa réponse ci-dessous.',
@@ -1002,7 +1023,7 @@ export const fr: Messages = {
   },
 
   source: {
-    menu: 'Créer un schéma depuis un texte…',
+    menu: 'Nouveau schéma depuis un texte…',
     title: 'Créer un schéma depuis un texte',
     intro:
       'Collez un texte (un cours, un texte d’auteur) ou choisissez un fichier : texte, Markdown, PDF, ou photo d’une page. L’IA en dessine la structure, avec sa séquence ; chaque extrait qu’elle cite est vérifié dans le texte, et ce qui ne s’y trouve pas est signalé.',
@@ -1113,7 +1134,9 @@ export const fr: Messages = {
   launcher: {
     menuLabel: 'Fonctions d’IA',
     reviewCount: (n) => `Relecture critique (${plural(n, 'remarque', 'remarques')})…`,
-    fromSelection: 'À partir de l’élément sélectionné…',
+    fromSelection: 'Développer l’élément sélectionné…',
+    sequence: 'Écrire la séquence de présentation…',
+    assistant: 'Créer ou modifier le schéma…',
     selectFirst: 'Sélectionnez d’abord une boîte',
   },
 }

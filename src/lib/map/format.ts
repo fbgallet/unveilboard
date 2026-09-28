@@ -132,10 +132,20 @@ export const StepSchema = z.object({
   camera: z
     .union([
       z.enum(CAMERA_MODES),
-      z.object({ mode: z.enum(CAMERA_MODES), padding: z.number().optional(), maxZoom: z.number().optional() }),
+      z.object({
+        mode: z.enum(CAMERA_MODES),
+        padding: z.number().optional(),
+        maxZoom: z.number().optional(),
+        area: z
+          .object({ x: z.number(), y: z.number(), w: z.number().positive(), h: z.number().positive() })
+          .optional()
+          .describe('area mode: the rectangle to frame, in canvas coordinates.'),
+      }),
     ])
     .optional()
-    .describe('follow (default): frame what the step shows; overview: the whole visible diagram; keep: do not move.'),
+    .describe(
+      'follow (default): frame what the step shows; overview: the whole visible diagram; area: a fixed rectangle (object form, with `area`); keep: do not move.'
+    ),
   actions: z.array(ActionSchema),
 })
 

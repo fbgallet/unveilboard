@@ -90,9 +90,20 @@ test('à partir d’un élément : suggestions fantômes, accepter, écarter, ho
   await page.keyboard.press('Escape')
 
   // Accepter la réponse accepte aussi l'objection dont elle dépend ; écarter le lien.
-  // Boutons dans l'ordre des suggestions : obj2, ans2, lk1.
+  // Boutons dans l'ordre des suggestions : obj2, ans2, lk1. Chaque suggestion est centrée à l'écran,
+  // la boîte de l'IA fermée : ailleurs, ses boutons peuvent passer sous un panneau.
+  await panel.getByRole('button', { name: 'Close' }).click()
+  const centerOn = (ref: string) =>
+    page.evaluate((r) => {
+      const { editor } = window as unknown as Win
+      const shape = editor.getCurrentPageShapes().find((s) => s.meta.ref === r)!
+      editor.selectNone()
+      editor.centerOnPoint(editor.getShapePageBounds(shape)!.center, { animation: { duration: 0 } })
+    }, ref)
+  await centerOn('ans2')
   await page.getByRole('button', { name: 'Accept', exact: true }).nth(1).click()
   await expect.poll(async () => (await pending(page)).sort()).toEqual(['lk1'])
+  await centerOn('lk1')
   await page.getByRole('button', { name: 'Reject', exact: true }).click()
   await expect.poll(() => pending(page)).toEqual([])
   await expect(page.getByRole('region', { name: 'AI suggestions' })).toHaveCount(0)
@@ -146,15 +157,23 @@ test('accès permanent à l’IA : une icône, un menu (relecture, à partir de 
   const icon = page.getByRole('button', { name: 'AI features' })
   const menu = page.getByRole('menu', { name: 'AI features' })
   await icon.click()
-  await expect(menu.getByRole('menuitem')).toHaveCount(7)
-  await expect(menu.getByRole('menuitem', { name: 'From the selected element…' })).toBeDisabled()
+  await expect(menu.getByRole('menuitem')).toHaveText([
+    'Develop the selected element…',
+    'Create or change the diagram…',
+    'Write the presentation sequence…',
+    'Critical review…',
+    'New diagram from a text…',
+    'Paste JSON (diagram or changes)…',
+    'AI settings…',
+  ])
+  await expect(menu.getByRole('menuitem', { name: 'Develop the selected element…' })).toBeDisabled()
   await page.screenshot({ path: 'test-results/ai-launcher.png' })
   await menu.getByRole('menuitem', { name: 'Critical review…' }).click()
   await expect(page.getByRole('complementary', { name: 'Critical review' })).toBeVisible()
 
   await selectRef(page, 'thesis')
   await icon.click()
-  await menu.getByRole('menuitem', { name: 'From the selected element…' }).click()
+  await menu.getByRole('menuitem', { name: 'Develop the selected element…' }).click()
   await expect(page.getByRole('dialog', { name: 'Ask the AI from this element' })).toBeVisible()
   // En présentation, pas d'icône.
   await page.getByRole('button', { name: '▶ Present' }).click()

@@ -9,6 +9,8 @@ import type { LaserSettings, PageRect } from './store'
 
 export interface ScreenState {
   presenting: boolean
+  /** Page présentée : chaque page a sa séquence. */
+  pageId: string
   stepIndex: number
   overview: boolean
   recenter: number

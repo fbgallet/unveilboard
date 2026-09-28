@@ -91,7 +91,7 @@ Un type ou une relation créés par l'utilisateur y portent aussi leur `style` (
 
 ## La séquence
 
-Chaque étape a un `title`, une `narration` facultative (Markdown), une `camera` facultative (`follow`, par défaut : cadrer ce que l'étape montre ; `overview` : tout le schéma visible ; `keep` : ne pas bouger) et des `actions` :
+Chaque étape a un `title`, une `narration` facultative (Markdown), une `camera` facultative (`follow`, par défaut : cadrer ce que l'étape montre ; `overview` : tout le schéma visible ; `keep` : ne pas bouger ; `{ "mode": "area", "area": { "x", "y", "w", "h" } }` : un rectangle fixe en coordonnées du canevas, centré, le zoom adapté à sa taille) et des `actions` :
 
 | `do` | Effet |
 |---|---|

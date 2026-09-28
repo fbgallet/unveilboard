@@ -91,7 +91,7 @@ A type or relation created by the user also carries its `style` (tldraw properti
 
 ## Sequence
 
-Each step has a `title`, an optional `narration` (Markdown), an optional `camera` (`follow`, the default: frame what the step shows; `overview`: the whole visible diagram; `keep`: do not move) and `actions`:
+Each step has a `title`, an optional `narration` (Markdown), an optional `camera` (`follow`, the default: frame what the step shows; `overview`: the whole visible diagram; `keep`: do not move; `{ "mode": "area", "area": { "x", "y", "w", "h" } }`: a fixed rectangle in canvas coordinates, centred with the zoom fitted to its size) and `actions`:
 
 | `do` | Effect |
 |---|---|

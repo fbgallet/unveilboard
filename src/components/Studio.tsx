@@ -19,6 +19,7 @@ import { documentStore, settingsStore } from '@/lib/storage'
 import type { StorageMode } from '@/lib/storage/types'
 import { PresShapeWrapper } from './PresShapeWrapper'
 import { StepBadges } from './StepBadges'
+import { ContextMenu } from './SequenceMenu'
 import { SequencePanel } from './SequencePanel'
 import { Legend, NarrationPanel, NoteMarkers, ProgressBar } from './PresenterUI'
 import { pinNarrationScale, usePresentation } from './usePresentation'
@@ -70,6 +71,7 @@ const components: TLComponents = {
   MainMenu,
   StylePanel: PresetStylePanel,
   SharePanel: AiLauncher,
+  ContextMenu,
 }
 
 // Supprimer un nœud d'arbre supprime sa branche ; supprimer une boîte supprime ses détails.

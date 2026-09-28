@@ -142,7 +142,10 @@ export const en = {
     numbers: 'Numbers',
     hideNumbers: 'Hide step numbers on the canvas',
     showNumbers: 'Show step numbers on the canvas',
-    appearsAtStep: (n: number) => `This object appears at step ${n}.`,
+    appearsAtStep: (steps: number[]) =>
+      steps.length > 1 ? `This object appears at steps ${steps.join(', ')} (hidden in between).` : `This object appears at step ${steps[0]}.`,
+    usedAtSteps: (steps: number[]) => `Also used at ${steps.length > 1 ? 'steps' : 'step'} ${steps.join(', ')}.`,
+    pageSteps: (name: string) => `Steps of the page “${name}”`,
     selected: (n: number) => `${plural(n, 'object', 'objects')} selected.`,
     selectHint: 'Select objects on the canvas to add them to a step.',
     noSteps: 'No steps yet. Select objects, then click “Step”.',
@@ -175,6 +178,13 @@ export const en = {
     addSelection: (label: string) => `Add the selection: ${label}`,
     selectObjects: 'Select objects',
     camera: 'Camera',
+    cameraAreaLabel: (n: number) => `Camera · step ${n}`,
+    areaFromView: 'Current view',
+    areaFromViewHint: 'Frame what the canvas shows right now',
+    areaFromSelection: 'Selection',
+    areaFromSelectionHint: 'Frame the selected objects',
+    areaGo: 'See',
+    areaGoHint: 'Show this area on the canvas',
     narrationPlaceholder: 'Narration shown to the audience (**bold**, *italic*, > quote)',
   },
 
@@ -197,7 +207,17 @@ export const en = {
   camera: {
     follow: 'Follow',
     overview: 'Overview',
+    area: 'Defined area',
     keep: 'Stay put',
+  },
+
+  seqMenu: {
+    title: 'Sequence',
+    showAt: 'Show at step',
+    newStep: 'New step at the end',
+    activeStep: (n: number) => `Active step (${n})`,
+    removeFromActive: (n: number) => `Remove from step ${n}`,
+    removeFromSequence: 'Remove from the sequence',
   },
 
   effects: {
@@ -208,6 +228,7 @@ export const en = {
   },
 
   presenter: {
+    page: 'Page: each page has its own sequence',
     hideNarration: 'Hide the narration (N)',
     hideNarrationLabel: 'Hide the narration',
     previous: 'Previous (←)',
@@ -858,7 +879,7 @@ export const en = {
 
   /** Consigne pour une IA (assistant ou agent du navigateur), puis sa réponse. */
   assistant: {
-    menu: 'Prompt for an AI…',
+    menu: 'Create or change the diagram with AI…',
     title: 'Work with an AI',
     intro:
       'Unveilboard writes a complete prompt (the diagram, its vocabulary, the format to answer in): paste it into the AI of your choice (ChatGPT, Claude, Le Chat, a local model…) or give it to an agent that operates your browser, then paste its answer below.',
@@ -1012,7 +1033,7 @@ export const en = {
 
   /** Créer un schéma à partir d'un texte (collé, fichier, PDF, photo). */
   source: {
-    menu: 'Create a diagram from a text…',
+    menu: 'New diagram from a text…',
     title: 'Create a diagram from a text',
     intro:
       'Paste a text (a course, an author’s text) or choose a file: text, Markdown, PDF, or a photo of a page. The AI draws its structure as a diagram, with its sequence; every excerpt it cites is checked in the text, and what cannot be found there is flagged.',
@@ -1126,7 +1147,9 @@ export const en = {
   launcher: {
     menuLabel: 'AI features',
     reviewCount: (n: number) => `Critical review (${n} remark${n === 1 ? '' : 's'})…`,
-    fromSelection: 'From the selected element…',
+    fromSelection: 'Develop the selected element…',
+    sequence: 'Write the presentation sequence…',
+    assistant: 'Create or change the diagram…',
     selectFirst: 'Select a box first',
   },
 }

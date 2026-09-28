@@ -33,6 +33,7 @@ export function useScreenPresenter(editor: Editor, docId: string) {
     const post = (message: ScreenMessage) => channel.postMessage(message)
     const state = (): ScreenState => ({
       presenting: modeAtom.get() === 'present',
+      pageId: editor.getCurrentPageId(),
       stepIndex: stepIndexAtom.get(),
       overview: overviewAtom.get(),
       recenter: recenterAtom.get(),

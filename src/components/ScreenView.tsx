@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Tldraw, useValue, type Editor, type TLComponents } from 'tldraw'
+import { Tldraw, useValue, type Editor, type TLComponents, type TLPageId } from 'tldraw'
 import 'tldraw/tldraw.css'
 import { useT } from '@/i18n/client'
 import { LaserOverlayUtil } from '@/lib/canvas/laser'
@@ -77,7 +77,7 @@ export default function ScreenView({ docId, licenseKey }: { docId: string; licen
     channel.onmessage = (e: MessageEvent<ScreenMessage>) => {
       const message = e.data
       if (message.type === 'state') {
-        apply(message.state)
+        apply(editor, message.state)
         setPresenting(message.state.presenting)
       } else if (message.type === 'scribbles') {
         remoteScribblesAtom.set(message.scribbles)
@@ -149,7 +149,9 @@ function PresentationHost({ editor }: { editor: Editor }) {
 }
 
 /** Reprend l'état du présentateur. L'étape d'abord : la changer referme les notes, qu'on rouvre ensuite. */
-function apply(state: ScreenState) {
+function apply(editor: Editor, state: ScreenState) {
+  const page = state.pageId as TLPageId
+  if (page && page !== editor.getCurrentPageId() && editor.getPage(page)) editor.setCurrentPage(page)
   modeAtom.set(state.presenting ? 'present' : 'edit')
   stepIndexAtom.set(state.stepIndex)
   overviewAtom.set(state.overview)

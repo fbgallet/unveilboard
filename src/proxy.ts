@@ -19,6 +19,7 @@ export async function proxy(request: NextRequest) {
 export const config = {
   // Tout sauf : la connexion, les mentions légales et leur formulaire de contact, les présentations partagées (/p, /p/<id>) et leur signalement, la page
   // de télécommande (/r, sans donnée : tout passe en direct entre les appareils), les icônes et l'image
-  // d'aperçu (lues par les navigateurs et les réseaux sociaux sans session), les fichiers statiques.
-  matcher: ['/((?!login|legal|p$|p/|r$|api/report|api/contact|icon\\.svg|apple-icon|opengraph-image|_next/static|_next/image|favicon.ico).*)'],
+  // d'aperçu (lues par les navigateurs et les réseaux sociaux sans session), les fichiers statiques,
+  // et la mesure d'audience de Vercel (/_vercel/insights : script et envoi des visites, sans session sur /login).
+  matcher: ['/((?!login|legal|p$|p/|r$|api/report|api/contact|icon\\.svg|apple-icon|opengraph-image|_next/static|_next/image|_vercel|favicon.ico).*)'],
 }

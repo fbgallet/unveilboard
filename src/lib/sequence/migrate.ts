@@ -20,8 +20,9 @@ const migrations: Record<number, (seq: Sequence) => Sequence> = {
   }),
 }
 
-export function migrateSequence(raw: Sequence): Sequence {
+/** Les étapes par page (`pages`, voir canvas/adapter.ts) datent de la version 2 : aucune migration antérieure ne les concerne. */
+export function migrateSequence<S extends Sequence>(raw: S): S {
   let seq = raw
-  for (let v = seq.version ?? 1; v < SEQUENCE_VERSION; v++) seq = { ...migrations[v](seq), version: v + 1 }
+  for (let v = seq.version ?? 1; v < SEQUENCE_VERSION; v++) seq = { ...seq, ...migrations[v](seq), version: v + 1 }
   return seq
 }

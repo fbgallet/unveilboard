@@ -1,11 +1,11 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useRef, type ReactNode } from 'react'
-import { renderPlaintextFromRichText, useEditor, useValue, type Editor, type TLRichText, type TLShape, type TLShapeId } from 'tldraw'
+import { renderPlaintextFromRichText, useEditor, useValue, type Editor, type TLPageId, type TLRichText, type TLShape, type TLShapeId } from 'tldraw'
 import { noteOf, panelNoteIds, plannedNoteIds, resolveTextImage } from '@/lib/canvas/notes'
 import { presetById, swatchColor } from '@/lib/canvas/presets'
 import { presetName } from '@/lib/presets/labels'
-import { readSequence } from '@/lib/canvas/adapter'
+import { pagesWithSteps, readSequence } from '@/lib/canvas/adapter'
 import {
   DEFAULT_LASER,
   LASER_COLORS,
@@ -202,6 +202,7 @@ export function ProgressBar({ editor, onProject, onRemote }: { editor: Editor; o
 
   return (
     <div className="progress pointer-events-auto absolute inset-x-0 bottom-0 z-[500] flex items-center gap-2 py-2 pl-2 pr-32 text-xs text-stone-500 md:gap-3 md:pl-16 md:pr-44">
+      <PagePicker editor={editor} />
       <ToolBtn onClick={() => goToStep(editor, index - 1)} disabled={index < 0} title={t.presenter.previous} icon="prev" />
       <div className="flex flex-1 items-center gap-1">
         {seq.steps.map((s, i) => (
@@ -256,6 +257,35 @@ export function ProgressBar({ editor, onProject, onRemote }: { editor: Editor; o
         {!viewer && <ToolBtn onClick={exitPresentation} title={t.presenter.exit} icon="close" />}
       </div>
     </div>
+  )
+}
+
+/** Document à plusieurs pages : chaque page a sa séquence ; on passe de l'une à l'autre, au début de sa séquence. */
+function PagePicker({ editor }: { editor: Editor }) {
+  const t = useT()
+  const pages = useValue(
+    'presented pages',
+    () => {
+      const withSteps = new Set<string>(pagesWithSteps(editor))
+      const current = editor.getCurrentPageId()
+      return editor.getPages().filter((p) => withSteps.has(p.id) || p.id === current).map((p) => ({ id: p.id, name: p.name }))
+    },
+    [editor]
+  )
+  const current = useValue('current page', () => editor.getCurrentPageId(), [editor])
+  if (pages.length < 2) return null
+  return (
+    <select
+      className="page-picker max-w-[9rem] truncate rounded border border-stone-200 bg-white px-1 py-0.5 text-xs text-stone-600"
+      value={current}
+      onChange={(e) => editor.setCurrentPage(e.target.value as TLPageId)}
+      title={t.presenter.page}
+      aria-label={t.presenter.page}
+    >
+      {pages.map((p) => (
+        <option key={p.id} value={p.id}>{p.name}</option>
+      ))}
+    </select>
   )
 }
 

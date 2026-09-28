@@ -79,30 +79,79 @@ export function updateAction(
   }
 }
 
-/** Un objet n'apparaît qu'une fois : on le retire des « show » des autres étapes. */
+/**
+ * Un objet n'apparaît qu'une fois tant qu'il reste visible : on retire ses autres « show », sauf ceux
+ * qu'un « hide » sépare de cette étape (l'objet disparaît puis réapparaît).
+ */
 function withoutDuplicateShows(seq: Sequence, keepStepId: string, actions: Step['actions'] = []): Sequence {
   const shown = new Set(actions.filter((a) => a.type === 'show').flatMap((a) => a.targets))
   if (shown.size === 0) return seq
+  const k = seq.steps.findIndex((s) => s.id === keepStepId)
+  const hiddenAt = (id: ShapeRef, i: number) => seq.steps[i].actions.some((a) => a.type === 'hide' && a.targets.includes(id))
+  const hiddenBetween = (id: ShapeRef, j: number) => {
+    for (let i = Math.min(j, k) + 1; i < Math.max(j, k); i++) if (hiddenAt(id, i)) return true
+    return false
+  }
   return {
     ...seq,
-    steps: seq.steps.map((step) =>
+    steps: seq.steps.map((step, j) =>
       step.id === keepStepId
         ? step
         : {
             ...step,
             actions: step.actions
-              .map((a) => (a.type === 'show' ? { ...a, targets: a.targets.filter((t) => !shown.has(t)) } : a))
+              .map((a) =>
+                a.type === 'show' ? { ...a, targets: a.targets.filter((t) => !shown.has(t) || hiddenBetween(t, j)) } : a
+              )
               .filter((a) => a.targets.length > 0),
           }
     ),
   }
 }
 
-/** Numéro (1-based) de l'étape où chaque objet apparaît. */
-export function appearanceIndex(seq: Sequence): Map<ShapeRef, number> {
-  const map = new Map<ShapeRef, number>()
+/** Retire des objets de toutes les actions d'une étape (les actions vidées disparaissent). */
+export function removeTargets(seq: Sequence, stepId: string, ids: ShapeRef[]): Sequence {
+  const removed = new Set(ids)
+  return {
+    ...seq,
+    steps: seq.steps.map((step) =>
+      step.id === stepId
+        ? {
+            ...step,
+            actions: step.actions
+              .map((a) => ({ ...a, targets: a.targets.filter((t) => !removed.has(t)) }))
+              .filter((a) => a.targets.length > 0),
+          }
+        : step
+    ),
+  }
+}
+
+/** Numéros (1-based, croissants) des étapes où chaque objet apparaît ; plusieurs s'il réapparaît après avoir été caché. */
+export function appearances(seq: Sequence): Map<ShapeRef, number[]> {
+  const map = new Map<ShapeRef, number[]>()
   seq.steps.forEach((step, i) => {
-    for (const a of step.actions) if (a.type === 'show') a.targets.forEach((t) => map.set(t, i + 1))
+    for (const a of step.actions) {
+      if (a.type !== 'show') continue
+      for (const t of a.targets) {
+        const list = map.get(t) ?? []
+        if (list.at(-1) !== i + 1) map.set(t, [...list, i + 1])
+      }
+    }
   })
   return map
+}
+
+/** Numéros (1-based, croissants) des étapes dont une action vise chaque objet, quelle qu'elle soit. */
+export function stepUses(seq: Sequence): Map<ShapeRef, number[]> {
+  const map = new Map<ShapeRef, number[]>()
+  seq.steps.forEach((step, i) => {
+    for (const t of new Set(step.actions.flatMap((a) => a.targets))) map.set(t, [...(map.get(t) ?? []), i + 1])
+  })
+  return map
+}
+
+/** Numéro (1-based) de l'étape où chaque objet apparaît pour la première fois. */
+export function appearanceIndex(seq: Sequence): Map<ShapeRef, number> {
+  return new Map([...appearances(seq)].map(([id, steps]) => [id, steps[0]]))
 }

@@ -34,7 +34,10 @@ export function sanitizeForPublicShare(input: unknown, extraTerms: string[] = []
   }
   const records = entries.map(([, r]) => r as Rec)
   const sequence = records.find((r) => r.typeName === 'document')?.meta?.sequence
-  if (!isObject(sequence) || !Array.isArray(sequence.steps)) return { ok: false, reason: 'invalid' }
+  // Étapes communes (anciens documents) ou par page (`pages`, voir canvas/adapter.ts).
+  if (!isObject(sequence) || !Array.isArray(sequence.steps) || (sequence.pages !== undefined && !isObject(sequence.pages))) {
+    return { ok: false, reason: 'invalid' }
+  }
 
   const terms = [...BLOCKED_TERMS, ...extraTerms].map(normalize).filter(Boolean)
   const dropped = new Set(
