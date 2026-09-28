@@ -4,7 +4,6 @@ import { useEditor, useValue, type TLShapeId } from 'tldraw'
 import { readSequence } from '@/lib/canvas/adapter'
 import { appearances } from '@/lib/sequence/edit'
 import { activeStepIdAtom, modeAtom, stepBadgesVisibleAtom } from '@/lib/presentation/store'
-import { useT } from '@/i18n/client'
 
 /**
  * Pastilles numérotées sur le canevas, en mode édition : à quelle(s) étape(s) chaque objet apparaît
@@ -34,7 +33,6 @@ export function StepBadges() {
 
   return (
     <>
-      <CameraArea />
       {badges.map((b) => (
         <div
           key={b.id}
@@ -45,31 +43,5 @@ export function StepBadges() {
         </div>
       ))}
     </>
-  )
-}
-
-/** Zone cadrée par la caméra à l'étape active, quand elle est en mode « zone ». */
-function CameraArea() {
-  const t = useT()
-  const editor = useEditor()
-  const area = useValue(
-    'camera area',
-    () => {
-      if (modeAtom.get() !== 'edit') return null
-      const seq = readSequence(editor)
-      const index = seq?.steps.findIndex((s) => s.id === activeStepIdAtom.get()) ?? -1
-      const camera = seq?.steps[index]?.camera
-      return camera?.mode === 'area' && camera.area ? { ...camera.area, n: index + 1 } : null
-    },
-    [editor]
-  )
-  const zoom = useValue('zoom', () => editor.getZoomLevel(), [editor])
-  if (!area) return null
-  return (
-    <div className="camera-area" style={{ left: area.x, top: area.y, width: area.w, height: area.h, borderWidth: 2 / zoom }}>
-      <span className="camera-area-label" style={{ scale: `${1 / zoom}` }}>
-        {t.step.cameraAreaLabel(area.n)}
-      </span>
-    </div>
   )
 }

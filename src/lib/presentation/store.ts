@@ -118,6 +118,9 @@ export function closeNote(id: string) {
 /** Étape sélectionnée dans le panneau d'édition. */
 export const activeStepIdAtom = atom<string | null>('activeStepId', null)
 
+/** Préréglages repliés dans le panneau de styles (seul leur en-tête reste visible). */
+export const presetsCollapsedAtom = atom<boolean>('presetsCollapsed', readStoredValue('presetsCollapsed') === 'true')
+
 /** Pastilles de numéro d'étape sur le canevas (mode édition). */
 export const stepBadgesVisibleAtom = atom<boolean>('stepBadgesVisible', readStoredValue('stepBadgesVisible') !== 'false')
 

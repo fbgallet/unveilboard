@@ -124,10 +124,14 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
     if (activeIndex >= 0) save(addTargets(seq, seq.steps[activeIndex].id, 'show', [id]))
   }
 
-  /** Zone caméra : ce que montre le canevas, ou la sélection avec une petite marge. */
+  /**
+   * Zone caméra : la sélection avec une petite marge, ou ce que montre le canevas, un peu en retrait
+   * de ses bords pour que le cadre et ses poignées restent visibles et saisissables (hors des menus).
+   */
   function areaFrom(source: 'view' | 'selection'): Area {
-    const box = source === 'selection' ? editor.getSelectionPageBounds()?.clone().expandBy(32) : null
-    const { x, y, w, h } = box ?? editor.getViewportPageBounds()
+    const selected = source === 'selection' ? editor.getSelectionPageBounds()?.clone().expandBy(32) : null
+    const view = editor.getViewportPageBounds()
+    const { x, y, w, h } = selected ?? view.clone().expandBy(-Math.min(view.w, view.h) * 0.08)
     return { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) }
   }
 
@@ -438,6 +442,7 @@ function StepCard(p: StepCardProps) {
               </span>
             )}
           </div>
+          {step.camera.mode === 'area' && <p className="text-[11px] leading-snug text-zinc-400">{t.step.areaFitNote}</p>}
           <MarkdownEditor
             value={step.narration}
             onChange={(narration) => p.onChange({ narration })}

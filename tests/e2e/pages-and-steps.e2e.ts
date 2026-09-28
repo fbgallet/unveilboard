@@ -112,3 +112,79 @@ test('caméra : zone définie, cadrée en présentation', async ({ page }) => {
   expect(Math.abs(center.x - area.cx)).toBeLessThan(40)
   expect(Math.abs(center.y - area.cy)).toBeLessThan(40)
 })
+
+test('barre de la sélection : ajouter à l’étape active, puis en retirer (aussi en séquençage rapide)', async ({ page }) => {
+  await openExample(page)
+  const id = await page.evaluate(() => {
+    const { editor } = window as unknown as Win
+    const seq = editor.getDocumentSettings().meta.sequence as { steps: { actions: { type: string; targets: string[] }[] }[] }
+    return seq.steps[0].actions.find((a) => a.type === 'show')!.targets[0]
+  })
+  const select = () =>
+    page.evaluate((id) => {
+      ;(window as unknown as Win).editor.select(id as never)
+    }, id)
+  const stepsOf = () =>
+    page.evaluate((id) => {
+      const seq = (window as unknown as Win).editor.getDocumentSettings().meta.sequence as { steps: { actions: { targets: string[] }[] }[] }
+      return seq.steps.flatMap((s, i) => (s.actions.some((a) => a.targets.includes(id)) ? [i + 1] : []))
+    }, id)
+  const bar = page.locator('.quick-assign')
+
+  // Sans étape active : pas de barre.
+  await select()
+  await expect(bar).toHaveCount(0)
+
+  await stepCards(page).nth(2).click()
+  await select()
+  await bar.getByRole('button', { name: 'Add to step 3' }).click()
+  expect(await stepsOf()).toEqual([3])
+
+  await select()
+  await bar.getByRole('button', { name: 'Remove from step 3' }).click()
+  expect(await stepsOf()).toEqual([])
+
+  // Séquençage rapide : la même barre pour la sélection, sans objet créé en attente.
+  await page.getByRole('button', { name: 'Quick' }).click()
+  await stepCards(page).nth(1).click()
+  await select()
+  await bar.getByRole('button', { name: 'Add to step 2' }).click()
+  expect(await stepsOf()).toEqual([2])
+})
+
+test('caméra : la zone se redimensionne et se déplace à la souris', async ({ page }) => {
+  await openExample(page)
+  await stepCards(page).first().click()
+  await stepCards(page).first().getByRole('combobox').last().selectOption('area')
+  const frame = page.locator('.camera-area')
+  await expect(frame).toBeVisible()
+  const area = () =>
+    page.evaluate(() => {
+      const seq = (window as unknown as Win).editor.getDocumentSettings().meta.sequence as { steps: { camera: { area?: { w: number; x: number } } }[] }
+      return seq.steps[0].camera.area!
+    })
+  const before = await area()
+
+  // Bord est (tout le bord sert de poignée ; son milieu peut être sous le panneau de styles) : tiré de 100 px vers la gauche.
+  const east = await frame.locator('.spot-zone-e').boundingBox()
+  const grab = { x: east!.x + east!.width / 2, y: east!.y + east!.height - 20 }
+  await page.mouse.move(grab.x, grab.y)
+  await page.mouse.down()
+  await page.mouse.move(grab.x - 100, grab.y, { steps: 5 })
+  await page.mouse.up()
+  const resized = await area()
+  expect(resized.w).toBeLessThan(before.w)
+  expect(resized.x).toBe(before.x)
+
+  // Étiquette : déplacement de 80 px vers la droite.
+  const label = await frame.locator('.camera-area-label').boundingBox()
+  await page.mouse.move(label!.x + 10, label!.y + 5)
+  await page.mouse.down()
+  await page.mouse.move(label!.x + 90, label!.y + 5, { steps: 5 })
+  await page.mouse.up()
+  const moved = await area()
+  expect(moved.x).toBeGreaterThan(resized.x)
+  expect(moved.w).toBe(resized.w)
+  // Le geste n'a rien sélectionné ni déplacé sur le canevas.
+  expect(await page.evaluate(() => (window as unknown as Win).editor.getSelectedShapeIds().length)).toBe(0)
+})

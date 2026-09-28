@@ -37,6 +37,7 @@ import {
   type PresetTarget,
 } from '@/lib/presets/presets'
 import { settingsStore } from '@/lib/storage'
+import { presetsCollapsedAtom, storeValue } from '@/lib/presentation/store'
 import { storageModeAtom } from '@/lib/sync/documentSync'
 import { useT } from '@/i18n/client'
 import { presetName, presetRole } from '@/lib/presets/labels'
@@ -90,35 +91,55 @@ function PresetPalette() {
     [editor]
   )
 
+  const collapsed = useValue(presetsCollapsedAtom)
+  const toggle = () => {
+    presetsCollapsedAtom.set(!collapsed)
+    storeValue('presetsCollapsed', !collapsed)
+  }
+  const activePreset = view.items.find((p) => p.id === view.active)
+
   return (
-    <div className="preset-section">
-      <div className="preset-chips">
-        {view.items.map((p) => (
-          <button
-            key={p.id}
-            className={`preset-chip ${view.active === p.id ? 'preset-chip-active' : ''} ${view.docOnly.has(p.id) ? 'preset-chip-doc' : ''}`}
-            onClick={() => applyPreset(editor, p)}
-            title={[view.docOnly.has(p.id) ? t.presets.docOnly(presetName(p, t)) : presetName(p, t), presetDefinition(p, t)].filter(Boolean).join(' — ')}
-          >
-            <Swatch editor={editor} preset={p} />
-            {presetName(p, t)}
+    <div className={`preset-section ${collapsed ? 'preset-section-collapsed' : ''}`}>
+      <button className="preset-header" onClick={toggle} aria-expanded={!collapsed} title={collapsed ? t.presets.expand : t.presets.collapse}>
+        <span className="preset-chevron" aria-hidden>
+          {collapsed ? '▸' : '▾'}
+        </span>
+        {t.presets.section}
+        {/* Replié : le préréglage de la sélection reste indiqué. */}
+        {collapsed && activePreset && <span className="preset-header-active">· {presetName(activePreset, t)}</span>}
+      </button>
+      {view.armed && collapsed && <p className="preset-armed">{t.presets.armed(presetName(view.armed, t))}</p>}
+      {!collapsed && (
+        <>
+          <div className="preset-chips">
+            {view.items.map((p) => (
+              <button
+                key={p.id}
+                className={`preset-chip ${view.active === p.id ? 'preset-chip-active' : ''} ${view.docOnly.has(p.id) ? 'preset-chip-doc' : ''}`}
+                onClick={() => applyPreset(editor, p)}
+                title={[view.docOnly.has(p.id) ? t.presets.docOnly(presetName(p, t)) : presetName(p, t), presetDefinition(p, t)].filter(Boolean).join(' — ')}
+              >
+                <Swatch editor={editor} preset={p} />
+                {presetName(p, t)}
+              </button>
+            ))}
+          </div>
+          {view.armed && <p className="preset-armed">{t.presets.armed(presetName(view.armed, t))}</p>}
+          <button className="preset-manage preset-guide-link" onClick={() => presetGuideOpenAtom.set(true)} title={t.guide.open}>
+            ?
           </button>
-        ))}
-      </div>
-      {view.armed && <p className="preset-armed">{t.presets.armed(presetName(view.armed, t))}</p>}
-      <button className="preset-manage preset-guide-link" onClick={() => presetGuideOpenAtom.set(true)} title={t.guide.open}>
-        ?
-      </button>
-      <button
-        className="preset-manage preset-more"
-        onClick={() => save({ ...presetSettingsAtom.get(), profile: view.complete ? 'essential' : 'complete' })}
-        title={view.complete ? t.presets.lessHint : t.presets.moreHint}
-      >
-        {view.complete ? t.presets.less : t.presets.more}
-      </button>
-      <button className="preset-manage" onClick={() => presetManagerOpenAtom.set(true)}>
-        {t.presets.manage}
-      </button>
+          <button
+            className="preset-manage preset-more"
+            onClick={() => save({ ...presetSettingsAtom.get(), profile: view.complete ? 'essential' : 'complete' })}
+            title={view.complete ? t.presets.lessHint : t.presets.moreHint}
+          >
+            {view.complete ? t.presets.less : t.presets.more}
+          </button>
+          <button className="preset-manage" onClick={() => presetManagerOpenAtom.set(true)}>
+            {t.presets.manage}
+          </button>
+        </>
+      )}
     </div>
   )
 }

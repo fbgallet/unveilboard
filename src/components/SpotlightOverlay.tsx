@@ -137,8 +137,8 @@ function paintRings(veil: HTMLDivElement, holes: PageRect[]) {
 
 // ---------- Tracé à la volée ----------
 
-type Handle = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
-const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
+export type Handle = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
+export const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
 
 /** Taille minimale d'une fenêtre (px écran). */
 const MIN_SIZE = 12
@@ -198,18 +198,7 @@ function LiveSpotEditor() {
     frameEl?.classList.add('spot-frame-resizing')
     drag(e, {
       end: () => frameEl?.classList.remove('spot-frame-resizing'),
-      move: (ev) => {
-        const p = toPage(ev)
-        let minX = initial.x
-        let minY = initial.y
-        let maxX = initial.x + initial.w
-        let maxY = initial.y + initial.h
-        if (handle.includes('w')) minX = Math.min(p.x, maxX - minPage)
-        if (handle.includes('e')) maxX = Math.max(p.x, minX + minPage)
-        if (handle.includes('n')) minY = Math.min(p.y, maxY - minPage)
-        if (handle.includes('s')) maxY = Math.max(p.y, minY + minPage)
-        liveSpotAtom.set({ x: minX, y: minY, w: maxX - minX, h: maxY - minY })
-      },
+      move: (ev) => liveSpotAtom.set(resizeRect(initial, handle, toPage(ev), minPage)),
     })
   }
 
@@ -235,7 +224,7 @@ function LiveSpotEditor() {
   )
 }
 
-function drag(e: ReactPointerEvent, on: { move(ev: PointerEvent): void; end?(ev: PointerEvent): void }) {
+export function drag(e: ReactPointerEvent, on: { move(ev: PointerEvent): void; end?(ev: PointerEvent): void }) {
   e.preventDefault()
   const onMove = (ev: PointerEvent) => on.move(ev)
   const onUp = (ev: PointerEvent) => {
@@ -251,12 +240,25 @@ function drag(e: ReactPointerEvent, on: { move(ev: PointerEvent): void; end?(ev:
 
 // ---------- Géométrie ----------
 
+/** Rectangle redimensionné par une poignée tirée jusqu'au point p (coordonnées de page). */
+export function resizeRect(initial: PageRect, handle: Handle, p: { x: number; y: number }, min: number): PageRect {
+  let minX = initial.x
+  let minY = initial.y
+  let maxX = initial.x + initial.w
+  let maxY = initial.y + initial.h
+  if (handle.includes('w')) minX = Math.min(p.x, maxX - min)
+  if (handle.includes('e')) maxX = Math.max(p.x, minX + min)
+  if (handle.includes('n')) minY = Math.min(p.y, maxY - min)
+  if (handle.includes('s')) maxY = Math.max(p.y, minY + min)
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
+}
+
 function rectFrom(a: { x: number; y: number }, b: { x: number; y: number }): PageRect {
   return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) }
 }
 
 /** Rectangle de page → coordonnées dans le conteneur de l'éditeur. */
-function toViewport(editor: Editor, r: PageRect): PageRect {
+export function toViewport(editor: Editor, r: PageRect): PageRect {
   const a = editor.pageToViewport({ x: r.x, y: r.y })
   const b = editor.pageToViewport({ x: r.x + r.w, y: r.y + r.h })
   return { x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y }

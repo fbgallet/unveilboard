@@ -594,27 +594,33 @@ button.review-badge {
   background: var(--color-amber-700);
   outline: 3px solid var(--color-amber-200);
 }
-/* Zone cadrée par la caméra à l'étape active (mode « zone »). */
-.camera-area {
-  position: absolute;
-  z-index: 99999;
-  border: 2px dashed var(--color-amber-500);
+/* Zone cadrée par la caméra à l'étape active (mode « zone ») : l'intérieur laisse passer
+   les clics vers le canevas ; poignées (.spot-zone) et étiquette seules répondent. */
+.spot-frame.camera-area {
+  z-index: 300;
+  cursor: default;
+  pointer-events: none;
+  border: 2px dashed #f59e0b;
   border-radius: 4px;
   background: rgb(245 158 11 / 0.04);
-  pointer-events: none;
+}
+.camera-area .spot-zone,
+.camera-area-label {
+  pointer-events: auto;
 }
 .camera-area-label {
   position: absolute;
   top: 0;
-  left: 0;
-  transform-origin: 0 100%;
+  left: -2px;
   translate: 0 -100%;
   padding: 1px 6px;
   border-radius: 4px 4px 0 0;
-  background: var(--color-amber-500);
+  background: #f59e0b;
   color: var(--color-white);
   font: 600 11px/16px var(--font-geist-sans), sans-serif;
   white-space: nowrap;
+  cursor: move;
+  touch-action: none;
 }
 
 /* ---------- Mode présentation ---------- */
@@ -1192,6 +1198,41 @@ body.is-resizing {
 .preset-section {
   padding: 6px 6px 4px;
   border-bottom: 1px solid var(--tl-color-divider, #e4e4e7);
+}
+.preset-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  margin-bottom: 3px;
+  padding: 1px 2px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-zinc-400);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.preset-header:hover {
+  color: var(--color-zinc-600);
+  background: var(--tl-color-muted-2, #f4f4f5);
+}
+.preset-section-collapsed .preset-header {
+  margin-bottom: 0;
+}
+.preset-chevron {
+  width: 8px;
+  font-size: 9px;
+}
+.preset-header-active {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--color-amber-700);
 }
 .preset-chips {
   display: flex;

@@ -23,9 +23,10 @@ import { ContextMenu } from './SequenceMenu'
 import { SequencePanel } from './SequencePanel'
 import { Legend, NarrationPanel, NoteMarkers, ProgressBar } from './PresenterUI'
 import { pinNarrationScale, usePresentation } from './usePresentation'
-import { QuickAssign, QuickSequence } from './QuickAssign'
+import { QuickAssign, QuickSequence, SelectionAssign } from './QuickAssign'
 import { FileBanner, SyncBanner } from './SyncIndicator'
 import { SpotlightOverlay } from './SpotlightOverlay'
+import { CameraAreaEditor } from './CameraAreaEditor'
 import { FoldBadges, RelationPicker, TreeToolbar, useTreeKeyboard } from './TreeTools'
 import { MainMenu } from './FileMenu'
 import { PresetGuide, PresetManager, PresetStylePanel } from './PresetTools'
@@ -64,10 +65,19 @@ function CanvasBadges() {
   )
 }
 
+function InFrontOfTheCanvas() {
+  return (
+    <>
+      <CameraAreaEditor />
+      <SpotlightOverlay />
+    </>
+  )
+}
+
 const components: TLComponents = {
   ShapeWrapper: PresShapeWrapper,
   OnTheCanvas: CanvasBadges,
-  InFrontOfTheCanvas: SpotlightOverlay,
+  InFrontOfTheCanvas,
   MainMenu,
   StylePanel: PresetStylePanel,
   SharePanel: AiLauncher,
@@ -215,6 +225,7 @@ export default function Studio({
         {mode === 'present' && <ShortcutsHelp />}
         {editor && mode === 'present' && unlocked && <QuickAssign editor={editor} />}
         {editor && mode === 'edit' && quickSequence && <QuickSequence editor={editor} />}
+        {editor && mode === 'edit' && !quickSequence && <SelectionAssign editor={editor} />}
         {editor && (mode === 'edit' || unlocked) && <TreeToolbar editor={editor} />}
         {editor && (mode === 'edit' || unlocked) && <RelationPicker editor={editor} />}
         {editor && mode === 'edit' && <SuggestionBar editor={editor} />}

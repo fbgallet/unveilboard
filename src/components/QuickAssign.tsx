@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useValue, type Editor, type TLShapeId } from 'tldraw'
 import { readSequence, writeSequence } from '@/lib/canvas/adapter'
-import { addStep, addTargets, appearanceIndex } from '@/lib/sequence/edit'
+import { addStep, addTargets, appearanceIndex, appearances, removeTargets } from '@/lib/sequence/edit'
 import { emptySequence, type Sequence } from '@/lib/sequence/types'
 import { useT } from '@/i18n/client'
 import { activeStepIdAtom, pendingShapesAtom, quickSequenceAtom, stepIndexAtom } from '@/lib/presentation/store'
@@ -34,6 +34,32 @@ export function QuickAssign({ editor }: { editor: Editor }) {
 }
 
 /**
+ * Mode édition, une étape active : rattacher la sélection d'un clic à cette étape,
+ * ou à une nouvelle étape juste avant / juste après.
+ */
+export function SelectionAssign({ editor }: { editor: Editor }) {
+  const selection = useValue('selection', () => editor.getSelectedShapeIds(), [editor])
+  const seq = useValue('sequence', () => readSequence(editor), [editor])
+  const activeId = useValue(activeStepIdAtom)
+  const isBusy = useIsBusy(editor)
+  const index = seq?.steps.findIndex((s) => s.id === activeId) ?? -1
+  if (!seq || index < 0 || !selection.length || isBusy) return null
+
+  return (
+    <AssignBar
+      editor={editor}
+      seq={seq}
+      index={index}
+      targets={selection}
+      onAssigned={(next, nextIndex) => {
+        editor.selectNone()
+        activeStepIdAtom.set(next.steps[nextIndex]?.id ?? null)
+      }}
+    />
+  )
+}
+
+/**
  * Séquençage rapide (mode édition) : les objets créés s'accumulent, puis on les rattache
  * d'un clic (ou 1 / 2 / 3) à l'étape active, ou à une nouvelle étape avant / après.
  */
@@ -44,6 +70,9 @@ export function QuickSequence({ editor }: { editor: Editor }) {
   const seq = stored ?? emptySequence()
   const activeId = useValue(activeStepIdAtom)
   const pending = useValue('pending', () => pendingTargets(editor), [editor])
+  // Sans objet créé en attente, la sélection se rattache de la même façon.
+  const selection = useValue('selection', () => editor.getSelectedShapeIds(), [editor])
+  const targets = pending.length ? pending : selection
   const isBusy = useIsBusy(editor)
   const index = seq.steps.findIndex((s) => s.id === activeId)
 
@@ -72,7 +101,7 @@ export function QuickSequence({ editor }: { editor: Editor }) {
     </button>
   )
 
-  if (!pending.length || isBusy) {
+  if (!targets.length || isBusy) {
     return (
       <div className="quick-assign quick-sequence pointer-events-auto absolute left-1/2 z-[600] flex -translate-x-1/2 items-center gap-2 rounded-xl border border-amber-300 bg-white/95 p-1 pl-3 text-xs text-stone-500 shadow-lg backdrop-blur">
         <span className="font-medium text-amber-700">{t.quick.title}</span>
@@ -88,22 +117,25 @@ export function QuickSequence({ editor }: { editor: Editor }) {
       editor={editor}
       seq={seq}
       index={index}
-      targets={pending}
+      targets={targets}
       shortcuts
       className="border-amber-300"
       onAssigned={(next, nextIndex) => {
-        pendingShapesAtom.set([])
+        if (pending.length) pendingShapesAtom.set([])
+        else editor.selectNone()
         activeStepIdAtom.set(next.steps[nextIndex]?.id ?? null)
       }}
       extra={
         <>
-          <button
-            className="qa-btn text-stone-400"
-            onClick={() => pendingShapesAtom.set([])}
-            title={t.quick.ignoreHint}
-          >
-            {t.quick.ignore}
-          </button>
+          {pending.length > 0 && (
+            <button
+              className="qa-btn text-stone-400"
+              onClick={() => pendingShapesAtom.set([])}
+              title={t.quick.ignoreHint}
+            >
+              {t.quick.ignore}
+            </button>
+          )}
           {quit}
         </>
       }
@@ -130,8 +162,8 @@ interface AssignBarProps {
 function AssignBar({ editor, seq, index, targets, onAssigned, shortcuts, className = '', before, extra }: AssignBarProps) {
   const t = useT()
   const current = seq.steps[index]
-  const appears = appearanceIndex(seq)
-  const already = [...new Set(targets.map((id) => appears.get(id)).filter((n) => n !== undefined))]
+  const appears = appearances(seq)
+  const already = [...new Set(targets.flatMap((id) => appears.get(id) ?? []))].sort((a, b) => a - b)
 
   function save(next: Sequence, nextIndex: number) {
     writeSequence(editor, next)
@@ -140,6 +172,12 @@ function AssignBar({ editor, seq, index, targets, onAssigned, shortcuts, classNa
 
   const addToCurrent = () => {
     if (current) save(addTargets(seq, current.id, 'show', targets), index)
+  }
+  // Objets déjà visés par une action de l'étape courante : on peut les en retirer.
+  const selected = new Set<string>(targets)
+  const inCurrent = !!current?.actions.some((a) => a.targets.some((id) => selected.has(id)))
+  const removeFromCurrent = () => {
+    if (current) save(removeTargets(seq, current.id, targets), index)
   }
 
   // Nouvelle étape à la position `at`, qui fait apparaître les objets.
@@ -206,6 +244,11 @@ function AssignBar({ editor, seq, index, targets, onAssigned, shortcuts, classNa
         {key('2')}
         {t.quick.addToStep(index + 1)}
       </button>
+      {inCurrent && (
+        <button className="qa-btn" onClick={removeFromCurrent} title={t.quick.removeFromStepHint}>
+          {t.quick.removeFromStep(index + 1)}
+        </button>
+      )}
       <button
         className="qa-btn"
         onClick={insertAfter}
