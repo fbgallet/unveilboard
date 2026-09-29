@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto'
 import { and, eq, sql } from 'drizzle-orm'
 import { db } from '.'
 import { documents, shares } from './schema'
+import { withoutSnapshotTags } from '@/lib/tags'
 
 const OWNER = 'owner'
 const SHARE_ID = /^[\w-]{16}$/
@@ -31,12 +32,14 @@ export async function publishDocument(documentId: string): Promise<ShareInfo | n
     .from(documents)
     .where(and(eq(documents.id, documentId), eq(documents.ownerId, OWNER)))
   if (!doc?.snapshot) return null
+  // Les étiquettes sont un classement privé : pas dans la copie publiée.
+  const snapshot = withoutSnapshotTags(doc.snapshot)
   const [row] = await db
     .insert(shares)
-    .values({ id: randomBytes(12).toString('base64url'), documentId, title: doc.title, snapshot: doc.snapshot })
+    .values({ id: randomBytes(12).toString('base64url'), documentId, title: doc.title, snapshot })
     .onConflictDoUpdate({
       target: shares.documentId,
-      set: { title: doc.title, snapshot: doc.snapshot, publishedAt: sql`now()` },
+      set: { title: doc.title, snapshot, publishedAt: sql`now()` },
     })
     .returning({ id: shares.id, publishedAt: shares.publishedAt })
   return row

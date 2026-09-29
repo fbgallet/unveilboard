@@ -17,6 +17,7 @@ import { takePendingMap } from '../map/pending'
 import type { DemoName } from '../demoNames'
 import { m } from '@/i18n/client'
 import { emptySequence } from '../sequence/types'
+import { normalizeTags } from '../tags'
 import { StorageError, type DocumentStore, type StoredDocument } from '../storage/types'
 
 export type SyncState = 'loading' | 'saved' | 'pending' | 'saving' | 'offline' | 'conflict' | 'error'
@@ -181,6 +182,7 @@ export function startDocumentSync(
       const result = await store.save(docId, {
         snapshotJson: json,
         title: readSequence(editor)?.title ?? m().common.untitled,
+        tags: normalizeTags(editor.getDocumentSettings().meta.tags),
         baseVersion: meta.version,
         force,
       })

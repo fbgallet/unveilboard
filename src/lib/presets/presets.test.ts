@@ -60,7 +60,7 @@ describe('normalizePresetSettings', () => {
       ],
     }
     const v3 = normalizePresetSettings(v2, names, roles)
-    expect(v3.version).toBe(9)
+    expect(v3.version).toBe(11)
     expect(v3.items.map((p) => p.id)).toEqual([
       'statement', 'belief', 'fact', 'example', 'quote', 'linked', 'objects', 'explains', 'distinction', 'opposes', 'relates', 'premise',
     ])
@@ -68,6 +68,15 @@ describe('normalizePresetSettings', () => {
     // Couleur modifiée par l'utilisateur : conservée.
     expect(v3.items.find((p) => p.id === 'quote')!.style.color).toBe('violet')
     expect(v3.items.find((p) => p.id === 'objects')!.role).toBe('Objection')
+  })
+
+  it('v9 → v11 : la citation perd son cadre en tirets de la v1 et prend un fond jaune pâle, sauf choix de l’utilisateur', () => {
+    const quote = (style: Record<string, string>, version = 9) =>
+      normalizePresetSettings({ version, items: [{ id: 'quote', name: 'Cit', target: 'shape', style: { color: 'yellow', ...style } }] }, names)
+        .items.find((p) => p.id === 'quote')!.style
+    expect(quote({ dash: 'dashed', fill: 'none' })).toMatchObject({ dash: 'none', fill: 'solid' })
+    expect(quote({ dash: 'none', fill: 'semi' }, 10)).toMatchObject({ dash: 'none', fill: 'solid' })
+    expect(quote({ dash: 'solid', fill: 'pattern' })).toMatchObject({ dash: 'solid', fill: 'pattern' })
   })
 })
 

@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import { integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 
 export const documents = pgTable('documents', {
@@ -7,6 +8,8 @@ export const documents = pgTable('documents', {
   title: text('title').notNull().default('Sans titre'),
   /** Instantané du document tldraw (TLStoreSnapshot), séquence comprise. */
   snapshot: jsonb('snapshot'),
+  /** Étiquettes : copie de celles de l'instantané (document.meta.tags), pour la liste. */
+  tags: text('tags').array().notNull().default(sql`'{}'::text[]`),
   /** Incrémentée à chaque sauvegarde : verrouillage optimiste entre appareils. */
   version: integer('version').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

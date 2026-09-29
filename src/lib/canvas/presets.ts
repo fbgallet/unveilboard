@@ -183,6 +183,18 @@ export function swatchColor(editor: Editor, preset: Preset) {
   return getColorValue(colors, preset.style.color ?? 'black', 'solid')
 }
 
+/** Nuance de la couleur pour chaque fond (comme tldraw) : `semi` est, lui, le fond neutre du thème. */
+const FILL_VARIANTS = { solid: 'semi', pattern: 'pattern', fill: 'fill', 'lined-fill': 'linedFill' } as const
+
+/** Fond d'une forme au préréglage, tel que tldraw le peint (`none` : sans fond). */
+export function swatchFill(editor: Editor, preset: Preset) {
+  const fill = preset.style.fill ?? 'none'
+  const colors = editor.getCurrentTheme().colors[editor.getColorMode()]
+  if (fill === 'semi') return colors.solid
+  const variant = FILL_VARIANTS[fill as keyof typeof FILL_VARIANTS]
+  return variant ? getColorValue(colors, preset.style.color ?? 'black', variant) : 'none'
+}
+
 /**
  * Nature armée : la forme créée avec l'outil de formes la reçoit ; l'arme se désarme dès que
  * l'on quitte cet outil (tldraw revient à la sélection après chaque forme tracée).

@@ -51,6 +51,8 @@ export function sanitizeForPublicShare(input: unknown, extraTerms: string[] = []
     if (record.typeName === 'binding' && (dropped.has(String(record.fromId)) || dropped.has(String(record.toId)))) continue
     const r = structuredClone(record)
 
+    // Étiquettes de l'accueil : un classement privé.
+    if (r.typeName === 'document' && r.meta) delete r.meta.tags
     if (r.typeName === 'shape' && r.props) {
       if (typeof r.props.url === 'string') r.props.url = ''
       if (r.props.richText) r.props.richText = withoutLinks(r.props.richText)

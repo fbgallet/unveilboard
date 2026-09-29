@@ -22,6 +22,7 @@ import {
   selectedPresetId,
   styleFromSelection,
   swatchColor,
+  swatchFill,
 } from '@/lib/canvas/presets'
 import {
   REASONINGS,
@@ -155,7 +156,7 @@ function Swatch({ editor, preset }: { editor: Editor; preset: Preset }) {
       </svg>
     )
   }
-  const fill = preset.style.fill && preset.style.fill !== 'none' ? `color-mix(in srgb, ${color} 22%, transparent)` : 'none'
+  const fill = swatchFill(editor, preset)
   const dash = preset.style.dash === 'dashed' ? '2.5 1.5' : preset.style.dash === 'dotted' ? '0.8 1.4' : undefined
   const stroke = preset.style.dash === 'none' ? 'none' : color
   const common = { fill, stroke, strokeWidth: 1.4, strokeDasharray: dash }

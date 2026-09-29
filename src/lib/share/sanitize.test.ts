@@ -29,6 +29,13 @@ describe('sanitizeForPublicShare', () => {
     expect(r.ok && r.snapshot.store['user:u']).toBe(undefined)
   })
 
+  it('retire les étiquettes (classement privé de l’accueil)', () => {
+    const tagged = doc()
+    ;(tagged.store['document:document'].meta as Record<string, unknown>).tags = ['Terminale']
+    const r = sanitizeForPublicShare(tagged)
+    expect(r.ok && r.snapshot.store['document:document'].meta).not.toHaveProperty('tags')
+  })
+
   it('refuse ce qui n’est pas un document Unveilboard', () => {
     expect(sanitizeForPublicShare(null)).toEqual({ ok: false, reason: 'invalid' })
     expect(sanitizeForPublicShare({ store: {}, schema: {} })).toEqual({ ok: false, reason: 'invalid' })

@@ -1954,15 +1954,59 @@ svg.preset-swatch {
   border-top: 2px solid;
 }
 
-/* Citation : grands guillemets décoratifs, en haut à gauche */
+/* Citation : grands guillemets décoratifs, suspendus hors de la forme (sans toucher l'étiquette) :
+   ouvrant en haut à gauche, fermant en bas à droite */
 .quote-mark {
   position: absolute;
-  left: -6px;
-  top: -18px;
-  font: 72px/1 Georgia, 'Times New Roman', serif;
-  color: var(--color-amber-300);
-  opacity: 0.7;
+  font: 700 80px/1 Georgia, 'Times New Roman', serif;
+  color: var(--color-amber-500);
   pointer-events: none;
+}
+.quote-mark-open {
+  right: 100%;
+  top: -6px;
+  margin-right: -4px;
+}
+.quote-mark-close {
+  left: 100%;
+  bottom: -50px;
+  margin-left: -4px;
+}
+
+/* Accueil : étiquettes des schémas */
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  padding: 1px 8px;
+  border: 1px solid var(--color-stone-200);
+  border-radius: 999px;
+  background: var(--color-stone-50);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--color-stone-600);
+  white-space: nowrap;
+}
+button.tag-chip:hover,
+.tag-chip > button:first-child:hover {
+  color: var(--color-stone-900);
+}
+.tag-chip-on {
+  border-color: var(--color-amber-300);
+  background: var(--color-amber-50);
+  color: var(--color-amber-800);
+}
+.tag-chip-x {
+  margin-right: -4px;
+  padding: 0 3px;
+  border-radius: 999px;
+  line-height: 16px;
+  color: var(--color-stone-400);
+}
+.tag-chip-x:hover {
+  background: var(--color-red-50);
+  color: var(--color-red-600);
 }
 
 /* Éditeur Markdown (narration, notes) */

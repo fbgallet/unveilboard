@@ -2,12 +2,13 @@ import 'server-only'
 import { and, desc, eq, sql } from 'drizzle-orm'
 import { db } from '.'
 import { documents } from './schema'
+import { DOCUMENT_RECORD_ID, normalizeTags, snapshotTags } from '@/lib/tags'
 
 const OWNER = 'owner'
 
 export async function listDocuments() {
   return db
-    .select({ id: documents.id, title: documents.title, updatedAt: documents.updatedAt })
+    .select({ id: documents.id, title: documents.title, updatedAt: documents.updatedAt, tags: documents.tags })
     .from(documents)
     .where(eq(documents.ownerId, OWNER))
     .orderBy(desc(documents.updatedAt))
@@ -16,7 +17,7 @@ export async function listDocuments() {
 export async function createDocument(title = 'Untitled', snapshot?: unknown) {
   const [row] = await db
     .insert(documents)
-    .values({ title: title.trim().slice(0, 200) || 'Untitled', ownerId: OWNER, snapshot })
+    .values({ title: title.trim().slice(0, 200) || 'Untitled', ownerId: OWNER, snapshot, tags: snapshotTags(snapshot) })
     .returning({ id: documents.id })
   return row.id
 }
@@ -61,6 +62,7 @@ export async function saveDocument(
     .set({
       snapshot: input.snapshot,
       title: input.title.trim().slice(0, 200) || 'Untitled',
+      tags: snapshotTags(input.snapshot),
       version: sql`${documents.version} + 1`,
       updatedAt: sql`now()`,
     })
@@ -70,6 +72,28 @@ export async function saveDocument(
 
   const current = await getDocumentVersion(id)
   return current ? { ok: false, reason: 'conflict', version: current.version } : { ok: false, reason: 'not_found' }
+}
+
+/**
+ * Étiquettes remplacées depuis l'accueil : dans l'instantané (document.meta.tags) et la colonne.
+ * Nouvelle version (un appareil qui l'a ouvert le verra), date de modification inchangée.
+ * false : document introuvable.
+ */
+export async function setDocumentTags(id: string, raw: unknown) {
+  if (!isUuid(id)) return false
+  const tags = normalizeTags(raw)
+  const path = `{store,${DOCUMENT_RECORD_ID},meta,tags}`
+  const rows = await db
+    .update(documents)
+    .set({
+      tags,
+      // Un document encore vide (instantané null) le reste : jsonb_set(null, …) vaut null.
+      snapshot: sql`jsonb_set(${documents.snapshot}, ${path}::text[], ${JSON.stringify(tags)}::jsonb)`,
+      version: sql`${documents.version} + 1`,
+    })
+    .where(and(eq(documents.id, id), eq(documents.ownerId, OWNER)))
+    .returning({ id: documents.id })
+  return rows.length > 0
 }
 
 export async function deleteDocument(id: string) {

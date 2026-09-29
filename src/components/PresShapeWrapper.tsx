@@ -87,7 +87,12 @@ function NatureTag({ shape }: { shape: TLShape }) {
           {tag?.modality && <span className="nature-modality">{tag.modality}</span>}
         </div>
       )}
-      {tag?.quote && <div className="quote-mark" aria-hidden>“</div>}
+      {tag?.quote && (
+        <>
+          <div className="quote-mark quote-mark-open" aria-hidden>“</div>
+          <div className="quote-mark quote-mark-close" aria-hidden>”</div>
+        </>
+      )}
     </>
   )
 }

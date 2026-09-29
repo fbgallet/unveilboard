@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { deleteDocument, getDocument, getDocumentVersion, saveDocument } from '@/db/documents'
+import { deleteDocument, getDocument, getDocumentVersion, saveDocument, setDocumentTags } from '@/db/documents'
 import { unauthorized } from '@/lib/session'
 
 /** GET : le document complet, ou seulement sa version avec ?meta=1 (vérification légère). */
@@ -38,6 +38,18 @@ export async function PUT(request: Request, ctx: RouteContext<'/api/documents/[i
     return NextResponse.json({ error: 'Modified elsewhere', version: result.version }, { status: 409 })
   }
   return notFound()
+}
+
+/** PATCH : étiquettes seules, depuis l'accueil. Corps : { tags }. */
+export async function PATCH(request: Request, ctx: RouteContext<'/api/documents/[id]'>) {
+  const denied = await unauthorized()
+  if (denied) return denied
+  const { id } = await ctx.params
+  const body = await request.json().catch(() => null)
+  if (!body || typeof body !== 'object' || !Array.isArray(body.tags)) {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  }
+  return (await setDocumentTags(id, body.tags)) ? new NextResponse(null, { status: 204 }) : notFound()
 }
 
 export async function DELETE(_request: Request, ctx: RouteContext<'/api/documents/[id]'>) {

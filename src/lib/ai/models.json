@@ -24,6 +24,11 @@
       "price": { "input": 0.15, "output": 0.5 }
     },
     {
+      "id": "anthropic/claude-sonnet-5.5",
+      "label": "Claude Sonnet 5.5",
+      "price": { "input": 2, "output": 10 }
+    },
+    {
       "id": "anthropic/claude-opus-5.5",
       "label": "Claude Opus 5.5",
       "price": { "input": 4, "output": 20 }

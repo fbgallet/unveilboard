@@ -10,6 +10,8 @@ export interface DocumentSummary {
   title: string
   /** Horodatage ISO de la dernière sauvegarde. */
   updatedAt: string
+  /** Étiquettes (copie de document.meta.tags, voir src/lib/tags.ts). */
+  tags: string[]
 }
 
 export interface StoredDocument {
@@ -26,6 +28,8 @@ export type SaveResult =
 export interface SaveInput {
   snapshotJson: string
   title: string
+  /** Étiquettes du document (celles de document.meta.tags). */
+  tags: string[]
   /** Version sur laquelle reposent les modifications (verrouillage optimiste). */
   baseVersion: number
   /** Écrase la version enregistrée même si elle a changé entre-temps. */
@@ -41,6 +45,12 @@ export interface DocumentStore {
   load(id: string): Promise<StoredDocument | null>
   version(id: string): Promise<number | null>
   save(id: string, input: SaveInput): Promise<SaveResult>
+  /**
+   * Remplace les étiquettes d'un document depuis l'accueil, sans l'ouvrir : dans son contenu
+   * (document.meta.tags) et dans la liste. Nouvelle version (un onglet ouvert le verra),
+   * mais pas « modifié » : la date de dernière modification ne change pas.
+   */
+  setTags(id: string, tags: string[]): Promise<void>
 }
 
 /** Réglages communs à tous les documents (ex. : préréglages de styles), clé → valeur JSON. */

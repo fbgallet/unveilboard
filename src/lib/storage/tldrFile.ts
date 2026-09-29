@@ -9,6 +9,7 @@
 
 import type { DocumentStore } from './types'
 import { m } from '@/i18n/client'
+import { snapshotTags } from '@/lib/tags'
 
 // API de choix de fichier et permissions (Chrome, Edge) : absentes des types DOM de TypeScript.
 interface FilePickerOptions {
@@ -34,7 +35,7 @@ export interface PickedFile {
 }
 
 /** Lit un fichier .tldr et le convertit en instantané de document (JSON), avec son titre. */
-export async function readTldrFile(file: File): Promise<{ title: string; snapshotJson: string }> {
+export async function readTldrFile(file: File): Promise<{ title: string; tags: string[]; snapshotJson: string }> {
   let data: { records?: { id: string; typeName: string; meta?: Record<string, unknown> }[]; schema?: unknown }
   try {
     data = JSON.parse(await file.text())
@@ -46,8 +47,9 @@ export async function readTldrFile(file: File): Promise<{ title: string; snapsho
   // Titre : celui de la séquence enregistrée dans le document, sinon le nom du fichier.
   const sequence = data.records.find((r) => r.typeName === 'document')?.meta?.sequence as { title?: string } | undefined
   const title = sequence?.title || file.name.replace(/\.tldr$/i, '') || m().common.untitled
+  const snapshot = { store, schema: data.schema }
   // Les migrations du schéma sont appliquées au chargement dans l'éditeur.
-  return { title, snapshotJson: JSON.stringify({ store, schema: data.schema }) }
+  return { title, tags: snapshotTags(snapshot), snapshotJson: JSON.stringify(snapshot) }
 }
 
 /** Demande un fichier .tldr à l'utilisateur ; null s'il annule. */
@@ -104,8 +106,8 @@ export async function openTldrFile(store: DocumentStore, { file, handle }: Picke
     if (file.lastModified !== link.lastModified) {
       // Modifié ailleurs (autre ordinateur, autre application) depuis la dernière lecture ou écriture.
       if (!link.pending || confirm(m().files.reopenConflict(file.name))) {
-        const { title, snapshotJson } = await readTldrFile(file)
-        await store.save(link.docId, { snapshotJson, title, baseVersion: 0, force: true })
+        const { title, tags, snapshotJson } = await readTldrFile(file)
+        await store.save(link.docId, { snapshotJson, title, tags, baseVersion: 0, force: true })
         link.pending = false
       }
       // Sinon, on garde la version du schéma : elle remplacera le fichier au prochain enregistrement.

@@ -55,6 +55,7 @@ export const cloudStore: DocumentStore = {
 
   async save(id, input) {
     // L'instantané est déjà sérialisé : on l'insère tel quel dans le corps de la requête.
+    // Les étiquettes n'y sont pas répétées : le serveur les lit dans l'instantané.
     const rest = JSON.stringify({ title: input.title, baseVersion: input.baseVersion, force: !!input.force })
     const res = await request(`/api/documents/${id}`, {
       method: 'PUT',
@@ -64,6 +65,15 @@ export const cloudStore: DocumentStore = {
     if (res.status === 409) return { ok: false, reason: 'conflict', version: (await res.json()).version }
     if (res.status === 404) return { ok: false, reason: 'not_found' }
     return { ok: true, version: (await json<{ version: number }>(res)).version }
+  },
+
+  async setTags(id, tags) {
+    const res = await request(`/api/documents/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tags }),
+    })
+    if (!res.ok && res.status !== 404) throw new StorageError('server', m().errors.server(res.status))
   },
 }
 

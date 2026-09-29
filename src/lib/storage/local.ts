@@ -3,6 +3,7 @@
 // Le verrouillage optimiste fonctionne comme côté serveur : il départage deux onglets.
 
 import { m } from '@/i18n/client'
+import { normalizeTags, snapshotTags, withSnapshotTags } from '@/lib/tags'
 import { StorageError, type DocumentStore, type DocumentSummary, type SaveResult, type SettingsStore } from './types'
 
 const DB_NAME = 'animated-tldraw'
@@ -15,6 +16,8 @@ interface IndexEntry {
   title: string
   version: number
   updatedAt: number
+  /** Absent des documents enregistrés avant les étiquettes. */
+  tags?: string[]
 }
 
 let dbPromise: Promise<IDBDatabase> | null = null
@@ -76,14 +79,16 @@ export const localStore: DocumentStore = {
       const entries = (await done(index.getAll())) as IndexEntry[]
       return entries
         .sort((a, b) => b.updatedAt - a.updatedAt)
-        .map((e): DocumentSummary => ({ id: e.id, title: e.title, updatedAt: new Date(e.updatedAt).toISOString() }))
+        .map((e): DocumentSummary => ({ id: e.id, title: e.title, updatedAt: new Date(e.updatedAt).toISOString(), tags: e.tags ?? [] }))
     })
   },
 
   create(title, snapshotJson) {
     const id = crypto.randomUUID()
+    // Import d'un fichier .tldr : ses étiquettes viennent avec lui.
+    const tags = snapshotJson ? snapshotTags(JSON.parse(snapshotJson)) : []
     return transaction('readwrite', async (index, snapshots) => {
-      index.put({ id, title, version: 0, updatedAt: Date.now() } satisfies IndexEntry)
+      index.put({ id, title, version: 0, updatedAt: Date.now(), tags } satisfies IndexEntry)
       if (snapshotJson) snapshots.put(snapshotJson, id)
       return id
     })
@@ -118,9 +123,21 @@ export const localStore: DocumentStore = {
       if (!entry) return { ok: false, reason: 'not_found' }
       if (!input.force && entry.version !== input.baseVersion) return { ok: false, reason: 'conflict', version: entry.version }
       const version = entry.version + 1
-      index.put({ id, title: input.title.trim().slice(0, 200) || m().common.untitled, version, updatedAt: Date.now() } satisfies IndexEntry)
+      const title = input.title.trim().slice(0, 200) || m().common.untitled
+      index.put({ id, title, version, updatedAt: Date.now(), tags: normalizeTags(input.tags) } satisfies IndexEntry)
       snapshots.put(input.snapshotJson, id)
       return { ok: true, version }
+    })
+  },
+
+  setTags(id, raw) {
+    const tags = normalizeTags(raw)
+    return transaction('readwrite', async (index, snapshots) => {
+      const entry = (await done(index.get(id))) as IndexEntry | undefined
+      if (!entry) return
+      const snapshotJson = (await done(snapshots.get(id))) as string | undefined
+      if (snapshotJson) snapshots.put(JSON.stringify(withSnapshotTags(JSON.parse(snapshotJson), tags)), id)
+      index.put({ ...entry, version: entry.version + 1, tags } satisfies IndexEntry)
     })
   },
 }

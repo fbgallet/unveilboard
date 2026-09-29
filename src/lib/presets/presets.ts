@@ -39,7 +39,7 @@ export interface Preset {
 }
 
 export interface PresetSettings {
-  version: 9
+  version: 11
   /** Section « Préréglages » affichée dans le panneau de styles. */
   enabled: boolean
   /** Étiquettes de nature affichées sur le canevas. */
@@ -109,7 +109,7 @@ export function defaultPresets(names: Record<string, string>, roles: Record<stri
     shape('question', n('question'), { geo: 'diamond', color: 'red', fill: 'semi', dash: 'draw' }),
     shape('problem', n('problem'), { geo: 'hexagon', color: 'red', fill: 'semi', dash: 'draw' }),
     shape('example', n('example'), { geo: 'rectangle', color: 'grey', fill: 'semi', dash: 'draw' }),
-    shape('quote', n('quote'), { geo: 'rectangle', color: 'yellow', fill: 'none', dash: 'none', font: 'serif' }),
+    shape('quote', n('quote'), { geo: 'rectangle', color: 'yellow', fill: 'solid', dash: 'none', font: 'serif' }),
     // Pastille des prémisses liées : sans étiquette de type ; sa couleur est celle de sa fonction.
     { ...shape(LINKED, n(LINKED), { geo: 'ellipse', color: 'green', fill: 'fill', dash: 'solid', size: 's' }), tag: false },
     arrow('supports', n('supports'), { color: 'green' }, { childNature: 'statement', role: r('supports') }),
@@ -132,7 +132,7 @@ export function defaultPresets(names: Record<string, string>, roles: Record<stri
 }
 
 export function defaultPresetSettings(names: Record<string, string>, roles: Record<string, string> = {}): PresetSettings {
-  return { version: 9, enabled: true, showTags: true, profile: 'essential', items: defaultPresets(names, roles) }
+  return { version: 11, enabled: true, showTags: true, profile: 'essential', items: defaultPresets(names, roles) }
 }
 
 /** Couleurs de départ changées en v8 (familles de couleurs de l'enseignant) : [id, ancienne, nouvelle]. */
@@ -172,7 +172,10 @@ const OLD_DISTINGUISHES_NAMES = ['distingue']
  *   « distingue » devient « se distingue de » ;
  * - v7 → v8 : familles de couleurs (énoncés violets, questions rouges, faits verts, relations entre
  *   concepts bleues), pour les couleurs qui n'avaient pas été changées ;
- * - v8 → v9 : prémisses liées (type `linked`, relation `premise`) ajoutées.
+ * - v8 → v9 : prémisses liées (type `linked`, relation `premise`) ajoutées ;
+ * - v9 → v11 : la citation, sans cadre, prend un fond jaune pâle (`solid` : la teinte pâle de sa
+ *   couleur ; `semi` est le fond blanc) ; elle perd le cadre en tirets de la v1, si son trait n'avait
+ *   pas été changé, et gagne son fond, s'il était vide ou blanc (celui, erroné, d'une v10).
  */
 export function normalizePresetSettings(
   raw: unknown,
@@ -209,6 +212,12 @@ export function normalizePresetSettings(
           next = { ...next, style: { ...next.style, color: recolor[2], ...(p.id === 'relates' && !next.style.dash?.match(/dash|dot/) && { dash: 'dotted' }) } }
         }
       }
+      if (version < 11 && p.id === 'quote') {
+        const style = { ...next.style }
+        if (style.dash === 'dashed') style.dash = 'none'
+        if (!style.fill || style.fill === 'none' || style.fill === 'semi') style.fill = 'solid'
+        next = { ...next, style }
+      }
       if (version < 6 && p.id === 'distinguishes' && OLD_DISTINGUISHES_NAMES.includes(next.name)) next = { ...next, name: d.name }
       return next
     })
@@ -229,7 +238,7 @@ export function normalizePresetSettings(
     }
   }
   const profile = r.profile === 'complete' ? 'complete' : 'essential'
-  return { version: 9, enabled: r.enabled !== false, showTags: r.showTags !== false, profile, items }
+  return { version: 11, enabled: r.enabled !== false, showTags: r.showTags !== false, profile, items }
 }
 
 export function newPresetId(name: string) {

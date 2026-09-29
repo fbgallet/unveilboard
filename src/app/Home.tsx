@@ -2,8 +2,10 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { documentStore, forgetLocalCache } from '@/lib/storage'
+import { recentlyOpened } from '@/lib/storage/recent'
+import { MAX_TAG_LENGTH, cleanTag, normalizeTags, sameTag } from '@/lib/tags'
 import { droppedTldrFile, openTldrFile, pickTldrFile, type PickedFile } from '@/lib/storage/tldrFile'
 import type { DocumentSummary, StorageMode } from '@/lib/storage/types'
 import { logout } from './login/actions'
@@ -48,6 +50,8 @@ function useDocuments(storage: StorageMode) {
   const store = documentStore(storage)
   const router = useRouter()
   const [list, setList] = useState<DocumentSummary[] | null>(null)
+  /** Dernière ouverture de chaque schéma dans ce navigateur (pour « Ouverts récemment »). */
+  const [opened, setOpened] = useState<Record<string, number>>({})
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [dragging, setDragging] = useState(false)
@@ -56,7 +60,11 @@ function useDocuments(storage: StorageMode) {
     let cancelled = false
     store
       .list()
-      .then((docs) => !cancelled && setList(docs))
+      .then((docs) => {
+        if (cancelled) return
+        setList(docs)
+        setOpened(recentlyOpened())
+      })
       .catch((e: Error) => !cancelled && setError(e.message))
     return () => {
       cancelled = true
@@ -104,6 +112,20 @@ function useDocuments(storage: StorageMode) {
     })
   }
 
+  /** Étiquettes d'un schéma, remplacées (affichées tout de suite, enregistrées ensuite). */
+  const setTags = (doc: DocumentSummary, raw: string[]) => {
+    const tags = normalizeTags(raw)
+    setList((docs) => docs?.map((d) => (d.id === doc.id ? { ...d, tags } : d)) ?? null)
+    store.setTags(doc.id, tags).catch((e: Error) => setError(e.message))
+  }
+
+  /** Retire une étiquette de tous les schémas qui la portent (les schémas restent). */
+  const removeTagEverywhere = (tag: string) => {
+    const tagged = list?.filter((d) => d.tags.some((x) => sameTag(x, tag))) ?? []
+    if (!tagged.length || !confirm(t.home.tags.confirmRemoveEverywhere(tag, tagged.length))) return
+    for (const doc of tagged) setTags(doc, doc.tags.filter((x) => !sameTag(x, tag)))
+  }
+
   const dropHandlers = {
     onDragOver: (e: React.DragEvent) => {
       if (![...e.dataTransfer.items].some((i) => i.kind === 'file')) return
@@ -122,7 +144,7 @@ function useDocuments(storage: StorageMode) {
     },
   }
 
-  return { list, error, busy, dragging, create, chooseFile, remove, dropHandlers }
+  return { list, opened, error, busy, dragging, create, chooseFile, remove, setTags, removeTagEverywhere, dropHandlers }
 }
 
 // ---------- Instance publique ----------
@@ -277,33 +299,260 @@ function PersonalHome({ docs }: { docs: Documents }) {
 
 // ---------- Commun ----------
 
+/** Au-delà de ce nombre de schémas : « Ouverts récemment » et recherche. */
+const MANY_DOCS = 5
+const RECENT_COUNT = 3
+
+/** Texte comparable : sans casse ni accents. */
+const searchable = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
 function DocumentList({ docs, className = '', showEmpty = false }: { docs: Documents; className?: string; showEmpty?: boolean }) {
   const t = useT()
   const [locale] = useLocale()
+  const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<string[]>([])
+  const { opened } = docs
+
+  const all = useMemo(() => [...(docs.list ?? [])].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [docs.list])
+  const many = all.length > MANY_DOCS
+  const recent = useMemo(
+    () =>
+      all
+        .filter((d) => opened[d.id])
+        .sort((a, b) => opened[b.id] - opened[a.id])
+        .slice(0, RECENT_COUNT),
+    [all, opened]
+  )
+  const tags = useMemo(() => allTags(all, locale), [all, locale])
+  // Étiquette supprimée entre-temps : elle ne filtre plus.
+  const active = filter.filter((f) => tags.some((x) => sameTag(x, f)))
+  const q = searchable(query.trim())
+  const shown = all.filter(
+    (d) =>
+      active.every((f) => d.tags.some((x) => sameTag(x, f))) &&
+      (!q || searchable([d.title, ...d.tags].join(' ')).includes(q))
+  )
+  const toggle = (tag: string) =>
+    setFilter((f) => (f.some((x) => sameTag(x, tag)) ? f.filter((x) => !sameTag(x, tag)) : [...f, tag]))
+
+  if (!many) return <DocumentRows docs={docs} list={docs.list} tags={tags} className={className} showEmpty={showEmpty} />
+  return (
+    <div className={className}>
+      {recent.length > 0 && (
+        <>
+          <h3 className="mb-2 text-xs font-medium text-stone-500">{t.home.recent}</h3>
+          <DocumentRows docs={docs} list={recent} tags={tags} className="mb-6" />
+        </>
+      )}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <h3 className="text-xs font-medium text-stone-500">{t.home.all}</h3>
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t.home.search}
+          aria-label={t.home.search}
+          className="w-full rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 sm:w-64"
+        />
+      </div>
+      {tags.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5" role="group" aria-label={t.home.tags.filter}>
+          <button className={`tag-chip ${active.length ? '' : 'tag-chip-on'}`} onClick={() => setFilter([])}>
+            {t.home.tags.clear}
+          </button>
+          {tags.map((tag) => {
+            const on = active.some((f) => sameTag(f, tag))
+            return (
+              <span key={tag} className={`tag-chip group/tag ${on ? 'tag-chip-on' : ''}`}>
+                <button onClick={() => toggle(tag)} aria-pressed={on}>
+                  {tag}
+                </button>
+                <button
+                  className="tag-chip-x opacity-0 focus:opacity-100 group-hover/tag:opacity-100"
+                  onClick={() => docs.removeTagEverywhere(tag)}
+                  title={t.home.tags.removeEverywhere(tag)}
+                  aria-label={t.home.tags.removeEverywhere(tag)}
+                >
+                  ×
+                </button>
+              </span>
+            )
+          })}
+        </div>
+      )}
+      {shown.length ? (
+        <DocumentRows docs={docs} list={shown} tags={tags} />
+      ) : (
+        <p className="rounded-xl border border-stone-200 bg-white px-4 py-6 text-center text-sm text-stone-500">
+          {t.home.noMatch([query.trim(), ...active].filter(Boolean).join(' · '))}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** Toutes les étiquettes employées, une fois chacune, par ordre alphabétique. */
+function allTags(docs: DocumentSummary[], locale: string) {
+  const out: string[] = []
+  for (const d of docs) for (const tag of d.tags) if (!out.some((x) => sameTag(x, tag))) out.push(tag)
+  return out.sort((a, b) => a.localeCompare(b, locale, { sensitivity: 'base' }))
+}
+
+function DocumentRows({
+  docs,
+  list,
+  tags,
+  className = '',
+  showEmpty = false,
+}: {
+  docs: Documents
+  list: DocumentSummary[] | null
+  /** Étiquettes déjà employées : proposées à la saisie. */
+  tags: string[]
+  className?: string
+  showEmpty?: boolean
+}) {
+  const t = useT()
+  const [locale] = useLocale()
+  const [editing, setEditing] = useState<string | null>(null)
   const fmt = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' })
   return (
     <ul className={`divide-y divide-stone-200 rounded-xl border border-stone-200 bg-white ${className}`}>
-      {docs.list?.map((doc) => (
-        <li key={doc.id} className="group flex items-center gap-4 px-4 py-3">
-          <Link href={`/d/${doc.id}`} className="min-w-0 flex-1">
-            <p className="truncate font-medium text-stone-900 group-hover:text-amber-700">{doc.title}</p>
-            <p className="text-xs text-stone-500">{t.home.modified(fmt.format(new Date(doc.updatedAt)))}</p>
-          </Link>
-          <button
-            className="rounded px-2 py-1 text-xs text-stone-400 opacity-0 transition hover:bg-red-50 hover:text-red-600 focus:opacity-100 group-hover:opacity-100"
-            onClick={() => docs.remove(doc)}
-            disabled={docs.busy}
-            title={t.common.delete}
-          >
-            {t.common.delete}
-          </button>
+      {list?.map((doc) => (
+        <li key={doc.id} className="group px-4 py-3">
+          <div className="flex items-center gap-4">
+            <Link href={`/d/${doc.id}`} className="min-w-0 flex-1">
+              <p className="truncate font-medium text-stone-900 group-hover:text-amber-700">{doc.title}</p>
+              <p className="text-xs text-stone-500">{t.home.modified(fmt.format(new Date(doc.updatedAt)))}</p>
+            </Link>
+            {editing !== doc.id && doc.tags.length > 0 && (
+              <span className="hidden max-w-[45%] flex-wrap justify-end gap-1 sm:flex">
+                {doc.tags.map((tag) => (
+                  <span key={tag} className="tag-chip">
+                    {tag}
+                  </span>
+                ))}
+              </span>
+            )}
+            <span className="flex shrink-0 opacity-0 transition focus-within:opacity-100 group-hover:opacity-100">
+              <button
+                className="rounded px-2 py-1 text-xs text-stone-400 hover:bg-amber-50 hover:text-amber-700"
+                onClick={() => setEditing(editing === doc.id ? null : doc.id)}
+                aria-expanded={editing === doc.id}
+                title={t.home.tags.editHint}
+              >
+                {t.home.tags.edit}
+              </button>
+              <button
+                className="rounded px-2 py-1 text-xs text-stone-400 hover:bg-red-50 hover:text-red-600"
+                onClick={() => docs.remove(doc)}
+                disabled={docs.busy}
+                title={t.common.delete}
+              >
+                {t.common.delete}
+              </button>
+            </span>
+          </div>
+          {/* Petit écran : les étiquettes sous le titre. */}
+          {editing !== doc.id && doc.tags.length > 0 && (
+            <span className="mt-1.5 flex flex-wrap gap-1 sm:hidden">
+              {doc.tags.map((tag) => (
+                <span key={tag} className="tag-chip">
+                  {tag}
+                </span>
+              ))}
+            </span>
+          )}
+          {editing === doc.id && (
+            <TagEditor
+              tags={doc.tags}
+              known={tags}
+              onChange={(next) => docs.setTags(doc, next)}
+              onDone={() => setEditing(null)}
+            />
+          )}
         </li>
       ))}
-      {showEmpty && docs.list && !docs.list.length && (
+      {showEmpty && list && !list.length && (
         <li className="px-4 py-10 text-center text-sm text-stone-500">{t.home.empty}</li>
       )}
-      {!docs.list && !docs.error && <li className="px-4 py-10 text-center text-sm text-stone-400">{t.common.loading}</li>}
+      {!list && !docs.error && <li className="px-4 py-10 text-center text-sm text-stone-400">{t.common.loading}</li>}
     </ul>
+  )
+}
+
+/** Étiquettes d'un schéma : retirer (×), ajouter (Entrée ou virgule), avec les étiquettes connues proposées. */
+function TagEditor({
+  tags,
+  known,
+  onChange,
+  onDone,
+}: {
+  tags: string[]
+  known: string[]
+  onChange: (tags: string[]) => void
+  onDone: () => void
+}) {
+  const t = useT()
+  const [draft, setDraft] = useState('')
+  const listId = useId()
+  const add = () => {
+    const tag = cleanTag(draft)
+    setDraft('')
+    if (!tag || tags.some((x) => sameTag(x, tag))) return
+    // Même casse qu'une étiquette déjà employée ailleurs : « terminale » rejoint « Terminale ».
+    onChange([...tags, known.find((x) => sameTag(x, tag)) ?? tag])
+  }
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      {tags.map((tag) => (
+        <span key={tag} className="tag-chip tag-chip-on">
+          {tag}
+          <button
+            className="tag-chip-x"
+            onClick={() => onChange(tags.filter((x) => x !== tag))}
+            title={t.home.tags.remove(tag)}
+            aria-label={t.home.tags.remove(tag)}
+          >
+            ×
+          </button>
+        </span>
+      ))}
+      <input
+        autoFocus
+        value={draft}
+        maxLength={MAX_TAG_LENGTH}
+        list={listId}
+        onChange={(e) => setDraft(e.target.value.replace(',', ''))}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault()
+            if (draft.trim()) add()
+            else if (e.key === 'Enter') onDone()
+          } else if (e.key === 'Escape') onDone()
+          else if (e.key === 'Backspace' && !draft && tags.length) onChange(tags.slice(0, -1))
+        }}
+        placeholder={t.home.tags.add}
+        aria-label={t.home.tags.add}
+        className="min-w-40 flex-1 rounded-md border border-stone-300 bg-white px-2 py-1 text-xs outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+      />
+      <datalist id={listId}>
+        {known
+          .filter((k) => !tags.some((x) => sameTag(x, k)))
+          .map((k) => (
+            <option key={k} value={k} />
+          ))}
+      </datalist>
+      <button
+        className="rounded px-2 py-1 text-xs text-stone-500 hover:bg-stone-100 hover:text-stone-900"
+        onClick={() => {
+          if (draft.trim()) add()
+          onDone()
+        }}
+      >
+        {t.home.tags.done}
+      </button>
+    </div>
   )
 }
 
