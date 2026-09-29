@@ -162,6 +162,7 @@ test('accès permanent à l’IA : une icône, un menu (relecture, à partir de 
     'Create or change the diagram…',
     'Write the presentation sequence…',
     'Critical review…',
+    'Structure with a plan…',
     'New diagram from a text…',
     'Paste JSON (diagram or changes)…',
     'AI settings…',

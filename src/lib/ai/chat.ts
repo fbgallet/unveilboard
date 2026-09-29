@@ -97,16 +97,21 @@ export async function openChatStream(req: ChatRequest): Promise<Response> {
   return res
 }
 
+/** Silence au-delà duquel on abandonne un flux (OpenRouter envoie des commentaires d'attente). */
+export const STALL_MS = 90_000
+
 /**
  * Lit une réponse en flux (SSE « data: {…} », ou JSON d'un bloc si le serveur ignore le flux).
- * `onText` reçoit le texte reçu jusque-là.
+ * `onText` reçoit le texte reçu jusque-là, et la longueur de la réflexion (raisonnement) reçue.
+ * Flux coupé avant la fin (ni `finish_reason` ni `[DONE]`) → « interrupted » ; silence trop long →
+ * « timeout » ; plafond de jetons atteint → « length » (la réponse, tronquée, serait inutilisable).
  */
-export async function readChatStream(res: Response, onText?: (text: string) => void): Promise<ChatResult> {
+export async function readChatStream(res: Response, onText?: (text: string, thinking: number) => void): Promise<ChatResult> {
   const type = res.headers.get('content-type') ?? ''
   if (type.includes('application/json')) {
     const json = (await res.json()) as ChunkJson
     const text = json.choices?.[0]?.message?.content ?? ''
-    onText?.(text)
+    onText?.(text, 0)
     return { text, model: json.model, usage: usageOf(json.usage) }
   }
   const reader = res.body?.getReader()
@@ -114,11 +119,14 @@ export async function readChatStream(res: Response, onText?: (text: string) => v
   const decoder = new TextDecoder()
   let buffer = ''
   let text = ''
+  let thinking = 0
+  let finish: string | undefined
+  let done = false
   let model: string | undefined
   let usage: ChatUsage | undefined
   for (;;) {
-    const { value, done } = await reader.read()
-    if (done) break
+    const { value, done: ended } = await readWithin(reader, STALL_MS)
+    if (ended) break
     buffer += decoder.decode(value, { stream: true })
     const lines = buffer.split('\n')
     buffer = lines.pop() ?? ''
@@ -126,7 +134,10 @@ export async function readChatStream(res: Response, onText?: (text: string) => v
       const line = raw.trim()
       if (!line.startsWith('data:')) continue
       const data = line.slice(5).trim()
-      if (data === '[DONE]') continue
+      if (data === '[DONE]') {
+        done = true
+        continue
+      }
       let chunk: ChunkJson
       try {
         chunk = JSON.parse(data)
@@ -135,20 +146,45 @@ export async function readChatStream(res: Response, onText?: (text: string) => v
       }
       // Erreur signalée en cours de flux (OpenRouter).
       if (chunk.error) throw new AiError('server', typeof chunk.error === 'string' ? chunk.error : chunk.error.message)
-      const delta = chunk.choices?.[0]?.delta?.content
-      if (delta) {
-        text += delta
-        onText?.(text)
-      }
+      const choice = chunk.choices?.[0]
+      finish = choice?.finish_reason ?? finish
+      // Réflexion : `reasoning` (OpenRouter), `reasoning_content` (DeepSeek, vLLM…).
+      const thought = choice?.delta?.reasoning ?? choice?.delta?.reasoning_content
+      if (thought) thinking += thought.length
+      const delta = choice?.delta?.content
+      if (delta) text += delta
+      if (delta || thought) onText?.(text, thinking)
       model ??= chunk.model
       if (chunk.usage) usage = usageOf(chunk.usage)
     }
   }
+  if (finish === 'length') throw new AiError('length')
+  if (!finish && !done) throw new AiError('interrupted')
   return { text, model, usage }
 }
 
+/** Lecture suivante du flux, abandonnée après `ms` sans données ; coupure réseau → « interrupted ». */
+async function readWithin(reader: ReadableStreamDefaultReader<Uint8Array>, ms: number) {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const stalled = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new AiError('timeout', `${ms / 1000} s`)), ms)
+  })
+  try {
+    return await Promise.race([reader.read(), stalled])
+  } catch (e) {
+    if (e instanceof AiError) {
+      reader.cancel().catch(() => {})
+      throw e
+    }
+    if (e instanceof DOMException && e.name === 'AbortError') throw e
+    throw new AiError('interrupted', e instanceof Error ? e.message : String(e))
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /** Appel complet : envoi, lecture du flux. */
-export async function chat(req: ChatRequest, onText?: (text: string) => void): Promise<ChatResult> {
+export async function chat(req: ChatRequest, onText?: (text: string, thinking: number) => void): Promise<ChatResult> {
   const result = await readChatStream(await openChatStream(req), onText)
   if (!result.text.trim()) throw new AiError('empty')
   return result
@@ -156,7 +192,7 @@ export async function chat(req: ChatRequest, onText?: (text: string) => void): P
 
 interface ChunkJson {
   model?: string
-  choices?: { delta?: { content?: string }; message?: { content?: string } }[]
+  choices?: { delta?: { content?: string; reasoning?: string; reasoning_content?: string }; message?: { content?: string }; finish_reason?: string | null }[]
   usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number }
   error?: string | { message?: string }
 }

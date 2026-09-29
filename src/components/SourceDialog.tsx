@@ -13,6 +13,9 @@ import { checkExcerpts, type ExcerptCheck } from '@/lib/map/excerpts'
 import type { ReadResult } from '@/lib/map/read'
 import { LONG_SOURCE_CHARS, MAX_SOURCE_CHARS, MAX_TRANSCRIBE_BYTES, estimateTokens, fileToDataUri, readSourceFile } from '@/lib/source/read'
 import { aiSettingsOpenAtom } from './AiSettingsDialog'
+import { planPanelOpenAtom } from './PlanPanel'
+import { StagedCreate } from './StagedCreate'
+import { skeletonMap } from '@/lib/map/plan'
 
 export const sourceDialogOpenAtom = atom<boolean>('sourceDialogOpen', false)
 
@@ -45,11 +48,12 @@ function SourceView({ editor }: { editor: Editor }) {
   const [withSequence, setWithSequence] = useState(true)
   const [notes, setNotes] = useState(true)
   const [instruction, setInstruction] = useState('')
-  const [run, setRun] = useState<{ what: 'transcribe' | 'generate'; chars: number; abort: AbortController } | null>(null)
+  const [run, setRun] = useState<{ what: 'transcribe' | 'generate'; chars: number; thinking: number; abort: AbortController } | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [answer, setAnswer] = useState('')
   const [busy, setBusy] = useState(false)
+  const [staged, setStaged] = useState(false)
 
   const input = (delivery: PromptInput['delivery']): PromptInput => ({
     ...editorPromptInput(editor, 'create', instruction, { delivery }),
@@ -101,13 +105,13 @@ function SourceView({ editor }: { editor: Editor }) {
     if (!toTranscribe) return
     setFailure(null)
     const abort = new AbortController()
-    setRun({ what: 'transcribe', chars: 0, abort })
+    setRun({ what: 'transcribe', chars: 0, thinking: 0, abort })
     try {
       const { file } = toTranscribe
       const dataUri = await fileToDataUri(file)
       const result = await transcribeFile(settings, { name: file.name, type: file.type || 'application/pdf', dataUri }, {
         signal: abort.signal,
-        onText: (s) => setRun((r) => r && { ...r, chars: s.length }),
+        onText: (s, thinking) => setRun((r) => r && { ...r, chars: s.length, thinking }),
       })
       setText(result.text)
       if (result.reference && !label.trim()) setLabel(result.reference)
@@ -124,11 +128,11 @@ function SourceView({ editor }: { editor: Editor }) {
     setFailure(null)
     setAnswer('')
     const abort = new AbortController()
-    setRun({ what: 'generate', chars: 0, abort })
+    setRun({ what: 'generate', chars: 0, thinking: 0, abort })
     try {
       const result = await askAi(settings, input('api'), check, {
         signal: abort.signal,
-        onText: (s) => setRun((r) => r && { ...r, chars: s.length }),
+        onText: (s, thinking) => setRun((r) => r && { ...r, chars: s.length, thinking }),
       })
       setAnswer(result.text)
     } catch (e) {
@@ -268,31 +272,65 @@ function SourceView({ editor }: { editor: Editor }) {
             placeholder={t.source.instructionPlaceholder}
             aria-label={t.source.instructionLabel}
           />
-          <div className="flex flex-wrap items-center gap-3">
-            {ready && (
-              <button className="btn-primary" disabled={!canGenerate} onClick={() => void generate()}>
-                {t.source.generate}
-              </button>
-            )}
-            <button className={ready ? 'btn' : 'btn-primary'} disabled={!canGenerate} onClick={() => void copy()}>
-              {t.assistant.copy}
-            </button>
-            {run && (
-              <>
-                <span className="text-xs text-zinc-600" role="status">
-                  {run.what === 'transcribe' ? t.source.transcribing(run.chars) : t.source.generating(run.chars)}
-                </span>
-                <button className="btn-xs" onClick={() => run.abort.abort()}>
-                  {t.ai.stop}
+          {ready && (
+            <label className="grid gap-0.5 text-xs">
+              <span className="flex items-center gap-2">
+                <input type="checkbox" checked={staged} disabled={!!run} onChange={(e) => setStaged(e.target.checked)} />
+                {t.staged.option}
+              </span>
+              <span className="pl-5 text-zinc-500">{t.staged.hintSource}</span>
+            </label>
+          )}
+          {ready && staged ? (
+            <StagedCreate
+              editor={editor}
+              settings={settings}
+              input={() => input('api')}
+              canStart={!!text.trim() && !tooLong}
+              onResult={(map) => setAnswer(JSON.stringify(map, null, 2))}
+              onLive={async (record) => {
+                const id = await createDocumentFromMap(skeletonMap(record.plan, { source: true }), { plan: record })
+                planPanelOpenAtom.set(true)
+                close()
+                router.push(`/d/${id}`)
+              }}
+            />
+          ) : (
+            <div className="flex flex-wrap items-center gap-3">
+              {ready && (
+                <button className="btn-primary" disabled={!canGenerate} onClick={() => void generate()}>
+                  {t.source.generate}
                 </button>
-              </>
-            )}
-            {copied && <span className="text-xs text-emerald-700">{t.source.copied}</span>}
-          </div>
+              )}
+              <button className={ready ? 'btn' : 'btn-primary'} disabled={!canGenerate} onClick={() => void copy()}>
+                {t.assistant.copy}
+              </button>
+              {run && (
+                <>
+                  <span className="text-xs text-zinc-600" role="status">
+                    {!run.chars && run.thinking
+                      ? t.ai.thinking(run.thinking)
+                      : run.what === 'transcribe'
+                        ? t.source.transcribing(run.chars)
+                        : t.source.generating(run.chars)}
+                  </span>
+                  <button className="btn-xs" onClick={() => run.abort.abort()}>
+                    {t.ai.stop}
+                  </button>
+                </>
+              )}
+              {copied && <span className="text-xs text-emerald-700">{t.source.copied}</span>}
+            </div>
+          )}
           {failure && (
             <p className="text-xs text-red-700" role="alert">
               {failure}
             </p>
+          )}
+          {failure && ready && !staged && text.trim() && (
+            <button className="btn-xs justify-self-start" onClick={() => setStaged(true)}>
+              {t.staged.tryIt}
+            </button>
           )}
         </section>
 

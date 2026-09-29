@@ -18,6 +18,9 @@ import { setReview } from '@/lib/canvas/review'
 import type { MapIssue } from '@/lib/map/check'
 import type { MapPatch } from '@/lib/map/patch'
 import { Markdownish } from './Markdownish'
+import { StagedCreate } from './StagedCreate'
+import { planPanelOpenAtom } from './PlanPanel'
+import { skeletonMap } from '@/lib/map/plan'
 
 export const mapImportOpenAtom = atom<boolean>('mapImportOpen', false)
 export const assistantOpenAtom = atom<boolean>('assistantOpen', false)
@@ -213,6 +216,7 @@ export function AssistantDialog({ editor }: { editor: Editor }) {
 
 function AssistantView({ editor }: { editor: Editor }) {
   const t = useT()
+  const router = useRouter()
   const close = () => assistantOpenAtom.set(false)
   const settings = useValue(aiSettingsAtom)
   const server = useValue(serverAiAtom)
@@ -222,10 +226,11 @@ function AssistantView({ editor }: { editor: Editor }) {
   const [selection] = useState(() => selectedRefs(editor))
   const [useSelection, setUseSelection] = useState(selection.length > 0)
   const [notes, setNotes] = useState(true)
+  const [staged, setStaged] = useState(false)
   const [copied, setCopied] = useState<number | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
   const [answer, setAnswer] = useState('')
-  const [run, setRun] = useState<{ chars: number; seconds: number; abort: AbortController } | null>(null)
+  const [run, setRun] = useState<{ chars: number; thinking: number; seconds: number; abort: AbortController } | null>(null)
   const [outcome, setOutcome] = useState<AiRun<unknown> & { seconds: number } | null>(null)
 
   const input = () => ({ ...editorPromptInput(editor, task, instruction, { selection: useSelection && task !== 'create' }), notes })
@@ -251,12 +256,12 @@ function AssistantView({ editor }: { editor: Editor }) {
     const abort = new AbortController()
     const started = Date.now()
     const seconds = () => Math.round((Date.now() - started) / 1000)
-    setRun({ chars: 0, seconds: 0, abort })
+    setRun({ chars: 0, thinking: 0, seconds: 0, abort })
     const timer = setInterval(() => setRun((r) => r && { ...r, seconds: seconds() }), 1000)
     try {
       const result = await askAi(settings, input(), (text) => readPasted(editor, text), {
         signal: abort.signal,
-        onText: (text) => setRun((r) => r && { ...r, chars: text.length }),
+        onText: (text, thinking) => setRun((r) => r && { ...r, chars: text.length, thinking }),
       })
       setAnswer(result.text)
       setOutcome({ ...result, seconds: seconds() })
@@ -339,42 +344,72 @@ function AssistantView({ editor }: { editor: Editor }) {
             {t.ai.notesOption}
           </label>
         )}
+        {task === 'create' && ready && (
+          <label className="grid gap-0.5 text-xs">
+            <span className="flex items-center gap-2">
+              <input type="checkbox" checked={staged} disabled={!!run} onChange={(e) => setStaged(e.target.checked)} />
+              {t.staged.option}
+            </span>
+            <span className="pl-5 text-zinc-500">{t.staged.hint}</span>
+          </label>
+        )}
         {task !== 'create' && selection.length > 0 && (
           <label className="flex items-center gap-2 text-xs">
             <input type="checkbox" checked={useSelection} onChange={(e) => setUseSelection(e.target.checked)} />
             {t.assistant.useSelection(selection.length)}
           </label>
         )}
-        <div className="flex flex-wrap items-center gap-3">
-          {ready && (
-            <button className="btn-primary" disabled={!!run || (task === 'create' && !instruction.trim())} onClick={() => void ask()}>
-              {t.ai.ask}
-            </button>
-          )}
-          <button
-            className={ready ? 'btn' : 'btn-primary'}
-            disabled={!!run || (task === 'create' && !instruction.trim())}
-            onClick={() => void copy()}
-          >
-            {t.assistant.copy}
-          </button>
-          {run && (
-            <>
-              <span className="text-xs text-zinc-600" role="status">
-                {t.ai.running(run.chars, run.seconds)}
-              </span>
-              <button className="btn-xs" onClick={() => run.abort.abort()}>
-                {t.ai.stop}
+        {task === 'create' && ready && staged ? (
+          <StagedCreate
+            editor={editor}
+            settings={settings}
+            input={() => ({ ...editorPromptInput(editor, 'create', instruction, { delivery: 'api' }), notes })}
+            canStart={!!instruction.trim()}
+            onResult={(map) => setAnswer(JSON.stringify(map, null, 2))}
+            onLive={async (record) => {
+              const id = await createDocumentFromMap(skeletonMap(record.plan, { source: !!record.source }), { plan: record })
+              planPanelOpenAtom.set(true)
+              close()
+              router.push(`/d/${id}`)
+            }}
+          />
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            {ready && (
+              <button className="btn-primary" disabled={!!run || (task === 'create' && !instruction.trim())} onClick={() => void ask()}>
+                {t.ai.ask}
               </button>
-            </>
-          )}
-          {copied !== null && <span className="text-xs text-emerald-700">{t.assistant.copied(Math.ceil(copied / 1000))}</span>}
-          {failure && (
-            <span className="text-xs text-red-700" role="alert">
-              {failure}
-            </span>
-          )}
-        </div>
+            )}
+            <button
+              className={ready ? 'btn' : 'btn-primary'}
+              disabled={!!run || (task === 'create' && !instruction.trim())}
+              onClick={() => void copy()}
+            >
+              {t.assistant.copy}
+            </button>
+            {run && (
+              <>
+                <span className="text-xs text-zinc-600" role="status">
+                  {!run.chars && run.thinking ? t.ai.thinking(run.thinking, run.seconds) : t.ai.running(run.chars, run.seconds)}
+                </span>
+                <button className="btn-xs" onClick={() => run.abort.abort()}>
+                  {t.ai.stop}
+                </button>
+              </>
+            )}
+            {copied !== null && <span className="text-xs text-emerald-700">{t.assistant.copied(Math.ceil(copied / 1000))}</span>}
+            {failure && (
+              <span className="text-xs text-red-700" role="alert">
+                {failure}
+              </span>
+            )}
+            {failure && task === 'create' && ready && (
+              <button className="btn-xs" onClick={() => setStaged(true)}>
+                {t.staged.tryIt}
+              </button>
+            )}
+          </div>
+        )}
         {outcome && (
           <p className="text-xs text-zinc-600">
             {t.ai.done(outcome.model ?? '', outcome.seconds)}

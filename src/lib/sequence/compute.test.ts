@@ -120,6 +120,21 @@ describe('arbres : contrainte de parenté, fold / unfold', () => {
     expect(stateOf(computeStage(f, 1, { tree }), 'a1').visibility).toBe('hidden')
   })
 
+  it('replis à la main : par-dessus la séquence, sans révéler ce qu’elle cache encore', () => {
+    const live = (i: number, id: string, overrides: [string, boolean][], liveUnfolds: string[] = []) =>
+      stateOf(computeStage(s, i, { tree, dependencies, foldOverrides: new Map(overrides), liveUnfolds: new Set(liveUnfolds) }), id)
+    // Déplier à l'étape 2 (où la séquence a replié a) : a1 réapparaît, en fondu si le geste date de l'étape.
+    expect(live(2, 'a1', [['a', false]]).visibility).toBe('visible')
+    expect(live(2, 'a1', [['a', false]]).entering).toBeUndefined()
+    expect(live(2, 'a1', [['a', false]], ['a'])).toMatchObject({ visibility: 'visible', entering: 'fade', live: true })
+    // Replier la racine à l'étape 1 : a et b sont cachés par le repli, e aussi.
+    expect(live(1, 'b', [['racine', true]])).toMatchObject({ visibility: 'hidden', foldHidden: true })
+    expect(live(1, 'e', [['racine', true]]).visibility).toBe('hidden')
+    // À l'étape 0, b n'est pas encore révélé : replier puis déplier la racine ne le montre pas.
+    expect(live(0, 'b', [['racine', true]])).toMatchObject({ visibility: 'hidden', foldHidden: false })
+    expect(live(0, 'b', [['racine', false]]).visibility).toBe('hidden')
+  })
+
   it('une flèche gérée est cachée tant que ses extrémités le sont', () => {
     const g = seq(step({ type: 'show', targets: ['e'] }), step({ type: 'show', targets: ['x'] }))
     const deps = new Map([['e', ['x']]])

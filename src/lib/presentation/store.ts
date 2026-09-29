@@ -91,8 +91,27 @@ export const viewerAtom = atom<boolean>('viewer', false)
 /** Document modifiable pendant la présentation (cadenas ouvert). */
 export const editUnlockedAtom = atom<boolean>('editUnlocked', false)
 
-/** Nœuds d'arbre repliés et visibles à l'étape courante (pastilles « +n »). */
-export const foldedBadgesAtom = atom<string[]>('foldedBadges', [])
+/**
+ * Pastilles d'arbre pendant la présentation : nœuds repliés et visibles, avec le nombre de nœuds
+ * qu'un dépliage montrerait (« +n »), et nœuds dépliés dont on peut replier la branche (« − »).
+ */
+export interface FoldBadgesState {
+  folded: { id: string; n: number }[]
+  open: string[]
+}
+export const foldBadgesAtom = atom<FoldBadgesState>('foldBadges', { folded: [], open: [] })
+
+/**
+ * Branches repliées ou dépliées à la main pendant la présentation, sans toucher au document :
+ * nœud → repli voulu et étape du geste. Un geste vaut jusqu'à ce qu'une étape replie ou déplie
+ * ce nœud ; revenir en arrière les efface tous.
+ */
+export type FoldOverrides = Record<string, { folded: boolean; step: number }>
+export const foldOverridesAtom = atom<FoldOverrides>('foldOverrides', {})
+
+export function setFoldOverride(id: string, folded: boolean) {
+  foldOverridesAtom.set({ ...foldOverridesAtom.get(), [id]: { folded, step: stepIndexAtom.get() } })
+}
 
 /** Notes d'objets ouvertes à la main (double-clic) pendant l'étape courante. */
 export const openedNotesAtom = atom<string[]>('openedNotes', [])

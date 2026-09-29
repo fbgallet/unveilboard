@@ -610,13 +610,19 @@ button.review-badge {
   pointer-events: auto;
 }
 
+/* Sous la rangée du haut (le menu de tldraw s'y élargit quand un objet est sélectionné), jusqu'à
+   l'icône de l'IA ; sous la couche d'interface de tldraw (z-index 300), dont les panneaux et menus
+   passent devant. Faute de place, elle passe sur deux lignes. */
 .tree-toolbar {
   position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 600;
+  top: 52px;
+  left: 8px;
+  right: 52px;
+  width: fit-content;
+  z-index: 250;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
   gap: 4px;
   padding: 4px 4px 4px 4px;
@@ -1444,6 +1450,34 @@ svg.preset-swatch {
 .patch-summary {
   display: grid;
   gap: 4px;
+}
+/* Création en plusieurs étapes : plan à relire, progression des sections. */
+.staged-section {
+  padding: 8px;
+  border: 1px solid var(--color-zinc-200);
+  border-radius: 6px;
+}
+.staged-size {
+  width: 4.5em;
+}
+.staged-progress {
+  display: grid;
+  gap: 4px;
+}
+.staged-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.staged-row > :not(.staged-row-title) {
+  flex-shrink: 0;
+}
+.staged-row-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .patch-summary-text {
   max-height: 180px;

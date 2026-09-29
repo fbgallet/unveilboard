@@ -32,6 +32,8 @@ export type IssueCode =
   | 'wrong_format'
   | 'excerpt_not_found'
   | 'quote_not_found'
+  | 'operation_not_allowed'
+  | 'outside_section'
 
 export interface MapIssue {
   level: 'error' | 'warning'
@@ -205,6 +207,8 @@ const MESSAGES: Record<IssueCode, string> = {
   wrong_format: 'Expected "format": "unveilboard/map" (a whole diagram) or "unveilboard/patch" (changes)',
   excerpt_not_found: 'The excerpt is not in the source text: copy it character for character (or remove it and set "origin": "reconstruction")',
   quote_not_found: 'This quotation is not in the source text: copy it exactly, or make it a statement',
+  operation_not_allowed: 'This operation is not allowed at this step',
+  outside_section: 'Added elements must descend from the section being developed (its head, or an element added before in these changes)',
 }
 
 /** Problème en une ligne, en anglais (pour une IA, ou les journaux). */

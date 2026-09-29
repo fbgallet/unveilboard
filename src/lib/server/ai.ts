@@ -9,6 +9,7 @@ import { withinLimits } from './rateLimit'
 // - Mode cloud : réservée à la session (proxy.ts protège /api).
 // - Mode local (instance publique, sans compte) : seulement avec AI_PUBLIC=on, et des limites par
 //   adresse IP ; sinon, n'importe quel visiteur dépenserait le crédit de la clé.
+// - En développement : toujours, sans limite (la clé de .env.local, sur sa propre machine).
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1'
 const PUBLIC_LIMITS = { perIpHour: 5, perIpDay: 20, allDay: 300 }
@@ -32,7 +33,7 @@ export function serverAiConfig(): ServerAiConfig | null {
     baseUrl,
     apiKey,
     model,
-    maxTokens: Number(process.env.AI_MAX_TOKENS) || 16000,
+    maxTokens: Number(process.env.AI_MAX_TOKENS) || 64000,
     // json_object : accepté par OpenRouter et par la plupart des serveurs ; AI_JSON_MODE=off sinon.
     jsonMode: process.env.AI_JSON_MODE !== 'off',
   }
@@ -46,16 +47,18 @@ export function serverModels(config: ServerAiConfig): string[] {
   return [...new Set([config.model, ...(isOpenRouter(config.baseUrl) ? MODELS.map((m) => m.id) : [])])]
 }
 
-/** Ouverte à cette instance : configurée, et en mode cloud ou publique par choix (AI_PUBLIC=on). */
+const isDev = () => process.env.NODE_ENV === 'development'
+
+/** Ouverte à cette instance : configurée, et en mode cloud, en développement ou publique par choix (AI_PUBLIC=on). */
 export function serverAiAvailable(): { model: string; models: string[] } | null {
   const config = serverAiConfig()
   if (!config) return null
-  if (storageMode() === 'local' && !(process.env.AI_PUBLIC === 'on' && kvConfigured())) return null
+  if (storageMode() === 'local' && !isDev() && !(process.env.AI_PUBLIC === 'on' && kvConfigured())) return null
   return { model: config.model, models: serverModels(config) }
 }
 
 /** Mode local (AI_PUBLIC) : compte une demande de cette adresse ; false si une limite est atteinte. */
 export async function allowAiRequest(request: Request) {
-  if (storageMode() !== 'local') return true
+  if (storageMode() !== 'local' || isDev()) return true
   return withinLimits(request, 'ai', PUBLIC_LIMITS)
 }

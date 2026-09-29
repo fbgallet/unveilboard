@@ -59,7 +59,7 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
   const [wholeMap, setWholeMap] = useState(true)
   const [ghost, setGhost] = useState(true)
   const [notes, setNotes] = useState(true)
-  const [run, setRun] = useState<{ chars: number; abort: AbortController } | null>(null)
+  const [run, setRun] = useState<{ chars: number; thinking: number; abort: AbortController } | null>(null)
   const [pasting, setPasting] = useState(false)
   const [pasted, setPasted] = useState('')
   const [issues, setIssues] = useState<MapIssue[]>([])
@@ -86,11 +86,11 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
   async function ask() {
     reset()
     const abort = new AbortController()
-    setRun({ chars: 0, abort })
+    setRun({ chars: 0, thinking: 0, abort })
     try {
       const result = await askAi(settings, input(), (answer) => patchOnly(readPasted(editor, answer)), {
         signal: abort.signal,
-        onText: (answer) => setRun((r) => r && { ...r, chars: answer.length }),
+        onText: (answer, thinking) => setRun((r) => r && { ...r, chars: answer.length, thinking }),
       })
       apply(result.result)
     } catch (e) {
@@ -179,7 +179,7 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
         {run && (
           <>
             <span className="text-xs text-zinc-600" role="status">
-              {t.elementAi.running(run.chars)}
+              {!run.chars && run.thinking ? t.ai.thinking(run.thinking) : t.elementAi.running(run.chars)}
             </span>
             <button className="btn-xs" onClick={() => run.abort.abort()}>
               {t.ai.stop}

@@ -10,7 +10,7 @@
 import { atom } from 'tldraw'
 import { extractJson } from '../map/read'
 import { REASONING_EFFORTS, chat, readChatStream, type ChatResult, type ReasoningEffort } from './chat'
-import { AiError, errorFromResponse, toAiError } from './errors'
+import { AiError, errorFromResponse, toAiError, type AiErrorKind } from './errors'
 import { buildPrompt, type PromptInput } from './prompts'
 import { chatMessages, runWithRepair, type AiRun, type Repair } from './run'
 import { DEFAULT_MODEL, TRANSCRIPTION_MODEL } from './models'
@@ -144,35 +144,52 @@ function serverModelOf(settings: AiSettings, server: ServerAi | null) {
 
 interface CallOptions {
   signal?: AbortSignal
-  onText?: (text: string) => void
+  /** Texte reçu jusque-là, et longueur de la réflexion reçue ; ('', 0) quand on recommence. */
+  onText?: (text: string, thinking: number) => void
+}
+
+/** Pannes passagères (flux coupé, silence) : on recommence une fois, depuis le début. */
+const RETRIED: AiErrorKind[] = ['interrupted', 'timeout']
+
+async function withRetry<T>(call: () => Promise<T>, opts: CallOptions): Promise<T> {
+  try {
+    return await call()
+  } catch (e) {
+    const error = toAiError(e)
+    if (!RETRIED.includes(error.kind) || opts.signal?.aborted) throw error
+    opts.onText?.('', 0)
+    return call()
+  }
 }
 
 /** Un envoi (et au besoin une demande de correction) au fournisseur choisi. */
 function sender(settings: AiSettings, input: PromptInput, opts: CallOptions) {
-  return async (repair?: Repair): Promise<ChatResult> => {
-    try {
-      if (settings.kind === 'server') {
-        const res = await fetch('/api/ai', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            input: { ...input, delivery: 'api' },
-            model: serverModelOf(settings, serverAiAtom.get()),
-            reasoning: settings.reasoning,
-            repair,
-          }),
-          signal: opts.signal,
-        })
-        if (!res.ok) throw await errorFromResponse(res)
-        const result = await readChatStream(res, opts.onText)
-        if (!result.text.trim()) throw new AiError('empty')
-        return result
-      }
-      const messages = chatMessages(buildPrompt({ ...input, delivery: 'api' }), repair)
-      return await chat({ ...endpoint(settings), messages, reasoning: settings.reasoning, signal: opts.signal }, opts.onText)
-    } catch (e) {
-      throw toAiError(e)
+  return (repair?: Repair) => withRetry(() => sendOnce(settings, input, opts, repair), opts)
+}
+
+async function sendOnce(settings: AiSettings, input: PromptInput, opts: CallOptions, repair?: Repair): Promise<ChatResult> {
+  try {
+    if (settings.kind === 'server') {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input: { ...input, delivery: 'api' },
+          model: serverModelOf(settings, serverAiAtom.get()),
+          reasoning: settings.reasoning,
+          repair,
+        }),
+        signal: opts.signal,
+      })
+      if (!res.ok) throw await errorFromResponse(res)
+      const result = await readChatStream(res, opts.onText)
+      if (!result.text.trim()) throw new AiError('empty')
+      return result
     }
+    const messages = chatMessages(buildPrompt({ ...input, delivery: 'api' }), repair)
+    return await chat({ ...endpoint(settings), messages, reasoning: settings.reasoning, signal: opts.signal }, opts.onText)
+  } catch (e) {
+    throw toAiError(e)
   }
 }
 
@@ -214,36 +231,38 @@ export async function transcribeFile(
   opts: CallOptions = {}
 ): Promise<{ text: string; reference: string }> {
   try {
-    let result: ChatResult
-    if (settings.kind === 'server') {
-      const res = await fetch('/api/ai/transcribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ file }),
-        signal: opts.signal,
-      })
-      if (!res.ok) throw await errorFromResponse(res)
-      result = await readChatStream(res, opts.onText)
-    } else {
-      const target = endpoint(settings)
-      const openRouter = settings.kind === 'openrouter'
-      result = await chat(
-        {
-          ...target,
-          model: openRouter ? TRANSCRIPTION_MODEL : target.model,
-          messages: transcriptionMessages(file),
-          // Transcrire ne se réfléchit pas (comme dans bac-philo-agent).
-          reasoning: 'off',
-          ...(openRouter && file.type === 'application/pdf' && { extraBody: OPENROUTER_PDF_PLUGIN }),
-          signal: opts.signal,
-        },
-        opts.onText
-      )
-    }
+    const result = await withRetry(() => transcribeOnce(settings, file, opts), opts)
     return readTranscription(result.text)
   } catch (e) {
     throw toAiError(e)
   }
+}
+
+async function transcribeOnce(settings: AiSettings, file: { name: string; type: string; dataUri: string }, opts: CallOptions): Promise<ChatResult> {
+  if (settings.kind === 'server') {
+    const res = await fetch('/api/ai/transcribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file }),
+      signal: opts.signal,
+    })
+    if (!res.ok) throw await errorFromResponse(res)
+    return readChatStream(res, opts.onText)
+  }
+  const target = endpoint(settings)
+  const openRouter = settings.kind === 'openrouter'
+  return chat(
+    {
+      ...target,
+      model: openRouter ? TRANSCRIPTION_MODEL : target.model,
+      messages: transcriptionMessages(file),
+      // Transcrire ne se réfléchit pas (comme dans bac-philo-agent).
+      reasoning: 'off',
+      ...(openRouter && file.type === 'application/pdf' && { extraBody: OPENROUTER_PDF_PLUGIN }),
+      signal: opts.signal,
+    },
+    opts.onText
+  )
 }
 
 /** Essai du fournisseur : une demande minuscule, dont la réponse doit être un JSON donné. */

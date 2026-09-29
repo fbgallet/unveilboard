@@ -154,7 +154,7 @@ The first time: `pnpm exec playwright install chromium`. To reuse a dev server t
   1. Create a Postgres database (e.g. Neon).
   2. Apply the migrations with the **direct** (non-pooled) connection URL, in single quotes because it contains `&`:
      `DATABASE_URL='postgresql://…/neondb?sslmode=require' pnpm db:migrate`
-     Run it again whenever a new migration is added in `drizzle/`.
+     After that, each deployment applies new migrations before building (`scripts/migrate.mjs`), with `DATABASE_URL_UNPOOLED` if set (the Neon integration for Vercel sets it), otherwise `DATABASE_URL`. `SKIP_DB_MIGRATE=1` turns this off.
   3. On Vercel, set `DATABASE_URL` (the **pooled** URL, with `-pooler` in the host), `APP_PASSWORD`, `SESSION_SECRET` (`openssl rand -base64 48`) and `TLDRAW_LICENSE_KEY`.
   4. Optional: add a Vercel Blob store (`BLOB_READ_WRITE_TOKEN`) to store images outside the document.
 

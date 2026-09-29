@@ -9,6 +9,10 @@ export interface ShapeState {
   entering?: Effect
   /** Nœud d'arbre dont la branche est repliée. */
   folded?: boolean
+  /** Caché seulement parce qu'un ancêtre est replié (le déplier le montrerait). */
+  foldHidden?: boolean
+  /** Entrée provoquée par un dépliage à la main pendant la présentation, pas par l'étape. */
+  live?: boolean
 }
 
 export interface ComputeOptions {
@@ -24,6 +28,13 @@ export interface ComputeOptions {
   tree?: Map<ShapeRef, ShapeRef>
   /** Nœuds repliés dans le document (état de départ, modifié par fold / unfold). */
   folded?: Set<ShapeRef>
+  /**
+   * Replis et dépliages faits à la main pendant la présentation (nœud → replié), appliqués
+   * après les étapes. Un dépliage ne montre que ce que la séquence a déjà révélé.
+   */
+  foldOverrides?: Map<ShapeRef, boolean>
+  /** Nœuds dépliés à la main pendant l'étape courante : leurs descendants entrent en fondu. */
+  liveUnfolds?: Set<ShapeRef>
 }
 
 export type Stage = Map<ShapeRef, ShapeState>
@@ -101,7 +112,13 @@ export function computeStage(seq: Sequence, index: number, opts: ComputeOptions 
     if (!isCurrent) for (const [id, s] of stage) if (s.entering) stage.set(id, { ...s, entering: undefined })
   }
 
-  if (opts.tree) applyTree(stage, opts.tree, folded, unfoldedNow, managed)
+  const liveNow = new Set<ShapeRef>()
+  for (const [id, fold] of opts.foldOverrides ?? []) {
+    if (fold) folded.add(id)
+    else if (folded.delete(id) && opts.liveUnfolds?.has(id)) liveNow.add(id)
+  }
+
+  if (opts.tree) applyTree(stage, opts.tree, folded, unfoldedNow, liveNow, managed)
 
   if (opts.dependencies) {
     for (const [id, deps] of opts.dependencies) {
@@ -115,7 +132,7 @@ export function computeStage(seq: Sequence, index: number, opts: ComputeOptions 
       if (!own && states.includes('dim')) set(id, { visibility: 'dim' })
       // Une flèche qui dépend d'un objet entrant entre avec lui.
       const entering = deps.map((d) => stage.get(d)?.entering).find(Boolean)
-      if (entering && !own?.entering) set(id, { entering: 'fade' })
+      if (entering && !own?.entering) set(id, { entering: 'fade', live: deps.some((d) => stage.get(d)?.live) })
     }
   }
 
@@ -126,13 +143,14 @@ export function computeStage(seq: Sequence, index: number, opts: ComputeOptions 
 /**
  * Contrainte de parenté : un nœud est caché si un ancêtre est caché ou replié.
  * Un nœud non géré par la séquence apparaît avec son parent (même effet) ;
- * les nœuds révélés par un dépliage à l'étape courante entrent en fondu.
+ * les nœuds révélés par un dépliage à l'étape courante (ou à la main) entrent en fondu.
  */
 function applyTree(
   stage: Stage,
   parent: Map<ShapeRef, ShapeRef>,
   folded: Set<ShapeRef>,
   unfoldedNow: Set<ShapeRef>,
+  liveNow: Set<ShapeRef>,
   managed: Set<ShapeRef>
 ) {
   const done = new Set<ShapeRef>()
@@ -145,10 +163,13 @@ function applyTree(
       const ps = stage.get(p)
       const own = stage.get(id) ?? { visibility: 'visible' as const, highlighted: false }
       if (ps?.visibility === 'hidden' || folded.has(p)) {
-        stage.set(id, { ...own, visibility: 'hidden', entering: undefined })
+        const foldHidden = own.visibility !== 'hidden' && (folded.has(p) || !!ps?.foldHidden)
+        stage.set(id, { ...own, visibility: 'hidden', entering: undefined, foldHidden })
       } else if (own.visibility !== 'hidden' && !own.entering) {
-        const entering = !managed.has(id) && ps?.entering ? ps.entering : unfoldedNow.has(p) ? 'fade' : undefined
-        if (entering) stage.set(id, { ...own, entering })
+        const inherited = !managed.has(id) && ps?.entering
+        const entering = inherited ? ps.entering : unfoldedNow.has(p) || liveNow.has(p) ? 'fade' : undefined
+        const live = inherited ? ps.live : liveNow.has(p)
+        if (entering) stage.set(id, { ...own, entering, live })
       }
     }
     done.add(id)

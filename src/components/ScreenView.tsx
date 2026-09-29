@@ -7,6 +7,7 @@ import { useT } from '@/i18n/client'
 import { LaserOverlayUtil } from '@/lib/canvas/laser'
 import { SpotlightShapeUtil } from '@/lib/canvas/spotlight'
 import {
+  foldOverridesAtom,
   laserSettingsAtom,
   legendVisibleAtom,
   liveSpotAtom,
@@ -39,7 +40,7 @@ const shapeUtils = [SpotlightShapeUtil]
 function CanvasBadges() {
   return (
     <>
-      <FoldBadges />
+      <FoldBadges readOnly />
       <NoteMarkers />
     </>
   )
@@ -163,4 +164,5 @@ function apply(editor: Editor, state: ScreenState) {
   narrationVisibleAtom.set(state.narration)
   narrationScaleAtom.set(state.narrationScale)
   laserSettingsAtom.set(state.laser)
+  foldOverridesAtom.set(state.foldOverrides ?? {})
 }

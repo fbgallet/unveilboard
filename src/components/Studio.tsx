@@ -47,6 +47,7 @@ import { SuggestionBadges, SuggestionBar } from './Suggestions'
 import { ElementAiPanel, elementAiAtom } from './ElementAi'
 import { SourceDialog, sourceDialogOpenAtom } from './SourceDialog'
 import { ReviewBadges, ReviewPanel } from './ReviewPanel'
+import { PlanPanel } from './PlanPanel'
 import { AiLauncher } from './AiLauncher'
 import { loadReview, reviewOpenAtom } from '@/lib/canvas/review'
 
@@ -231,6 +232,7 @@ export default function Studio({
         {editor && mode === 'edit' && <SuggestionBar editor={editor} />}
         {editor && mode === 'edit' && <ElementAiPanel editor={editor} />}
         {editor && mode === 'edit' && <ReviewPanel editor={editor} />}
+        {editor && mode === 'edit' && <PlanPanel editor={editor} />}
         {editor && <SyncBanner />}
         {editor && <FileBanner />}
         {editor && <PresetManager editor={editor} />}

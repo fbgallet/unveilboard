@@ -8,5 +8,6 @@ export default defineConfig({
   schema: './src/db/schema.ts',
   out: './drizzle',
   dialect: 'postgresql',
-  dbCredentials: { url: process.env.DATABASE_URL! },
+  // Migrations : l'URL directe si elle est définie (voir scripts/migrate.mjs).
+  dbCredentials: { url: (process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL)! },
 })

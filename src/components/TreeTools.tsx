@@ -33,7 +33,7 @@ import { PREMISE, offeredPresets, relationsFor, type Preset } from '@/lib/preset
 import { presetName, presetRole } from '@/lib/presets/labels'
 import { presetDefinition, presetGuideOpenAtom } from './PresetTools'
 import { TREE_DIRECTIONS, type TreeDirection } from '@/lib/tree/layout'
-import { editUnlockedAtom, foldedBadgesAtom, modeAtom } from '@/lib/presentation/store'
+import { editUnlockedAtom, foldBadgesAtom, modeAtom, setFoldOverride } from '@/lib/presentation/store'
 import { useT } from '@/i18n/client'
 import { swallowNextKeyUp } from '@/lib/keyboard'
 import { elementAiAtom } from './ElementAi'
@@ -282,8 +282,13 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
   )
 }
 
-/** Pastilles « +n » sur les nœuds repliés (en édition : cliquer pour déplier). */
-export function FoldBadges() {
+/**
+ * Pastilles « +n » sur les nœuds repliés : cliquer pour déplier. Un nœud déplié survolé (ou
+ * sélectionné, en édition) montre « − » pour replier sa branche. En présentation, le geste ne
+ * touche pas au document : il s'ajoute à la séquence le temps de la séance.
+ * readOnly : fenêtre public du double affichage, qui suit le présentateur.
+ */
+export function FoldBadges({ readOnly = false }: { readOnly?: boolean }) {
   const t = useT()
   const editor = useEditor()
   const badges = useValue(
@@ -291,22 +296,29 @@ export function FoldBadges() {
     () => {
       const presenting = modeAtom.get() === 'present'
       const { children } = getTreeIndex(editor)
-      const folded = presenting
-        ? foldedBadgesAtom.get()
-        : [...children.keys()].filter((id) => isFolded(editor, id) && !editor.isShapeHidden(id))
-      // En édition, un nœud déplié survolé ou sélectionné montre « − » pour replier sa branche.
       const active = new Set<string>([...editor.getSelectedShapeIds(), editor.getHoveredShapeId() ?? ''])
-      const unfolded = presenting ? [] : [...children.keys()].filter((id) => active.has(id) && !isFolded(editor, id) && !editor.isShapeHidden(id))
-      const badge = (id: string, fold: boolean) => {
+      let folded: { id: string; n: number }[]
+      let unfolded: string[]
+      if (presenting) {
+        const pres = foldBadgesAtom.get()
+        folded = pres.folded
+        unfolded = readOnly ? [] : pres.open.filter((id) => active.has(id))
+      } else {
+        folded = [...children.keys()]
+          .filter((id) => isFolded(editor, id) && !editor.isShapeHidden(id))
+          .map((id) => ({ id, n: branchOf(editor, id).length }))
+        unfolded = [...children.keys()].filter((id) => active.has(id) && !isFolded(editor, id) && !editor.isShapeHidden(id))
+      }
+      const badge = (id: string, n: number, fold: boolean) => {
         const b = editor.getShapePageBounds(id as TLShapeId)
         if (!b) return []
         const dir = nodeDirection(editor, id as TLShapeId)
         const at = { right: { x: b.maxX, y: b.midY }, left: { x: b.minX, y: b.midY }, down: { x: b.midX, y: b.maxY }, up: { x: b.midX, y: b.minY } }[dir]
-        return [{ id: id as TLShapeId, n: branchOf(editor, id as TLShapeId).length, fold, ...at }]
+        return [{ id: id as TLShapeId, n, fold, ...at }]
       }
-      return [...folded.flatMap((id) => badge(id, false)), ...unfolded.flatMap((id) => badge(id, true))]
+      return [...folded.flatMap((f) => badge(f.id, f.n, false)), ...unfolded.flatMap((id) => badge(id, 0, true))]
     },
-    [editor]
+    [editor, readOnly]
   )
   const zoom = useValue('zoom', () => editor.getZoomLevel(), [editor])
   const presenting = useValue(modeAtom) === 'present'
@@ -318,10 +330,10 @@ export function FoldBadges() {
           key={b.id}
           className={`fold-badge ${b.fold ? 'fold-badge-open' : ''}`}
           style={{ left: b.x, top: b.y, transform: `translate(-50%, -50%) scale(${1 / zoom})` }}
-          disabled={presenting}
-          title={presenting ? undefined : b.fold ? t.tree.collapseBranch : t.tree.expandBranch}
+          disabled={readOnly}
+          title={readOnly ? undefined : b.fold ? t.tree.collapseBranch : t.tree.expandBranch}
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => toggleFold(editor, b.id)}
+          onClick={() => (presenting ? setFoldOverride(b.id, b.fold) : toggleFold(editor, b.id))}
         >
           {b.fold ? '−' : `+${b.n}`}
         </button>

@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { react, type Editor } from 'tldraw'
 import {
+  foldOverridesAtom,
   laserSettingsAtom,
   legendVisibleAtom,
   liveSpotAtom,
@@ -44,6 +45,7 @@ export function useScreenPresenter(editor: Editor, docId: string) {
       narration: screenNarrationAtom.get(),
       narrationScale: narrationScaleAtom.get(),
       laser: laserSettingsAtom.get(),
+      foldOverrides: foldOverridesAtom.get(),
     })
 
     let lastSeen = 0

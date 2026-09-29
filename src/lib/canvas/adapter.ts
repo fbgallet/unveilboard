@@ -2,7 +2,7 @@
 // Si le moteur de canevas change un jour, c'est ce fichier qu'il faudra réécrire.
 
 import { Box, getArrowInfo, type Editor, type JsonObject, type TLArrowBinding, type TLPageId, type TLShapeId } from 'tldraw'
-import { computeStage, latestShown, stateOf, stepFocusTargets, type Stage } from '../sequence/compute'
+import { computeStage, latestShown, stateOf, stepFocusTargets, type ComputeOptions, type Stage } from '../sequence/compute'
 import { migrateSequence } from '../sequence/migrate'
 import { toJson } from '../json'
 import type { Sequence, ShapeRef, Step, StepCamera } from '../sequence/types'
@@ -122,11 +122,17 @@ function treeOptions(editor: Editor) {
   return { tree: parent as Map<ShapeRef, ShapeRef>, folded }
 }
 
-export function computeEditorStage(editor: Editor, seq: Sequence, index: number): Stage {
+export function computeEditorStage(
+  editor: Editor,
+  seq: Sequence,
+  index: number,
+  live?: Pick<ComputeOptions, 'foldOverrides' | 'liveUnfolds'>
+): Stage {
   return computeStage(seq, index, {
     resolve: resolveTargets(editor),
     dependencies: arrowDependencies(editor),
     ...treeOptions(editor),
+    ...live,
   })
 }
 

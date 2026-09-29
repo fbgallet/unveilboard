@@ -5,7 +5,7 @@
 // pressées chez lui (une télécommande agit sur la fenêtre active, souvent celle du projecteur).
 
 import { atom, type TLScribble } from 'tldraw'
-import type { LaserSettings, PageRect } from './store'
+import type { FoldOverrides, LaserSettings, PageRect } from './store'
 
 export interface ScreenState {
   presenting: boolean
@@ -23,6 +23,8 @@ export interface ScreenState {
   narration: boolean
   narrationScale: number
   laser: LaserSettings
+  /** Branches repliées ou dépliées à la main. */
+  foldOverrides: FoldOverrides
 }
 
 export type ScreenMessage =

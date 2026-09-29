@@ -6,17 +6,21 @@
 
 import { z } from 'zod'
 import { MapSchema, type UnveilMap } from '../map/format'
+import { PlanSchema, type DiagramPlan } from '../map/plan'
+import { numberedSource, passageOf, sourceParagraphs } from '../source/paragraphs'
 import { FOCUS_OF_KIND, REMARK_KINDS, REVIEW_FOCUS, type ReviewFocus } from '../map/review'
 
-export const PROMPT_VERSION = 4
+export const PROMPT_VERSION = 6
 
-export const TASKS = ['create', 'enrich', 'sequence', 'review', 'edit', 'expand'] as const
+export const TASKS = ['create', 'enrich', 'sequence', 'review', 'edit', 'expand', 'plan', 'develop', 'finish'] as const
 export type Task = (typeof TASKS)[number]
 /**
  * Tâches de la boîte « Consigne pour une IA » : « expand » part d'un élément (barre de l'arbre),
- * « review » a son panneau (« Relecture »).
+ * « review » a son panneau (« Relecture ») ; « plan », « develop » et « finish » sont les étapes
+ * d'une création en plusieurs temps (src/lib/ai/staged.ts).
  */
-export const ASSISTANT_TASKS = TASKS.filter((t) => t !== 'expand' && t !== 'review')
+export const ASSISTANT_TASKS = ['create', 'enrich', 'sequence', 'edit'] as const satisfies readonly Task[]
+export type AssistantTask = (typeof ASSISTANT_TASKS)[number]
 
 /** Une entrée du vocabulaire proposé (préréglages de l'utilisateur, dans sa langue). */
 export interface VocabularyLine {
@@ -54,6 +58,14 @@ export interface PromptInput {
   notes?: boolean
   /** « review » : ce qu'on attend de la relecture (par défaut : tout). */
   reviewFocus?: ReviewFocus[]
+  /**
+   * Création en plusieurs temps : le plan (« develop », « finish ») ; pour « plan », le plan
+   * précédent, à revoir d'après `planRemarks`.
+   */
+  plan?: DiagramPlan
+  planRemarks?: string
+  /** « develop » : précision de l'utilisateur pour cette section, à cette passe. */
+  sectionRequest?: string
   vocabulary: VocabularyLine[]
   /** Langue du contenu à écrire (« fr », « en »…). */
   lang: string
@@ -77,6 +89,9 @@ export const PromptInputSchema = z.object({
   withSequence: z.boolean().optional(),
   notes: z.boolean().optional(),
   reviewFocus: z.array(z.enum(REVIEW_FOCUS)).max(REVIEW_FOCUS.length).optional(),
+  plan: PlanSchema.optional(),
+  planRemarks: z.string().max(10_000).optional(),
+  sectionRequest: z.string().max(10_000).optional(),
   vocabulary: z
     .array(
       z.object({
@@ -107,7 +122,7 @@ Answer again with the whole corrected JSON, in one \`\`\`json code block, and no
 const LANG_NAMES: Record<string, string> = { fr: 'French', en: 'English' }
 
 export function buildPrompt(input: PromptInput): string {
-  const output = input.task === 'create' ? 'map' : input.task === 'review' ? 'review' : 'patch'
+  const output = input.task === 'create' ? 'map' : input.task === 'review' ? 'review' : input.task === 'plan' ? 'plan' : 'patch'
   const parts = [
     `<!-- Unveilboard prompt v${PROMPT_VERSION}, task: ${input.task} -->`,
     INTRO,
@@ -115,20 +130,34 @@ export function buildPrompt(input: PromptInput): string {
       ? sourceTaskText(input)
       : input.task === 'review'
         ? reviewTaskText(input.reviewFocus ?? REVIEW_FOCUS)
-        : TASK_TEXT[input.task].replace('{focus}', input.focus ?? ''),
+        : input.task === 'develop'
+          ? developTaskText(input)
+          : input.task === 'plan' && input.source
+            ? `${TASK_TEXT.plan}\n\n${planSourceText(input)}`
+            : input.task === 'plan' && input.map?.elements.length
+              ? `${TASK_TEXT.plan}\n\n${PLAN_EXISTING_TEXT}`
+              : input.task === 'finish' && input.withSequence === false
+                ? FINISH_LINKS_TEXT
+          : TASK_TEXT[input.task].replace('{focus}', input.focus ?? ''),
     input.instruction.trim() ? `## The user's request\n\n${input.instruction.trim()}` : '',
-    input.task === 'create' && input.source ? sourceText(input.source) : '',
+    sourceFor(input),
     input.task === 'sequence' && input.order?.length
       ? `## Default order\n\nA default order, depth first (what the app's “Reveal the map” button does): ${input.order.map((s) => `\`${s}\``).join(', ')}. Follow it unless the user's instructions, or the logic of the argument, call for another.`
       : '',
     input.selection?.length
       ? `## Selected elements\n\nThe user selected these elements; focus on them: ${input.selection.map((s) => `\`${s}\``).join(', ')}.`
       : '',
+    input.task === 'plan' && input.plan ? planRevisionText(input.plan, input.planRemarks) : '',
     vocabularyText(input.vocabulary),
     MAP_FORMAT_TEXT,
-    output === 'patch' ? PATCH_FORMAT_TEXT : output === 'review' ? reviewFormatText(input.reviewFocus ?? REVIEW_FOCUS) : '',
-    SEQUENCE_TEXT,
+    output === 'patch' ? PATCH_FORMAT_TEXT : output === 'review' ? reviewFormatText(input.reviewFocus ?? REVIEW_FOCUS) : output === 'plan' ? PLAN_FORMAT_TEXT : '',
+    input.task === 'plan' || input.task === 'develop' ? '' : SEQUENCE_TEXT,
     rules(input.lang, input.notes !== false),
+    (input.task === 'develop' || input.task === 'finish') && input.plan ? `## The plan
+
+\`\`\`json
+${JSON.stringify(input.plan, null, 1)}
+\`\`\`` : '',
     input.map
       ? `## The current diagram${input.partial ? ' (extract)\n\nOnly part of the diagram is shown: the element, its ancestors up to the root, and its branch.' : ''}\n\n\`\`\`json\n${JSON.stringify(input.map, null, 1)}\n\`\`\``
       : '',
@@ -158,7 +187,92 @@ Change the diagram below as the user asks.`,
   expand: `## Your task: develop the diagram from one element
 
 Starting from the element \`{focus}\`, do what the user asks below. Add new elements connected to it: as its children, with the right relation and type (justifications, objections, answers, examples, assumptions, distinctions, definitions…), deeper when useful (an answer to a new objection), and cross-links (\`link\`) between new elements and existing ones when they are really related. Do not change, move or remove existing elements, and do not write the sequence. Give each added element and link a short \`rationale\` (one sentence, for the user): the user will accept or reject each of them. Propose a handful of strong elements rather than many weak ones.`,
+  plan: `## Your task: plan a rich diagram
+
+The user wants a rich diagram, too large to be written in one answer. It will be built in several passes: first this **plan**, then each section developed separately (by other calls, in parallel, which will see this plan), then the cross-links and the presentation sequence. Write only the plan.
+
+- \`kind\`: an argument map when the material is a debate or a reasoning (a question, theses, reasons, objections, answers), a mind map when it is a set of notions to organise.
+- \`root\`: the root element (the question, the thesis or the central notion), as a real box.
+- \`sections\`: the main children of the root, in reading order, usually 3 to 8 (at most 12). Each head is a real box, explicit and self-sufficient (“The prisoners take shadows for reality”, not “Stage 1”), with its relation to the root.
+  - \`brief\`: what the section must develop (the points to make, the authors or texts to use) and where it stops, so that sections developed in parallel neither overlap nor leave gaps.
+  - \`size\`: the number of elements the section needs under its head, usually 4 to 12: more for a central section, fewer for a secondary one.
+  - \`synthesis\`: \`true\` for a section that draws on the others (an overall interpretation, a conclusion, the stakes of the whole): it is developed after them, seeing their content.
+- \`pattern\`: when the sections share a structure (e.g. each stage → its interpretation → its philosophical interest), describe it precisely (relations, types, order), so that every section follows it the same way. Omit it otherwise.
+- \`summary\`: the logic of the plan in two to four sentences, for the user, who will review it.
+- Short ids: \`root\`, \`s1\`, \`s2\`…`,
+  develop: '', // developTaskText : propre à chaque section
+  finish: `## Your task: finish the diagram
+
+The diagram below was built in several passes: a plan (given after the rules), then each section developed separately. Finish it:
+
+- **Cross-links** (\`link\`): a few strong links between elements of different sections that are really related (one answers, prepares, illustrates or contradicts another), with the right relation. None where the tree already expresses the relation: few and meaningful.
+- **Sequence** (\`{ "op": "sequence", "mode": "replace", "intro"?, "steps" }\`): the presentation of the whole diagram, following the plan: the root first, then each section in turn, revealing its elements progressively (group those that go together), and an overview at the end. Each step has a short title and a narration the teacher can read or say (2 to 5 sentences).
+
+Use only \`link\` and \`sequence\` operations: do not change the elements.`,
 }
+
+/** Finition sans séquence : les liens seulement. */
+const FINISH_LINKS_TEXT = `## Your task: finish the diagram
+
+The diagram below was built in several passes: a plan (given after the rules), then each section developed separately. Finish it with a few strong **cross-links** (\`link\`) between elements of different sections that are really related (one answers, prepares, illustrates or contradicts another), with the right relation. None where the tree already expresses the relation: few and meaningful. Do not write a sequence.
+
+Use only \`link\` operations: do not change the elements.`
+
+/** Plan d'un schéma déjà commencé : reprendre sa racine et ses branches. */
+const PLAN_EXISTING_TEXT = `**The diagram already exists** (below): build the plan on it, following the user's request.
+- \`root\`: its main root, with its \`id\` and its text unchanged.
+- Reuse its existing branches as sections when they fit: the section's \`id\` is the id of the branch head, its \`text\` the head's text unchanged. Add new sections (new ids) for what is missing.
+- Each section's \`brief\` says what remains to develop in it (its existing content is kept), and its \`size\` how many elements to add.
+- Branches you leave out of the plan stay as they are.`
+
+/** Développer une section d'un plan : sa consigne, le motif commun, sa taille, ses limites. */
+function developTaskText(input: PromptInput) {
+  const plan = input.plan
+  const section = plan?.sections.find((s) => s.id === input.focus)
+  const id = input.focus ?? ''
+  // Section déjà développée (en partie) : on complète.
+  const inside = new Set([id])
+  for (const e of input.map?.elements ?? []) if (e.parent && inside.has(e.parent)) inside.add(e.id)
+  const existing = inside.size - 1
+  return `## Your task: develop one section of the diagram
+
+The diagram is built in several passes: a plan (given after the rules) split it into sections, and each section is developed separately, in parallel, by calls like this one. Develop only the section \`${id}\`${section ? ` (“${section.text}”)` : ''}, following its brief${plan?.pattern ? ', the common pattern of the plan' : ''} and the user's request.
+
+${section ? `**Brief of this section**: ${section.brief}\n\n` : ''}${input.sectionRequest?.trim() ? `**The user's precision for this pass**: ${input.sectionRequest.trim()}\n\n` : ''}${
+    existing ? `**This section already has ${existing} element${existing > 1 ? 's' : ''}** (in the diagram below): complete it, adding what is missing, without repeating or changing what is there.\n\n` : ''
+  }${plan?.pattern ? `**Common pattern** (every section follows it the same way): ${plan.pattern}\n\n` : ''}- Add the elements of the section as descendants of \`${id}\` (children, grandchildren…), with the right type and relation${section?.size ? `: about ${section.size} elements` : ''}.
+- Stay within the brief: the other sections cover the rest (see the plan); do not repeat them.${
+    section?.synthesis
+      ? '\n- This is a synthesis: the other sections are already developed, in the diagram below. Draw on them without repeating them, and link to their elements (`link`) where it helps.'
+      : ''
+  }
+- Give the added elements ids that start with \`${id}-\` (\`${id}-1\`, \`${id}-2\`…).
+- You may add cross-links (\`link\`) from your elements to elements already in the diagram, when they are really related.
+- Use only \`add\` and \`link\` operations: do not change the existing elements, and do not write the sequence (it is written at the end).${input.source ? `\n\n${FIDELITY_TEXT}` : ''}`
+}
+
+/** Revoir un plan : le précédent, et les remarques de l'utilisateur. */
+function planRevisionText(plan: DiagramPlan, remarks?: string) {
+  return `## The previous plan${remarks?.trim() ? ", and the user's remarks" : ''}
+
+Revise this plan${remarks?.trim() ? ' according to the remarks below; keep what they do not question' : ': propose a better one'}.
+
+\`\`\`json
+${JSON.stringify(plan, null, 1)}
+\`\`\`${remarks?.trim() ? `\n\n**Remarks**: ${remarks.trim()}` : ''}`
+}
+
+const PLAN_FORMAT_TEXT = `## The plan format (JSON)
+
+\`\`\`
+{ "format": "unveilboard/plan", "version": 1, "title": "…", "lang": "fr", "summary": "…",
+  "kind": "argument" | "mindmap", "direction"?: "right" | "left" | "down" | "up" | "both",
+  "root": { "id", "text", "type"? },
+  "pattern"?: "…",
+  "sections": [ { "id", "text", "type"?, "relation"?, "brief", "size"?, "synthesis"? } ] }
+\`\`\`
+
+\`type\` and \`relation\` are ids of the vocabulary, as for elements.`
 
 /** Relecture critique : ce qu'on en attend (axes cochés par l'utilisateur), puis les règles communes. */
 function reviewTaskText(focus: readonly ReviewFocus[]) {
@@ -197,13 +311,23 @@ ${asked.map((f) => sections[f]).join('\n\n')}
 Give each remark its \`targets\` (the ids concerned), a clear \`message\` (what is wrong and why, for the teacher, naming elements by their text, never by their id) and a \`priority\`. When a correction is clear, give it as \`operations\` (the changes format below); when it is a matter of judgement, give only the remark. Do not repeat what the app already checks by itself (an objection without answer, a thesis without justification, a missing relation, linked premises with a single premise, an element shown before its parent, a box too long): focus on what needs understanding. Fewer, sharper remarks are better than many small ones; if the diagram is sound, say so in \`summary\`.`
 }
 
+/** Schéma tiré d'un texte : le type de schéma voulu. */
+const SOURCE_KIND_TEXT: Record<NonNullable<PromptInput['kind']>, string> = {
+  argument: 'Build an **argument map** (`"tree": { "kind": "argument" }`): the question or thesis at the root, then the reasons, objections, answers, examples, assumptions and distinctions of the text.',
+  mindmap: 'Build a **mind map** (`"tree": { "kind": "mindmap" }`): the central notion at the root, then its aspects, distinctions, definitions and examples, as the text organises them.',
+  auto: 'Choose the kind of diagram: an **argument map** (`"tree": { "kind": "argument" }`) when the text defends a thesis or discusses a question (reasons, objections, answers), a **mind map** (`"tree": { "kind": "mindmap" }`) when it presents a set of notions to organise.',
+}
+
+/** Fidélité au texte source, vérifiée par l'app. */
+const FIDELITY_TEXT = `**Faithfulness to the text** (checked by the app, character by character):
+- Every element that states something the text says has \`"origin": "text"\` and an \`excerpt\`: the shortest passage of the text that says it (one or two sentences at most), copied **character for character**, without any change. To skip words inside it, write “[…]”.
+- What the text does not say but your analysis brings out (an implicit assumption, an unstated link, a connecting question) has \`"origin": "reconstruction"\` and no \`excerpt\`.
+- A \`quote\` element is a quotation copied exactly from the text (its \`text\` must appear in it).
+- Give a \`source\` only when the text names it, or from the reference below.`
+
 /** Créer un schéma à partir d'un texte : type de schéma, fidélité, séquence. */
 function sourceTaskText(input: PromptInput) {
-  const kind = {
-    argument: 'Build an **argument map** (`"tree": { "kind": "argument" }`): the question or thesis at the root, then the reasons, objections, answers, examples, assumptions and distinctions of the text.',
-    mindmap: 'Build a **mind map** (`"tree": { "kind": "mindmap" }`): the central notion at the root, then its aspects, distinctions, definitions and examples, as the text organises them.',
-    auto: 'Choose the kind of diagram: an **argument map** (`"tree": { "kind": "argument" }`) when the text defends a thesis or discusses a question (reasons, objections, answers), a **mind map** (`"tree": { "kind": "mindmap" }`) when it presents a set of notions to organise.',
-  }[input.kind ?? 'auto']
+  const kind = SOURCE_KIND_TEXT[input.kind ?? 'auto']
   const sequence =
     input.withSequence === false
       ? 'Do not write a sequence.'
@@ -214,11 +338,28 @@ Analyse the source text below and draw its structure as a diagram, following the
 
 ${sequence}
 
-**Faithfulness to the text** (checked by the app, character by character):
-- Every element that states something the text says has \`"origin": "text"\` and an \`excerpt\`: the shortest passage of the text that says it (one or two sentences at most), copied **character for character**, without any change. To skip words inside it, write “[…]”.
-- What the text does not say but your analysis brings out (an implicit assumption, an unstated link, a connecting question) has \`"origin": "reconstruction"\` and no \`excerpt\`.
-- A \`quote\` element is a quotation copied exactly from the text (its \`text\` must appear in it).
-- Give a \`source\` only when the text names it, or from the reference below.`
+${FIDELITY_TEXT}`
+}
+
+/** Plan d'un schéma tiré d'un texte : chaque section analyse une plage de paragraphes. */
+function planSourceText(input: PromptInput) {
+  return `**The diagram analyses the source text below**, whose paragraphs are numbered ([§1], [§2]…). ${SOURCE_KIND_TEXT[input.kind ?? 'auto']}
+- Each section analyses a passage of the text: give its \`paragraphs\` (\`[first, last]\`). The sections usually follow the progression of the text and together cover it; a synthesis section may have no passage.
+- The root and the section heads are your analysis of the text: state them clearly. Their developments will quote the text.
+- \`brief\`: what the section must bring out of its passage (theses, reasons, examples, distinctions, objections).`
+}
+
+/** Le texte source, selon l'étape : entier (création), numéroté (plan), ou le passage d'une section. */
+function sourceFor(input: PromptInput): string {
+  const source = input.source
+  if (!source) return ''
+  if (input.task === 'create') return sourceText(source)
+  const reference = source.label ? `\n\nReference: ${source.label}` : ''
+  if (input.task === 'plan') return `## The source text (numbered paragraphs)${reference}\n\n<source>\n${numberedSource(sourceParagraphs(source.text))}\n</source>`
+  if (input.task !== 'develop') return ''
+  const range = input.plan?.sections.find((s) => s.id === input.focus)?.paragraphs
+  if (!range) return sourceText(source)
+  return `## The passage this section analyses${reference}\n\nQuote from this passage (the excerpts are checked against the whole text).\n\n<source>\n${passageOf(sourceParagraphs(source.text), range)}\n</source>`
 }
 
 function sourceText(source: NonNullable<PromptInput['source']>) {
@@ -350,8 +491,9 @@ ${writingRules(notes)}
 - Never write an element's \`id\` in text meant for the user (message, summary, reason, rationale, narration): the user does not see ids. Name the element by its text, briefly quoted.`
 }
 
-function deliveryText(output: 'map' | 'patch' | 'review', delivery: PromptInput['delivery'], pasteMenu: string) {
+function deliveryText(output: 'map' | 'patch' | 'review' | 'plan', delivery: PromptInput['delivery'], pasteMenu: string) {
   const what = {
+    plan: 'the plan (`"format": "unveilboard/plan"`)',
     map: 'the diagram (`"format": "unveilboard/map"`)',
     patch: 'the changes (`"format": "unveilboard/patch"`)',
     review: 'the review (`"format": "unveilboard/review"`)',

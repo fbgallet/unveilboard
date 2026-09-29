@@ -7,10 +7,12 @@ import { reviewAtom, reviewOpenAtom } from '@/lib/canvas/review'
 import { modeAtom } from '@/lib/presentation/store'
 import { aiSettingsOpenAtom } from './AiSettingsDialog'
 import { elementAiAtom } from './ElementAi'
+import { planPanelOpenAtom } from './PlanPanel'
+import { readPlanRecord } from '@/lib/canvas/plan'
 import { mapImportOpenAtom, openAssistant } from './MapJsonDialog'
 import { sourceDialogOpenAtom } from './SourceDialog'
 
-type IconName = 'branch' | 'wand' | 'steps' | 'review' | 'document' | 'braces' | 'gear'
+type IconName = 'branch' | 'wand' | 'steps' | 'review' | 'document' | 'braces' | 'gear' | 'plan'
 
 interface Item {
   id: string
@@ -61,6 +63,7 @@ const ICONS: Record<IconName, React.ReactNode> = {
     </>
   ),
   braces: <path d="M9 4c-2 0-2.5 1-2.5 3v2c0 1.5-.8 2.5-2.5 3 1.7.5 2.5 1.5 2.5 3v2c0 2 .5 3 2.5 3M15 4c2 0 2.5 1 2.5 3v2c0 1.5.8 2.5 2.5 3-1.7.5-2.5 1.5-2.5 3v2c0 2-.5 3-2.5 3" />,
+  plan: <path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" />,
   gear: (
     <>
       <circle cx="12" cy="12" r="3" />
@@ -97,6 +100,7 @@ export function AiLauncher() {
     },
     [editor]
   )
+  const hasPlan = useValue('has plan', () => !!readPlanRecord(editor), [editor])
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -132,7 +136,24 @@ export function AiLauncher() {
       },
       { id: 'assistant', icon: 'wand', label: t.launcher.assistant, action: () => openAssistant() },
       { id: 'sequence', icon: 'steps', label: t.launcher.sequence, action: () => openAssistant('sequence') },
-      { id: 'review', icon: 'review', label: remarks ? t.launcher.reviewCount(remarks) : t.review.menu, action: () => reviewOpenAtom.set(!reviewOpen) },
+      {
+        id: 'review',
+        icon: 'review',
+        label: remarks ? t.launcher.reviewCount(remarks) : t.review.menu,
+        action: () => {
+          planPanelOpenAtom.set(false)
+          reviewOpenAtom.set(!reviewOpen)
+        },
+      },
+      {
+        id: 'plan',
+        icon: 'plan',
+        label: hasPlan ? t.plan.menu : t.plan.menuNew,
+        action: () => {
+          reviewOpenAtom.set(false)
+          planPanelOpenAtom.set(true)
+        },
+      },
     ],
     [
       { id: 'source', icon: 'document', label: t.source.menu, action: () => sourceDialogOpenAtom.set(true) },

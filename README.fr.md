@@ -154,7 +154,7 @@ La première fois : `pnpm exec playwright install chromium`. Pour réutiliser un
   1. Créer une base Postgres (par exemple Neon).
   2. Appliquer les migrations avec l'URL de connexion **directe** (non « pooled »), entre guillemets simples car elle contient des `&` :
      `DATABASE_URL='postgresql://…/neondb?sslmode=require' pnpm db:migrate`
-     À refaire après chaque nouvelle migration dans `drizzle/`.
+     Ensuite, chaque déploiement applique les nouvelles migrations avant la compilation (`scripts/migrate.mjs`), avec `DATABASE_URL_UNPOOLED` si elle est définie (l'intégration Neon pour Vercel la pose), sinon `DATABASE_URL`. `SKIP_DB_MIGRATE=1` désactive cette étape.
   3. Sur Vercel, définir `DATABASE_URL` (l'URL **pooled**, hôte en `-pooler`), `APP_PASSWORD`, `SESSION_SECRET` (`openssl rand -base64 48`) et `TLDRAW_LICENSE_KEY`.
   4. Optionnel : créer un store Vercel Blob (`BLOB_READ_WRITE_TOKEN`) pour stocker les images hors du document.
 

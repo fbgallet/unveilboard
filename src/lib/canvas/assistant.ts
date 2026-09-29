@@ -8,7 +8,7 @@ import { clientLocale, m } from '@/i18n/client'
 import { buildPrompt, type PromptInput, type Task, type VocabularyLine } from '../ai/prompts'
 import { formatIssue } from '../map/check'
 import type { UnveilMap } from '../map/format'
-import { stashPendingMap } from '../map/pending'
+import { stashPendingMap, type PendingMap } from '../map/pending'
 import { readJson, type ReadResult } from '../map/read'
 import type { ReviewFocus } from '../map/review'
 import { documentStore } from '../storage'
@@ -108,7 +108,7 @@ export function readPasted(editor: Editor, text: string | unknown): ReadResult {
 }
 
 /** Crée un document pour un schéma : il est construit à son ouverture. Renvoie son identifiant. */
-export async function createDocumentFromMap(map: UnveilMap, opts: { unverified?: string[] } = {}): Promise<string> {
+export async function createDocumentFromMap(map: UnveilMap, opts: Omit<PendingMap, 'map'> = {}): Promise<string> {
   const id = await documentStore(storageModeAtom.get()).create(map.title || m().common.untitled)
   stashPendingMap(id, { map, ...opts })
   return id

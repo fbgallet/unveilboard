@@ -16,7 +16,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:local": "DATABASE_URL= next dev",
-    "build": "next build",
+    "build": "node scripts/migrate.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",

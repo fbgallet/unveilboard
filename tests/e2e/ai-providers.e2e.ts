@@ -136,7 +136,7 @@ test('OpenRouter : connexion (PKCE), la clé reste dans le navigateur', async ({
 
 test('IA de l’instance : absente sans configuration (mode local)', async ({ request }) => {
   const res = await request.post('/api/ai', { data: {} })
-  // Serveur de test configuré avec une IA (AI_PUBLIC) : la demande vide est refusée, autrement.
+  // Serveur de test avec une clé d'IA (en développement, elle suffit) : la demande vide est refusée, autrement.
   test.skip(res.status() !== 404, 'IA de l’instance configurée sur ce serveur')
   expect(res.status()).toBe(404)
   expect(await res.json()).toMatchObject({ kind: 'unavailable' })

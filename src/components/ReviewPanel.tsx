@@ -124,7 +124,7 @@ function ReviewView({ editor }: { editor: Editor }) {
   const [instruction, setInstruction] = useState('')
   const [selection] = useState(() => selectedRefs(editor))
   const [useSelection, setUseSelection] = useState(false)
-  const [run, setRun] = useState<{ chars: number; abort: AbortController } | null>(null)
+  const [run, setRun] = useState<{ chars: number; thinking: number; abort: AbortController } | null>(null)
   const [pasting, setPasting] = useState(false)
   const [pasted, setPasted] = useState('')
   const [failure, setFailure] = useState<string | null>(null)
@@ -152,9 +152,9 @@ function ReviewView({ editor }: { editor: Editor }) {
     setFailure(null)
     setIssues([])
     const abort = new AbortController()
-    setRun({ chars: 0, abort })
+    setRun({ chars: 0, thinking: 0, abort })
     try {
-      const result = await askAi(settings, input('api'), check, { signal: abort.signal, onText: (s) => setRun((r) => r && { ...r, chars: s.length }) })
+      const result = await askAi(settings, input('api'), check, { signal: abort.signal, onText: (s, thinking) => setRun((r) => r && { ...r, chars: s.length, thinking }) })
       accept(result.result)
     } catch (e) {
       const error = toAiError(e)
@@ -238,7 +238,7 @@ function ReviewView({ editor }: { editor: Editor }) {
         {run && (
           <>
             <span className="text-xs text-zinc-600" role="status">
-              {t.review.running(run.chars)}
+              {!run.chars && run.thinking ? t.ai.thinking(run.thinking) : t.review.running(run.chars)}
             </span>
             <button className="btn-xs" onClick={() => run.abort.abort()}>
               {t.ai.stop}

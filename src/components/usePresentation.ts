@@ -3,7 +3,8 @@
 import { useEffect, useRef } from 'react'
 import { react, type Editor, type TLCamera, type TLEventInfo } from 'tldraw'
 import { activeSpotlights, boundsOf, computeEditorStage, drawClip, moveCamera, readSequence, writeSequence } from '@/lib/canvas/adapter'
-import { stateOf } from '@/lib/sequence/compute'
+import { stateOf, type Stage } from '@/lib/sequence/compute'
+import { branchOf, getTreeIndex } from '@/lib/canvas/tree'
 import { noteOf, panelNoteIds } from '@/lib/canvas/notes'
 import { swallowNextKeyUp } from '@/lib/keyboard'
 import { applyLaserTiming } from '@/lib/canvas/laser'
@@ -11,7 +12,8 @@ import {
   activeSpotsAtom,
   activeStepIdAtom,
   editUnlockedAtom,
-  foldedBadgesAtom,
+  foldBadgesAtom,
+  foldOverridesAtom,
   laserPopoverOpenAtom,
   laserSettingsAtom,
   liveSpotAtom,
@@ -99,6 +101,29 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
     }
   }, [editor])
 
+  // Replis faits à la main : une étape qui replie ou déplie un nœud reprend la main sur lui ;
+  // revenir en arrière (ou quitter la présentation) les efface tous.
+  useEffect(() => {
+    let prevIndex = -2
+    return react('fold overrides', () => {
+      const index = stepIndexAtom.get()
+      const presenting = modeAtom.get() === 'present'
+      const overrides = foldOverridesAtom.__unsafe__getWithoutCapture()
+      const from = prevIndex
+      prevIndex = presenting ? index : -2
+      if (Object.keys(overrides).length === 0) return
+      if (!presenting || from === -2 || index < from) return foldOverridesAtom.set({})
+      const touched = new Set(
+        (readSequence(editor)?.steps.slice(from + 1, index + 1) ?? [])
+          .flatMap((step) => step.actions)
+          .filter((a) => a.type === 'fold' || a.type === 'unfold')
+          .flatMap((a) => a.targets)
+      )
+      if ([...touched].some((id) => id in overrides))
+        foldOverridesAtom.set(Object.fromEntries(Object.entries(overrides).filter(([id]) => !touched.has(id))))
+    })
+  }, [editor])
+
   // 1. Classes CSS de chaque forme, recalculées dès que la séquence, l'étape ou le document change.
   useEffect(() => {
     let prevIndex = -2
@@ -110,7 +135,7 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
         prevSpots = ''
         shapeClassesAtom.set(quickSequenceAtom.get() ? quickSequencePreview(editor) : null)
         activeSpotsAtom.set([])
-        foldedBadgesAtom.set([])
+        foldBadgesAtom.set({ folded: [], open: [] })
         return
       }
       const seq = readSequence(editor)
@@ -122,7 +147,11 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
         prevIndex = index
       }
       const animate = animatedIndex === index
-      const stage = computeEditorStage(editor, seq, index)
+      const overrides = Object.entries(foldOverridesAtom.get())
+      const stage = computeEditorStage(editor, seq, index, {
+        foldOverrides: new Map(overrides.map(([id, o]) => [id, o.folded])),
+        liveUnfolds: new Set(overrides.filter(([, o]) => !o.folded && o.step === index).map(([id]) => id)),
+      })
 
       const byId = new Map<string, ShapePresentation>()
       for (const id of editor.getCurrentPageShapeIds()) {
@@ -130,7 +159,7 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
         const cls = ['pres', `pres-${s.visibility}`]
         let style: Record<string, string> | undefined
         if (s.highlighted) cls.push('pres-hl')
-        if (animate && s.entering && s.entering !== 'none' && s.visibility !== 'hidden') {
+        if ((animate || s.live) && s.entering && s.entering !== 'none' && s.visibility !== 'hidden') {
           cls.push(`pres-enter-${s.entering}`)
           if (s.entering === 'draw') {
             const clip = drawClip(editor, id)
@@ -141,7 +170,7 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
         byId.set(id, { className: cls.join(' '), style })
       }
       shapeClassesAtom.set({ byId, fallback: { className: 'pres pres-visible' } })
-      foldedBadgesAtom.set([...stage].filter(([, s]) => s.folded && s.visibility !== 'hidden').map(([id]) => id))
+      foldBadgesAtom.set(foldBadges(editor, stage))
 
       // Calques occultants : quand la séquence en change, elle reprend la main sur la fenêtre tracée à la volée.
       const spots = activeSpotlights(editor, seq, index, stage)
@@ -344,6 +373,23 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
     window.addEventListener('keydown', onKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
   }, [editor, keyboard])
+}
+
+/** Pastilles d'arbre de l'étape : « +n » sur les nœuds repliés, « − » possible sur les nœuds dépliés. */
+function foldBadges(editor: Editor, stage: Stage) {
+  const { children } = getTreeIndex(editor)
+  const shown = (id: string) => stateOf(stage, id).visibility !== 'hidden'
+  const folded: { id: string; n: number }[] = []
+  const open: string[] = []
+  for (const [id, kids] of children) {
+    if (!shown(id)) continue
+    if (stateOf(stage, id).folded) {
+      // On ne compte que ce que le dépliage montrerait : pas les nœuds que la séquence n'a pas encore révélés.
+      const n = branchOf(editor, id).filter((d) => stage.get(d)?.foldHidden).length
+      if (n > 0) folded.push({ id, n })
+    } else if (kids.some(shown)) open.push(id)
+  }
+  return { folded, open }
 }
 
 /**

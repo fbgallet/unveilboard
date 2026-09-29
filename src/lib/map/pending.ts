@@ -3,6 +3,7 @@
 // Gardé dans sessionStorage : l'onglet qui importe est celui qui ouvre le document.
 
 import type { UnveilMap } from './format'
+import type { PlanRecord } from './plan'
 
 const key = (docId: string) => `pending-map:${docId}`
 
@@ -10,6 +11,8 @@ export interface PendingMap {
   map: UnveilMap
   /** Schéma tiré d'une source : éléments dont l'extrait n'a pas été retrouvé dans le texte. */
   unverified?: string[]
+  /** Squelette d'un plan, à construire en direct : le plan, gardé dans le document. */
+  plan?: PlanRecord
 }
 
 export function stashPendingMap(docId: string, pending: PendingMap) {

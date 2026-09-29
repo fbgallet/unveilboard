@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { defaultPresets } from '../presets/presets'
 import { MapSchema } from '../map/format'
 import { readJson } from '../map/read'
-import { chat, readChatStream } from './chat'
+import { STALL_MS, chat, readChatStream } from './chat'
 import { AiError, kindFromStatus, toAiError } from './errors'
 import { chatMessages, runWithRepair } from './run'
 import truthFr from '../examples/truth.fr.json'
@@ -70,6 +70,46 @@ describe('appel compatible OpenAI', () => {
     expect(toAiError(new DOMException('x', 'AbortError')).kind).toBe('aborted')
     const empty = await chat({ baseUrl: 'http://x/v1', model: 'm', messages: [], fetch: fakeFetch([sse([])]) }).catch((e) => (e as AiError).kind)
     expect(empty).toBe('empty')
+  })
+})
+
+describe('flux incomplet', () => {
+  const stream = (body: string | ReadableStream) => new Response(body, { headers: { 'content-type': 'text/event-stream' } })
+  const kindOf = (p: Promise<unknown>) => p.then(() => 'ok', (e) => (e as AiError).kind)
+
+  it('coupé avant la fin (ni finish_reason ni [DONE]) → interrupted', async () => {
+    expect(await kindOf(readChatStream(stream(`data: ${JSON.stringify({ choices: [{ delta: { content: '{"a"' } }] })}\n\n`)))).toBe('interrupted')
+  })
+
+  it('finish_reason suffit sans [DONE] ; « length » → réponse tronquée refusée', async () => {
+    const end = (reason: string) => stream(`data: ${JSON.stringify({ choices: [{ delta: { content: 'x' }, finish_reason: reason }] })}\n\n`)
+    expect((await readChatStream(end('stop'))).text).toBe('x')
+    expect(await kindOf(readChatStream(end('length')))).toBe('length')
+  })
+
+  it('coupure réseau pendant la lecture → interrupted', async () => {
+    const broken = new ReadableStream({ pull: (c) => c.error(new TypeError('Network connection lost.')) })
+    expect(await kindOf(readChatStream(stream(broken)))).toBe('interrupted')
+  })
+
+  it('silence prolongé → timeout', async () => {
+    vi.useFakeTimers()
+    try {
+      const result = kindOf(readChatStream(stream(new ReadableStream())))
+      await vi.advanceTimersByTimeAsync(STALL_MS)
+      expect(await result).toBe('timeout')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('réflexion comptée à part du texte (reasoning, reasoning_content)', async () => {
+    const seen: [string, number][] = []
+    await readChatStream(
+      sse([{ choices: [{ delta: { reasoning: 'hmm' } }] }, { choices: [{ delta: { reasoning_content: '..' } }] }, { choices: [{ delta: { content: 'ok' } }] }]),
+      (text, thinking) => seen.push([text, thinking])
+    )
+    expect(seen).toEqual([['', 3], ['', 5], ['ok', 5]])
   })
 })
 

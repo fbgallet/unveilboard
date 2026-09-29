@@ -18,6 +18,12 @@ export type AiErrorKind =
   | 'invalid_output'
   /** Réponse vide. */
   | 'empty'
+  /** Flux coupé avant la fin (fournisseur ou réseau). */
+  | 'interrupted'
+  /** Plus rien reçu depuis trop longtemps. */
+  | 'timeout'
+  /** Plafond de jetons atteint (réflexion comprise) : réponse tronquée. */
+  | 'length'
   /** IA de l'instance non configurée ou désactivée. */
   | 'unavailable'
   | 'aborted'
