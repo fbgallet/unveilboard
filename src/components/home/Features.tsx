@@ -28,17 +28,24 @@ const ICONS = [
     <rect x="14" y="16" width="7" height="5" rx="1.5" />
     <path d="M12 8v4M6.5 16v-4h11v4" />
   </>,
-  // Éditeur : crayon
+  // Partir d'un texte : une page, et une boîte qui en sort
   <>
-    <path d="M4 20l1-4L16 5l3 3L8 19l-4 1Z" />
-    <path d="M14 7l3 3" />
+    <path d="M4 3h8l3 3v8H4z" />
+    <path d="M7 8h5M7 11h3" />
+    <rect x="14" y="15" width="7" height="6" rx="1.5" />
+    <path d="M12 14l3 2" />
+  </>,
+  // IA : deux étincelles
+  <>
+    <path d="M10 3.5l1.8 5.2 5.2 1.8-5.2 1.8L10 17.5l-1.8-5.2L3 10.5l5.2-1.8z" />
+    <path d="M18 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" />
   </>,
 ]
 
 export function Features() {
   const t = useT()
   return (
-    <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
+    <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {t.landing.features.map((f, i) => (
         <li key={f.title}>
           <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-700">

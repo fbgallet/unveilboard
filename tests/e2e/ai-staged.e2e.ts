@@ -114,7 +114,11 @@ test('schéma riche : plan relu et modifié, sections en parallèle, section rel
 })
 
 type Win = { unveilboard: { getMap(): { elements: { id: string }[]; links?: unknown[]; sequence?: { steps: unknown[] } } } }
-const getMap = (page: Page) => page.evaluate(() => (window as unknown as Win).unveilboard.getMap())
+/** Le schéma ouvert ; attend que la page (juste ouverte) ait installé son API. */
+const getMap = async (page: Page) => {
+  await page.waitForFunction(() => (window as unknown as Partial<Win>).unveilboard)
+  return page.evaluate(() => (window as unknown as Win).unveilboard.getMap())
+}
 
 test('construction en direct : squelette, sections en suggestions, précision, liens et séquence', async ({ page }) => {
   const prompts: string[] = []
@@ -349,4 +353,391 @@ test('depuis un texte, en direct : squelette, section en suggestions, extrait in
     return editor.getCurrentPageShapes().filter((s) => s.meta.excerptUnverified).map((s) => s.meta.ref)
   })
   expect(flagged).toEqual(['s1-1'])
+})
+
+test('texte source : affiché à côté du schéma, passages surlignés, dans les deux sens, texte mis en forme', async ({ page }) => {
+  await page.route(`${LOCAL}/**`, async (route: Route) => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS })
+    const prompt: string = route.request().postDataJSON().messages[0].content
+    const task = prompt.match(/task: (\w+)/)![1]
+    const section = prompt.match(/Develop only the section `(\w+)`/)?.[1]
+    const body =
+      task === 'plan'
+        ? textPlan
+        : section === 's1'
+          ? quoted('s1', 'les prennent pour la réalité')
+          : section === 's2'
+            ? quoted('s2', 'il verra enfin le soleil lui-même')
+            : { format: 'unveilboard/patch', version: 1, operations: [{ op: 'sequence', mode: 'replace', steps: [{ title: 'La caverne', actions: [{ do: 'show', targets: ['root'] }] }] }] }
+    await route.fulfill({ body: sse(JSON.stringify(body)), headers: { ...CORS, 'content-type': 'text/event-stream' } })
+  })
+  const dialog = await openSource(page)
+  await dialog.getByRole('button', { name: 'Generate it all at once' }).click()
+  await dialog.getByRole('button', { name: 'Open as a new diagram' }).click()
+  await page.waitForURL(/\/d\//)
+  await page.waitForFunction(() => (window as unknown as { unveilboard?: unknown }).unveilboard && document.querySelector('aside'))
+
+  // La barre s'ouvre d'elle-même : le texte, les deux passages cités surlignés.
+  const panel = page.getByRole('complementary', { name: 'Source text' })
+  await expect(panel.getByText(/2 passages cited/)).toBeVisible()
+  await expect(panel.locator('mark.source-mark')).toHaveText(['les prennent pour la réalité', 'il verra enfin le soleil lui-même'])
+
+  // Élément sélectionné → son passage ressort ; passage cliqué → ses éléments sont sélectionnés.
+  const shapeOf = (ref: string) =>
+    page.evaluate((ref) => {
+      const editor = (window as unknown as { editor: import('tldraw').Editor }).editor
+      return editor.getCurrentPageShapes().find((s) => s.meta.ref === ref)!.id as string
+    }, ref)
+  const s21 = await shapeOf('s2-1')
+  await page.evaluate((id) => void (window as unknown as { editor: { select(id: string): unknown } }).editor.select(id), s21)
+  await expect(panel.locator('mark.source-mark-active')).toHaveText('il verra enfin le soleil lui-même')
+  // Par défaut, un clic recentre sans sélectionner ; avec l'option, il sélectionne aussi.
+  await panel.getByRole('button', { name: 'Also select the element when clicking a passage' }).click()
+  await panel.locator('mark.source-mark').first().click()
+  const selected = await page.evaluate(() => (window as unknown as { editor: { getSelectedShapeIds(): string[] } }).editor.getSelectedShapeIds())
+  expect(selected).toEqual([await shapeOf('s1-1')])
+  await page.screenshot({ path: 'test-results/ai-source-panel.png' })
+
+  // Mis en forme en Markdown : les passages restent retrouvés, même coupés par une mise en forme.
+  await panel.getByRole('button', { name: 'Edit' }).click()
+  const editor = panel.getByRole('textbox', { name: 'Source text' })
+  const text = await editor.inputValue()
+  await editor.fill(`# La caverne\n\n${text.replace('pour la réalité', 'pour la **réalité**')}`)
+  await panel.getByRole('button', { name: 'Save' }).click()
+  await expect(panel.getByRole('heading', { name: 'La caverne' })).toBeVisible()
+  await expect(panel.locator('strong').filter({ hasText: 'réalité' })).toBeVisible()
+  await expect(panel.getByText(/2 passages cited/)).toBeVisible()
+  await expect(panel.locator('mark.source-mark')).toHaveText(['les prennent pour la ', 'réalité', 'il verra enfin le soleil lui-même'])
+
+  // Retirer le texte : le panneau se ferme, le menu ne le propose plus, les extraits restent.
+  page.once('dialog', (d) => void d.accept())
+  await panel.getByRole('button', { name: 'Edit' }).click()
+  await panel.getByRole('button', { name: 'Remove the text' }).click()
+  await expect(panel.getByRole('heading', { name: 'Associate a text with this page' })).toBeVisible()
+  expect((await getMap(page)).elements.some((e) => (e as { excerpt?: string }).excerpt === 'il verra enfin le soleil lui-même')).toBe(true)
+})
+
+test('texte associé à une page : élément créé d’une sélection, extraits d’un élément (ajout, retrait), clic sans cadrage', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: /Should we always tell the truth\?/ }).click()
+  await page.waitForURL(/\?demo=truth/)
+  await page.waitForFunction(() => (window as unknown as { unveilboard?: unknown }).unveilboard && document.querySelector('aside'))
+  type Editor = { getCurrentPageShapes(): { id: string; type: string; meta: Record<string, unknown> }[] }
+  const shapes = () => page.evaluate(() => (window as unknown as { editor: Editor }).editor.getCurrentPageShapes().map((s) => ({ id: s.id, type: s.type, meta: s.meta })))
+
+  // Le bouton discret, à côté de ✦ : la barre s'ouvre à gauche, sans texte encore.
+  await page.getByRole('button', { name: 'Source text: show or hide the text of this page' }).click()
+  const panel = page.getByRole('complementary', { name: 'Source text' })
+  const text = 'La véracité est un devoir envers tous.\n\nMentir à un meurtrier reste une faute, dit Kant.'
+  await panel.getByRole('textbox', { name: 'Source text' }).fill(text)
+  await panel.getByRole('button', { name: 'Associate this text' }).click()
+  await expect(panel.getByText('La véracité est un devoir envers tous.')).toBeVisible()
+  /** Sélectionne `words` dans le paragraphe `index` du texte, comme à la souris. */
+  const selectIn = (index: number, words: string) =>
+    panel.locator('.source-text p').nth(index).evaluate((p, words) => {
+      const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT)
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const at = node.textContent!.indexOf(words)
+        if (at < 0) continue
+        const range = document.createRange()
+        range.setStart(node, at)
+        range.setEnd(node, at + words.length)
+        window.getSelection()!.removeAllRanges()
+        window.getSelection()!.addRange(range)
+        p.closest('.source-text')!.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+        return
+      }
+    }, words)
+
+  // Une sélection dans le texte → « Nouvel élément » : l'élément cite le passage, surligné.
+  await panel.locator('.source-text p').nth(1).evaluate((p) => {
+    const node = p.firstChild!
+    const range = document.createRange()
+    range.setStart(node, 0)
+    range.setEnd(node, 'Mentir à un meurtrier reste une faute'.length)
+    window.getSelection()!.removeAllRanges()
+    window.getSelection()!.addRange(range)
+    p.closest('.source-text')!.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+  })
+  await panel.getByRole('button', { name: 'New element', exact: true }).click()
+  await expect.poll(async () => (await shapes()).filter((s) => s.meta.excerpt === 'Mentir à un meurtrier reste une faute').length).toBe(1)
+  await expect(panel.locator('mark.source-mark')).toHaveText(['Mentir à un meurtrier reste une faute'])
+
+  // L'élément sélectionné, puis un passage : « Extrait de l'élément ».
+  const thesis = (await shapes()).find((s) => s.meta.ref === 'thesis')!
+  await page.evaluate((id) => void (window as unknown as { editor: { select(id: string): unknown } }).editor.select(id), thesis.id)
+  await selectIn(0, 'La véracité est un devoir envers tous.')
+  await panel.getByRole('button', { name: 'Excerpt of the element' }).click()
+  await expect.poll(async () => (await shapes()).find((s) => s.id === thesis.id)!.meta.excerpt).toBe('La véracité est un devoir envers tous.')
+  await expect(panel.locator('mark.source-mark')).toHaveCount(2)
+  await page.screenshot({ path: 'test-results/source-sidebar.png' })
+
+  // Un élément existant sélectionné, puis un passage choisi : « Extrait de l'élément ».
+  const question = (await shapes()).find((s) => s.meta.ref === 'question')!
+  await page.evaluate((id) => void (window as unknown as { editor: { select(id: string): unknown } }).editor.select(id), question.id)
+  await expect(panel.getByRole('status')).toContainText('Selected element: “Should we always tell the truth?”')
+  await panel.locator('.source-text p').nth(1).evaluate((p) => {
+    const node = p.lastChild!
+    const range = document.createRange()
+    range.setStart(node, node.textContent!.indexOf('dit Kant'))
+    range.setEnd(node, node.textContent!.indexOf('dit Kant') + 'dit Kant'.length)
+    window.getSelection()!.removeAllRanges()
+    window.getSelection()!.addRange(range)
+    p.closest('.source-text')!.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+  })
+  await panel.getByRole('button', { name: 'Excerpt of the element' }).click()
+  await expect.poll(async () => (await shapes()).find((s) => s.id === question.id)!.meta.excerpt).toBe('dit Kant')
+
+  // Un second passage (plus haut dans le texte) : les extraits se suivent dans l'ordre du texte.
+  await expect(panel.getByRole('status')).toContainText('Excerpts of the selected element:')
+  await selectIn(0, 'La véracité')
+  await panel.getByRole('button', { name: 'Add to its excerpts' }).click()
+  await expect.poll(async () => (await shapes()).find((s) => s.id === question.id)!.meta.excerpt).toBe('La véracité […] dit Kant')
+  // Retirer un passage : son surlignage disparaît.
+  await panel.getByRole('button', { name: 'Remove this passage from its excerpts' }).first().click()
+  await expect.poll(async () => (await shapes()).find((s) => s.id === question.id)!.meta.excerpt).toBe('dit Kant')
+
+
+  // Un clic sur un passage recentre sur son élément, sans le sélectionner (par défaut).
+  type Camera = { getCamera(): { x: number; y: number; z: number }; getSelectedShapeIds(): string[]; selectNone(): unknown }
+  const camera = () => page.evaluate(() => (window as unknown as { editor: Camera }).editor.getCamera())
+  await page.evaluate(() => void (window as unknown as { editor: Camera }).editor.selectNone())
+  const before = await camera()
+  await panel.locator('mark.source-mark').first().click()
+  await expect.poll(camera).not.toEqual(before)
+  expect(await page.evaluate(() => (window as unknown as { editor: Camera }).editor.getSelectedShapeIds())).toEqual([])
+
+  // Calques : la thèse (sa fonction dans la carte) et la question (son type) citent des passages
+  // qui se recouvrent ; chaque calque garde son soulignement, et peut être masqué.
+  await page.evaluate((id) => void (window as unknown as { editor: { select(id: string): unknown } }).editor.select(id), question.id)
+  await selectIn(0, 'un devoir envers tous')
+  await panel.getByRole('button', { name: 'Add to its excerpts' }).click()
+  await page.evaluate(() => void (window as unknown as { editor: Camera }).editor.selectNone())
+  await panel.getByRole('button', { name: /^Layers/ }).click()
+  const layers = panel.getByRole('group', { name: 'Layers' })
+  await expect(layers.getByRole('checkbox')).not.toHaveCount(0)
+  const overlap = panel.locator('mark.source-mark', { hasText: 'un devoir envers tous' }).first()
+  await expect(overlap).toHaveAttribute('style', /box-shadow/)
+  const labels = await layers.locator('label').allInnerTexts()
+  const questionLayer = labels.find((l) => /Question/.test(l))!
+  await layers.getByRole('checkbox', { name: new RegExp(questionLayer.split('\n')[0]) }).uncheck()
+  await expect(panel.locator('mark.source-mark', { hasText: 'dit Kant' })).toHaveCount(0)
+  await page.screenshot({ path: 'test-results/source-layers.png' })
+  await layers.getByRole('checkbox', { name: new RegExp(questionLayer.split('\n')[0]) }).check()
+
+  // Taille du texte : A+ l'agrandit.
+  const size = () => panel.locator('.source-text').evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+  const small = await size()
+  await panel.getByRole('button', { name: 'Larger text (+)' }).click()
+  expect(await size()).toBeGreaterThan(small)
+
+  // Clic droit sur un passage : les éléments qui le citent.
+  await panel.locator('mark.source-mark', { hasText: 'dit Kant' }).click({ button: 'right' })
+  await expect(panel.getByRole('dialog', { name: 'Cited by:' })).toContainText('Should we always tell the truth?')
+  await page.keyboard.press('Escape')
+  // Clic : une petite croix au bout du passage retire son surlignement.
+  await panel.locator('mark.source-mark', { hasText: 'dit Kant' }).click()
+  await panel.getByRole('button', { name: 'Remove the highlight' }).click()
+  await expect(panel.locator('mark.source-mark', { hasText: 'dit Kant' })).toHaveCount(0)
+  await expect.poll(async () => (await shapes()).find((s) => s.id === question.id)!.meta.excerpt).toBe('un devoir envers tous')
+
+  // Option de la présentation (carte « Départ ») : afficher le texte au lancement.
+  await page.locator('li[data-start]').click()
+  await page.getByRole('checkbox', { name: 'Show the source text when the presentation starts' }).check()
+  // En présentation : la barre, en lecture seule ; les passages apparaissent au fil des étapes.
+  await page.getByRole('button', { name: '▶ Present' }).click()
+  await expect(panel.getByRole('button', { name: 'Edit' })).toHaveCount(0)
+  const marked = () => panel.locator('mark.source-mark').allInnerTexts()
+  // Avant la première étape : seul l'élément isolé (qu'aucune étape ne gère) est visible.
+  await expect.poll(marked).toEqual(['Mentir à un meurtrier reste une faute'])
+  await page.keyboard.press('ArrowRight')
+  await expect.poll(marked).toContain('un devoir envers tous')
+  await expect(panel.locator('mark.source-mark-active')).not.toHaveCount(0)
+  await page.screenshot({ path: 'test-results/source-presenting.png' })
+  // Le menu « Plus » la masque.
+  await page.getByTitle('More').click()
+  await page.getByRole('menuitem', { name: 'Source text' }).click()
+  await expect(panel).toHaveCount(0)
+})
+
+test('calques libres : créer, renommer, calque actif, ranger un élément, masquer, supprimer', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: /Should we always tell the truth\?/ }).click()
+  await page.waitForURL(/\?demo=truth/)
+  await page.waitForFunction(() => (window as unknown as { unveilboard?: unknown }).unveilboard && document.querySelector('aside'))
+  type Editor = { getCurrentPageShapes(): { id: string; meta: Record<string, unknown> }[]; select(id: string): unknown; selectNone(): unknown }
+  const editor = (fn: string, arg?: string) =>
+    page.evaluate(
+      ({ fn, arg }) => {
+        const e = (window as unknown as { editor: Editor }).editor
+        if (fn === 'shapes') return e.getCurrentPageShapes().map((s) => ({ id: s.id, meta: s.meta }))
+        if (fn === 'select') void e.select(arg!)
+        if (fn === 'none') void e.selectNone()
+        return null
+      },
+      { fn, arg }
+    )
+  const shapes = async () => (await editor('shapes')) as { id: string; meta: Record<string, unknown> }[]
+
+  await page.getByRole('button', { name: 'Source text: show or hide the text of this page' }).click()
+  const panel = page.getByRole('complementary', { name: 'Source text' })
+  // L'éditeur du texte : boutons et raccourcis Markdown (Ctrl/⌘ + B, Ctrl/⌘ + Alt + 1…).
+  const input = panel.getByRole('textbox', { name: 'Source text' })
+  await input.fill('Titre')
+  await input.press('ControlOrMeta+a')
+  await input.press('ControlOrMeta+Alt+Digit1')
+  await expect(input).toHaveValue('# Titre')
+  await input.press('ControlOrMeta+a')
+  await input.press('ControlOrMeta+b')
+  await expect(input).toHaveValue('**# Titre**')
+  await input.fill('La véracité est un devoir envers tous.\n\nMentir à un meurtrier reste une faute, dit Kant.')
+  await panel.getByRole('button', { name: 'Associate this text' }).click()
+
+  // Un calque, renommé : il devient le calque actif.
+  await panel.getByRole('button', { name: /^Layers/ }).click()
+  const layers = panel.getByRole('group', { name: 'Layers' })
+  await layers.getByRole('button', { name: 'New layer' }).click()
+  const name = layers.getByRole('textbox', { name: 'Layer name' })
+  await name.fill('Arguments')
+  await name.press('Enter')
+  await expect(layers.getByRole('radio')).toBeChecked()
+
+  // Un élément créé depuis un passage est rangé dans le calque actif, surligné à sa couleur.
+  await panel.locator('.source-text p').nth(1).evaluate((p) => {
+    const range = document.createRange()
+    range.setStart(p.firstChild!, 0)
+    range.setEnd(p.firstChild!, 'Mentir à un meurtrier'.length)
+    window.getSelection()!.removeAllRanges()
+    window.getSelection()!.addRange(range)
+    p.closest('.source-text')!.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+  })
+  await panel.getByRole('button', { name: 'New element', exact: true }).click()
+  await expect.poll(async () => (await shapes()).find((s) => s.meta.excerpt === 'Mentir à un meurtrier')?.meta.layer).toBe('layer1')
+  await expect(panel.locator('mark.source-mark')).toHaveCount(1)
+  // Le calque regroupe ; le passage garde la couleur de son élément.
+  expect(await panel.locator('mark.source-mark').evaluate((el) => (el as HTMLElement).style.getPropertyValue('--mark-color'))).toBeTruthy()
+  await expect(layers.locator('.source-layer-swatch')).toHaveCount(0)
+
+  // Ranger un élément existant (la thèse) dans le calque, depuis le bas de la barre.
+  const thesis = (await shapes()).find((s) => s.meta.ref === 'thesis')!
+  await editor('select', thesis.id)
+  await panel.getByRole('combobox').selectOption({ label: 'Arguments' })
+  await expect.poll(async () => (await shapes()).find((s) => s.id === thesis.id)!.meta.layer).toBe('layer1')
+  await page.screenshot({ path: 'test-results/source-custom-layers.png' })
+
+  // Masquer le calque, puis le supprimer : ses éléments retrouvent leur calque automatique.
+  await layers.getByRole('checkbox', { name: 'Arguments' }).uncheck()
+  await expect(panel.locator('mark.source-mark')).toHaveCount(0)
+  await layers.getByRole('checkbox', { name: 'Arguments' }).check()
+  await layers.getByRole('button', { name: /Delete this layer/ }).click()
+  await expect.poll(async () => (await shapes()).filter((s) => s.meta.layer).length).toBe(0)
+  await expect(panel.locator('mark.source-mark')).toHaveCount(1)
+
+  // Un long passage : l'encart de l'élément sélectionné reste dans la barre.
+  const created = (await shapes()).find((s) => s.meta.excerpt === 'Mentir à un meurtrier')!
+  await page.evaluate(
+    ({ id, excerpt }) => {
+      const e = (window as unknown as { editor: { getShape(id: string): { type: string; meta: object }; updateShape(p: unknown): unknown; select(id: string): unknown } }).editor
+      const shape = e.getShape(id)
+      void e.updateShape({ id, type: shape.type, meta: { ...shape.meta, excerpt } })
+      void e.select(id)
+    },
+    { id: created.id, excerpt: 'Mentir à un meurtrier reste une faute, dit Kant, et cette phrase est volontairement très longue pour déborder' }
+  )
+  await expect(panel.getByRole('status')).toContainText('Excerpts of the selected element:')
+  const widths = await page.evaluate(() => {
+    const aside = document.querySelector('.source-sidebar')!.getBoundingClientRect().right
+    return [...document.querySelectorAll('.source-target, .source-target *')].map((el) => el.getBoundingClientRect().right - aside)
+  })
+  expect(Math.max(...widths)).toBeLessThanOrEqual(1)
+
+  // Une nouvelle page : on y reprend le texte de la page 1.
+  await page.evaluate(() => {
+    const e = (window as unknown as { editor: { createPage(p: { name: string }): unknown; getPages(): { id: string; name: string }[]; setCurrentPage(id: string): unknown } }).editor
+    void e.createPage({ name: 'Page 2' })
+    void e.setCurrentPage(e.getPages().find((p) => p.name === 'Page 2')!.id)
+  })
+  await panel.getByRole('button', { name: 'Use the text of “Page 1”' }).click()
+  await expect(panel.getByText('La véracité est un devoir envers tous.')).toBeVisible()
+})
+
+test('partage avec le texte source : le lecteur peut l’afficher', async ({ page, context }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: /Should we always tell the truth\?/ }).click()
+  await page.waitForURL(/\?demo=truth/)
+  await page.waitForFunction(() => (window as unknown as { unveilboard?: unknown }).unveilboard && document.querySelector('aside'))
+  await page.getByRole('button', { name: 'Source text: show or hide the text of this page' }).click()
+  const panel = page.getByRole('complementary', { name: 'Source text' })
+  await panel.getByRole('textbox', { name: 'Source text' }).fill('La véracité est un devoir envers tous.')
+  await panel.getByRole('button', { name: 'Associate this text' }).click()
+
+  // Sans la case, le lien ne contient pas le texte ; avec, si.
+  await page.getByRole('button', { name: 'Share', exact: true }).click()
+  await page.getByRole('checkbox', { name: /Include the source text/ }).check()
+  await page.getByRole('button', { name: 'Create the link' }).click()
+  const url = await page.locator('.share-dialog input[readonly]').first().inputValue()
+  const viewer = await context.newPage()
+  await viewer.goto(url)
+  await expect(viewer.locator('.studio')).toHaveAttribute('data-mode', 'present')
+  // Masqué par défaut ; le lecteur l'affiche depuis le menu « Plus ».
+  const shared = viewer.getByRole('complementary', { name: 'Source text' })
+  await expect(shared).toHaveCount(0)
+  await viewer.getByTitle('More').click()
+  await viewer.getByRole('menuitem', { name: 'Source text' }).click()
+  await expect(shared.getByText('La véracité est un devoir envers tous.')).toBeVisible()
+  await expect(shared.getByRole('button', { name: 'Edit' })).toHaveCount(0)
+})
+
+test('menu IA de la barre du texte : créer depuis ce texte, enrichir en s’appuyant sur le texte', async ({ page }) => {
+  const prompts: string[] = []
+  await page.route(`${LOCAL}/**`, async (route: Route) => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS })
+    prompts.push(route.request().postDataJSON().messages[0].content)
+    const body = {
+      format: 'unveilboard/patch',
+      version: 1,
+      operations: [
+        { op: 'add', id: 'n1', text: 'Un devoir envers tous', parent: 'thesis', relation: 'supports', origin: 'text', excerpt: 'un devoir envers tous' },
+        { op: 'add', id: 'n2', text: 'Une citation inventée', parent: 'thesis', relation: 'supports', origin: 'text', excerpt: 'une phrase absente du texte' },
+      ],
+    }
+    await route.fulfill({ body: sse(JSON.stringify(body)), headers: { ...CORS, 'content-type': 'text/event-stream' } })
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: /Should we always tell the truth\?/ }).click()
+  await page.waitForURL(/\?demo=truth/)
+  await page.evaluate((url) => localStorage.setItem('ai-settings', JSON.stringify({ kind: 'custom', customUrl: url, customModel: 'fake' })), LOCAL)
+  await page.reload()
+  await page.waitForFunction(() => (window as unknown as { unveilboard?: unknown }).unveilboard && document.querySelector('aside'))
+  await page.getByRole('button', { name: 'Source text: show or hide the text of this page' }).click()
+  const panel = page.getByRole('complementary', { name: 'Source text' })
+  await panel.getByRole('textbox', { name: 'Source text' }).fill('La véracité est un devoir envers tous.')
+  await panel.getByRole('button', { name: 'Associate this text' }).click()
+
+  // « Créer un nouveau schéma à partir de ce texte » : la boîte s'ouvre, remplie.
+  await panel.getByRole('button', { name: 'AI from this text' }).click()
+  await page.getByRole('menuitem', { name: 'Create a new diagram from this text…' }).click()
+  const source = page.getByRole('dialog', { name: 'Create a diagram from a text' })
+  await expect(source.getByRole('textbox', { name: 'Source text' })).toHaveValue('La véracité est un devoir envers tous.')
+  await source.getByRole('button', { name: 'Close' }).click()
+
+  // « Enrichir le schéma à partir du texte » : la consigne contient le texte et les règles de fidélité.
+  await panel.getByRole('button', { name: 'AI from this text' }).click()
+  await page.getByRole('menuitem', { name: 'Enrich the diagram from the text…' }).click()
+  const assistant = page.getByRole('dialog', { name: 'Work with an AI' })
+  await expect(assistant.getByRole('checkbox', { name: 'Use the source text of this page' })).toBeChecked()
+  await assistant.getByRole('button', { name: 'Ask the AI' }).click()
+  await assistant.getByRole('button', { name: 'Apply' }).click()
+  expect(prompts.at(-1)).toContain('<source>\nLa véracité est un devoir envers tous.\n</source>')
+  expect(prompts.at(-1)).toContain('**Faithfulness to the text**')
+  // Appliqué : l'extrait retrouvé est surligné, l'autre est marqué « à vérifier ».
+  const flags = await page.evaluate(() =>
+    (window as unknown as { editor: { getCurrentPageShapes(): { meta: Record<string, unknown> }[] } }).editor
+      .getCurrentPageShapes()
+      .filter((s) => s.meta.ref === 'n1' || s.meta.ref === 'n2')
+      .map((s) => `${s.meta.ref}:${!!s.meta.excerptUnverified}`)
+      .sort()
+  )
+  expect(flags).toEqual(['n1:false', 'n2:true'])
+  await expect(panel.locator('mark.source-mark')).toHaveText(['un devoir envers tous'])
 })

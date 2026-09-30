@@ -11,6 +11,7 @@ import { editorPromptInput } from '@/lib/canvas/assistant'
 import { exportMap, textOf } from '@/lib/canvas/mapExport'
 import { knownVocabulary } from '@/lib/canvas/mapImport'
 import { canvasStore, readPlanRecord, sectionStates, shapeOfRef, writePlanRecord } from '@/lib/canvas/plan'
+import { readPageSource } from '@/lib/canvas/source'
 import type { MapIssue } from '@/lib/map/check'
 import { planPatch, readPlan, type DiagramPlan } from '@/lib/map/plan'
 import { previewPatch } from '@/lib/map/patch'
@@ -53,7 +54,7 @@ function PlanProposal({ editor }: { editor: Editor }) {
     setRun({ chars: 0, thinking: 0, abort })
     const ask: Ask = (input, check, opts) =>
       askAi({ ...settings, reasoning: opts.reasoning ?? settings.reasoning }, input, check, { signal: abort.signal, onText: opts.onText })
-    const base = editorPromptInput(editor, 'plan', request, { delivery: 'api' })
+    const base = editorPromptInput(editor, 'plan', request, { delivery: 'api', withSource: true })
     try {
       const result = await askPlan(
         { ask, known: knownVocabulary(editor), base, reasoning: settings.reasoning, signal: abort.signal },
@@ -204,12 +205,13 @@ function PlanView({ editor }: { editor: Editor }) {
     aborts.current.add(abort)
     const ask: Ask = (input, check, opts) =>
       askAi({ ...settings, reasoning: opts.reasoning ?? settings.reasoning }, input, check, { signal: abort.signal, onText: opts.onText })
-    // La tâche de chaque étape remplace « develop ».
+    // La tâche de chaque étape remplace « develop ». Le texte source est gardé dans le document.
+    const source = record.source ?? readPageSource(editor) ?? undefined
     const base = {
       ...editorPromptInput(editor, 'develop', record.request, { delivery: 'api' }),
       notes: record.notes !== false,
       // Schéma tiré d'un texte : chaque section reçoit son passage, et ses extraits sont vérifiés.
-      ...(record.source && { source: record.source }),
+      ...(source && { source }),
       ...(record.withSequence === false && { withSequence: false }),
     }
     return {

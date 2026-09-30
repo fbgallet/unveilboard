@@ -45,6 +45,7 @@ import {
 import { enterPresentation, toggleQuickSequence } from './usePresentation'
 import { FileButton, SyncIndicator } from './SyncIndicator'
 import { ResizeHandle } from './ResizeHandle'
+import { readPageSource } from '@/lib/canvas/source'
 import { useT } from '@/i18n/client'
 
 const ADDABLE: StepActionType[] = ['show', 'dim', 'hide', 'undim', 'highlight', 'focus']
@@ -86,6 +87,7 @@ export function SequencePanel({ editor }: { editor: Editor }) {
 function SequencePanelContent({ editor, width }: { editor: Editor; width: number }) {
   const t = useT()
   const seq = useValue('sequence', () => readSequence(editor) ?? emptySequence(), [editor])
+  const hasSource = useValue('has source', () => !!readPageSource(editor), [editor])
   const selection = useValue('selection', () => editor.getSelectedShapeIds(), [editor])
   const activeId = useValue(activeStepIdAtom)
   const quickSequence = useValue(quickSequenceAtom)
@@ -259,6 +261,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
           images={images}
           onChange={(intro) => save({ ...seq, intro: intro || undefined })}
           onPresent={() => enterPresentation(-1)}
+          sourceText={hasSource ? { value: !!seq.sourceText, onChange: (on) => save({ ...seq, sourceText: on || undefined }) } : undefined}
         />
         {seq.steps.map((step, i) => (
           <StepCard
@@ -308,7 +311,14 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
  * Départ de la présentation, avant la première étape : le titre du schéma et un texte d'accueil
  * facultatif (consigne, question posée, plan de la séance). Replié, il n'en montre que la première ligne.
  */
-function StartCard(p: { intro: string; images: TextImages; onChange(intro: string): void; onPresent(): void }) {
+function StartCard(p: {
+  intro: string
+  images: TextImages
+  onChange(intro: string): void
+  onPresent(): void
+  /** Page avec un texte source : l'afficher ou non au lancement de la présentation. */
+  sourceText?: { value: boolean; onChange(on: boolean): void }
+}) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const firstLine = p.intro.split('\n').find((l) => l.trim())?.trim()
@@ -341,6 +351,12 @@ function StartCard(p: { intro: string; images: TextImages; onChange(intro: strin
             title={t.step.startTitle}
             {...p.images}
           />
+          {p.sourceText && (
+            <label className="mt-2 flex items-center gap-2 text-xs text-zinc-600">
+              <input type="checkbox" checked={p.sourceText.value} onChange={(e) => p.sourceText!.onChange(e.target.checked)} />
+              {t.source.showWhenPresenting}
+            </label>
+          )}
         </div>
       )}
     </li>

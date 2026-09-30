@@ -19,6 +19,10 @@ import type { MapIssue } from '@/lib/map/check'
 import type { MapPatch } from '@/lib/map/patch'
 import { Markdownish } from './Markdownish'
 import { StagedCreate } from './StagedCreate'
+import { openSourcePanel } from './SourcePanel'
+import { reverifyExcerpts } from '@/lib/canvas/passage'
+import { readPageSource } from '@/lib/canvas/source'
+import { checkExcerpts } from '@/lib/map/excerpts'
 import { planPanelOpenAtom } from './PlanPanel'
 import { skeletonMap } from '@/lib/map/plan'
 
@@ -92,7 +96,20 @@ function MapImportView({ editor }: { editor: Editor }) {
 }
 
 /** Zone de collage, contrôle et application d'un JSON (partagée par les deux boîtes de dialogue). */
-function JsonPastePanel({ editor, onDone, text, setText }: { editor: Editor; onDone(): void; text: string; setText(text: string): void }) {
+function JsonPastePanel({
+  editor,
+  onDone,
+  text,
+  setText,
+  source,
+}: {
+  editor: Editor
+  onDone(): void
+  text: string
+  setText(text: string): void
+  /** Schéma créé à partir de ce texte (celui de la page) : il le garde. */
+  source?: { text: string; label?: string }
+}) {
   const t = useT()
   const router = useRouter()
   const [busy, setBusy] = useState(false)
@@ -107,6 +124,9 @@ function JsonPastePanel({ editor, onDone, text, setText }: { editor: Editor; onD
     if (!result?.ok) return
     if (result.kind === 'patch') {
       applyPatch(editor, result.patch)
+      // Page tirée d'un texte : les extraits sont cherchés dans le texte (sinon « à vérifier »).
+      const pageSource = readPageSource(editor)
+      if (pageSource) reverifyExcerpts(editor, pageSource.text)
       return onDone()
     }
     if (result.kind === 'review') {
@@ -116,7 +136,12 @@ function JsonPastePanel({ editor, onDone, text, setText }: { editor: Editor; onD
     setBusy(true)
     setFailure(null)
     try {
-      const id = await createDocumentFromMap(result.map)
+      // Créé à partir du texte de la page : le nouveau schéma le garde, extraits vérifiés.
+      const id = await createDocumentFromMap(
+        result.map,
+        source ? { source, unverified: checkExcerpts(result.map, source.text, false).unverified } : {}
+      )
+      if (source) openSourcePanel()
       onDone()
       router.push(`/d/${id}`)
     } catch (e) {
@@ -227,13 +252,24 @@ function AssistantView({ editor }: { editor: Editor }) {
   const [useSelection, setUseSelection] = useState(selection.length > 0)
   const [notes, setNotes] = useState(true)
   const [staged, setStaged] = useState(false)
+  const pageSource = useValue('page source', () => readPageSource(editor), [editor])
+  const [useSource, setUseSource] = useState(true)
+  const withSource = useSource && !!pageSource
   const [copied, setCopied] = useState<number | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
   const [answer, setAnswer] = useState('')
   const [run, setRun] = useState<{ chars: number; thinking: number; seconds: number; abort: AbortController } | null>(null)
   const [outcome, setOutcome] = useState<AiRun<unknown> & { seconds: number } | null>(null)
 
-  const input = () => ({ ...editorPromptInput(editor, task, instruction, { selection: useSelection && task !== 'create' }), notes })
+  const input = () => ({ ...editorPromptInput(editor, task, instruction, { selection: useSelection && task !== 'create', withSource }), notes })
+  /** Réponse de l'IA ; une création à partir du texte a ses extraits vérifiés (à corriger au premier essai). */
+  const check = (text: string, attempt: number) => {
+    const result = readPasted(editor, text)
+    if (!(withSource && task === 'create' && result.ok && result.kind === 'map')) return result
+    const excerpts = checkExcerpts(result.map, pageSource!.text, attempt === 1)
+    const issues = [...result.issues, ...excerpts.issues]
+    return excerpts.issues.some((i) => i.level === 'error') ? { kind: 'map' as const, ok: false as const, issues } : { ...result, issues }
+  }
   const changed = () => {
     setCopied(null)
     setFailure(null)
@@ -259,7 +295,7 @@ function AssistantView({ editor }: { editor: Editor }) {
     setRun({ chars: 0, thinking: 0, seconds: 0, abort })
     const timer = setInterval(() => setRun((r) => r && { ...r, seconds: seconds() }), 1000)
     try {
-      const result = await askAi(settings, input(), (text) => readPasted(editor, text), {
+      const result = await askAi(settings, input(), check, {
         signal: abort.signal,
         onText: (text, thinking) => setRun((r) => r && { ...r, chars: text.length, thinking }),
       })
@@ -344,6 +380,12 @@ function AssistantView({ editor }: { editor: Editor }) {
             {t.ai.notesOption}
           </label>
         )}
+        {pageSource && (
+          <label className="flex items-center gap-2 text-xs" title={t.source.useSourceHint}>
+            <input type="checkbox" checked={useSource} onChange={(e) => setUseSource(e.target.checked)} />
+            {t.source.useSource}
+          </label>
+        )}
         {task === 'create' && ready && (
           <label className="grid gap-0.5 text-xs">
             <span className="flex items-center gap-2">
@@ -363,11 +405,15 @@ function AssistantView({ editor }: { editor: Editor }) {
           <StagedCreate
             editor={editor}
             settings={settings}
-            input={() => ({ ...editorPromptInput(editor, 'create', instruction, { delivery: 'api' }), notes })}
-            canStart={!!instruction.trim()}
+            input={() => ({ ...editorPromptInput(editor, 'create', instruction, { delivery: 'api', withSource }), notes })}
+            canStart={!!instruction.trim() || withSource}
             onResult={(map) => setAnswer(JSON.stringify(map, null, 2))}
             onLive={async (record) => {
-              const id = await createDocumentFromMap(skeletonMap(record.plan, { source: !!record.source }), { plan: record })
+              const id = await createDocumentFromMap(skeletonMap(record.plan, { source: !!record.source }), {
+                plan: { ...record, source: undefined },
+                ...(record.source && { source: record.source }),
+              })
+              if (record.source) openSourcePanel()
               planPanelOpenAtom.set(true)
               close()
               router.push(`/d/${id}`)
@@ -376,13 +422,13 @@ function AssistantView({ editor }: { editor: Editor }) {
         ) : (
           <div className="flex flex-wrap items-center gap-3">
             {ready && (
-              <button className="btn-primary" disabled={!!run || (task === 'create' && !instruction.trim())} onClick={() => void ask()}>
+              <button className="btn-primary" disabled={!!run || (task === 'create' && !instruction.trim() && !withSource)} onClick={() => void ask()}>
                 {t.ai.ask}
               </button>
             )}
             <button
               className={ready ? 'btn' : 'btn-primary'}
-              disabled={!!run || (task === 'create' && !instruction.trim())}
+              disabled={!!run || (task === 'create' && !instruction.trim() && !withSource)}
               onClick={() => void copy()}
             >
               {t.assistant.copy}
@@ -420,7 +466,7 @@ function AssistantView({ editor }: { editor: Editor }) {
       </section>
       <section className="grid gap-2 border-t border-zinc-200 pt-3">
         <h3 className="preset-group-title">{ready ? t.assistant.step2Ai : t.assistant.step2}</h3>
-        <JsonPastePanel editor={editor} onDone={close} text={answer} setText={setAnswer} />
+        <JsonPastePanel editor={editor} onDone={close} text={answer} setText={setAnswer} source={withSource && task === 'create' ? pageSource! : undefined} />
       </section>
     </Dialog>
   )

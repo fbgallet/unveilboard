@@ -13,6 +13,8 @@ export interface PendingMap {
   unverified?: string[]
   /** Squelette d'un plan, à construire en direct : le plan, gardé dans le document. */
   plan?: PlanRecord
+  /** Schéma tiré d'un texte : le texte, gardé dans le document (panneau « Texte source »). */
+  source?: { text: string; label?: string }
 }
 
 export function stashPendingMap(docId: string, pending: PendingMap) {

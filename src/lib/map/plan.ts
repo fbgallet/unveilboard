@@ -61,7 +61,10 @@ export interface PlanRecord {
   request: string
   /** Développer au besoin dans la note des éléments (option de la demande). */
   notes?: boolean
-  /** Schéma tiré d'un texte : le texte (chaque section en analyse un passage), et sa référence. */
+  /**
+   * Schéma tiré d'un texte : le texte (chaque section en analyse un passage), et sa référence. Gardé
+   * à part dans le document (src/lib/canvas/source.ts) : ici, seulement le temps de l'ouvrir.
+   */
   source?: { text: string; label?: string }
   /** Écrire la séquence à la finition (par défaut : oui). */
   withSequence?: boolean

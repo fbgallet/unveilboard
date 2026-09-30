@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { atom, getSnapshot, useValue, type Editor } from 'tldraw'
 import { withoutSuggestions } from '@/lib/share/suggestions'
+import { withoutPrivateMeta } from '@/lib/share/private'
+import { sourcesLength } from '@/lib/canvas/source'
 import { useLocale, useT } from '@/i18n/client'
 import { encodeShare, LONG_LINK_CHARS, withoutEmbeddedImages } from '@/lib/share/link'
 import { settingsStore } from '@/lib/storage'
@@ -11,6 +13,13 @@ import { readSequence } from '@/lib/canvas/adapter'
 import { storageModeAtom, syncStatusAtom } from '@/lib/sync/documentSync'
 
 export const shareDialogOpenAtom = atom<boolean>('shareDialogOpen', false)
+/** Inclure le texte source dans ce qui est partagé (sinon, seul le schéma l'est). */
+const includeSourceAtom = atom<boolean>('shareIncludeSource', false)
+
+/** Ce qui est partagé : le document, sans les suggestions en attente, le plan de l'IA ni (au choix) le texte. */
+function sharedSnapshot(editor: Editor) {
+  return withoutPrivateMeta(withoutSuggestions(getSnapshot(editor.store).document), { keepSource: includeSourceAtom.get() })
+}
 
 /**
  * Partage en lecture seule : lien autonome (le schéma dans l'URL, toute instance) et lien court publié,
@@ -37,6 +46,7 @@ export function ShareDialog({ editor, docId, publicSharing }: { editor: Editor; 
           </button>
         </div>
         <p className="text-zinc-500">{t.share.readOnly}</p>
+        <IncludeSource editor={editor} />
         <LinkSection editor={editor} />
         {backend && (
           <PublishSection
@@ -51,6 +61,23 @@ export function ShareDialog({ editor, docId, publicSharing }: { editor: Editor; 
   )
 }
 
+/** Schéma tiré d'un texte : partager aussi le texte, ou seulement le schéma (par défaut). */
+function IncludeSource({ editor }: { editor: Editor }) {
+  const t = useT()
+  const length = useValue('source length', () => sourcesLength(editor), [editor])
+  const include = useValue(includeSourceAtom)
+  if (!length) return null
+  return (
+    <label className="grid gap-0.5">
+      <span className="flex items-center gap-2">
+        <input type="checkbox" checked={include} onChange={(e) => includeSourceAtom.set(e.target.checked)} />
+        {t.share.includeSource(length)}
+      </span>
+      <span className="pl-5 text-zinc-500">{t.share.includeSourceHint}</span>
+    </label>
+  )
+}
+
 function LinkSection({ editor }: { editor: Editor }) {
   const t = useT()
   const [result, setResult] = useState<{ url: string; droppedImages: number } | null>(null)
@@ -59,7 +86,7 @@ function LinkSection({ editor }: { editor: Editor }) {
   async function create() {
     setError(null)
     try {
-      const { fragment, droppedImages } = await encodeShare(withoutSuggestions(getSnapshot(editor.store).document))
+      const { fragment, droppedImages } = await encodeShare(sharedSnapshot(editor))
       setResult({ url: `${location.origin}/p#${fragment}`, droppedImages })
     } catch (e) {
       setError(e instanceof Error ? e.message : t.common.genericError)
@@ -121,7 +148,8 @@ function cloudBackend(docId: string): PublishBackend {
     async publish() {
       // La publication copie la version enregistrée sur le serveur : on attend la fin de l'enregistrement.
       if (!(await waitUntilSaved())) throw new ShareError('not_saved')
-      return (await call<{ share: PublishedShare }>(api, { method: 'PUT' })).share
+      const body = JSON.stringify({ includeSource: includeSourceAtom.get() })
+      return (await call<{ share: PublishedShare }>(api, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body })).share
     },
     unpublish: async () => void (await call(api, { method: 'DELETE' })),
   }
@@ -136,7 +164,7 @@ function publicBackend(docId: string, editor: Editor): PublishBackend {
     const share = await settings.get<Owned>(settingKey)
     return share && (!share.expiresAt || Date.parse(share.expiresAt) > Date.now()) ? share : null
   }
-  const body = () => JSON.stringify({ snapshot: withoutEmbeddedImages(withoutSuggestions(getSnapshot(editor.store).document)).snapshot })
+  const body = () => JSON.stringify({ snapshot: withoutEmbeddedImages(sharedSnapshot(editor)).snapshot })
   return {
     load: owned,
     async publish(current) {

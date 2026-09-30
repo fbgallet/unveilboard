@@ -46,3 +46,13 @@ test('téléphone : le menu « ⋯ » de la présentation reste entièrement à 
     await phone.context().close()
   }
 })
+
+test('bouton du mode sombre, à côté de celui du texte source : tldraw et les panneaux suivent', async ({ page }) => {
+  await openExample(page)
+  const studio = page.locator('.studio')
+  await expect(studio).toHaveAttribute('data-theme', 'light')
+  await page.getByRole('button', { name: 'Dark mode' }).click()
+  await expect(studio).toHaveAttribute('data-theme', 'dark')
+  await page.getByRole('button', { name: 'Light mode' }).click()
+  await expect(studio).toHaveAttribute('data-theme', 'light')
+})

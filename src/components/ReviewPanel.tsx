@@ -133,7 +133,7 @@ function ReviewView({ editor }: { editor: Editor }) {
   const [stale, setStale] = useState<string[]>([])
 
   const input = (delivery: 'api' | 'clipboard') =>
-    editorPromptInput(editor, 'review', instruction, { selection: useSelection, delivery, reviewFocus: focus })
+    editorPromptInput(editor, 'review', instruction, { selection: useSelection, delivery, reviewFocus: focus, withSource: true })
   /** Réponse : une relecture ; première réponse d'une IA : une correction invalide est à corriger. */
   const check = (answer: string, attempt: number): ReadResult => {
     const result = readJson(answer, knownVocabulary(editor), exportMap(editor).map, { strict: attempt === 1 })

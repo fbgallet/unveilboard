@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { I18nProvider } from "@/i18n/client";
 import { getLocale, getMessages } from "@/i18n/server";
+import { Tooltips } from "@/components/Tooltips";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,6 +41,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       {/* Des extensions (ColorZilla…) ajoutent des attributs à <body> avant React : écart d'hydratation sans conséquence. */}
       <body className="h-full" suppressHydrationWarning>
         <I18nProvider locale={locale}>{children}</I18nProvider>
+        <Tooltips />
         <Analytics />
       </body>
     </html>

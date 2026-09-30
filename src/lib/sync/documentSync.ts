@@ -15,6 +15,7 @@ import { seedDemo } from '../demo'
 import { seedMap } from '../canvas/mapImport'
 import { takePendingMap } from '../map/pending'
 import { writePlanRecord } from '../canvas/plan'
+import { writePageSource } from '../canvas/source'
 import type { DemoName } from '../demoNames'
 import { m } from '@/i18n/client'
 import { emptySequence } from '../sequence/types'
@@ -128,6 +129,7 @@ export function startDocumentSync(
           opts.demo ? seedDemo(editor, opts.demo) : pending ? seedMap(editor, pending.map, { unverified: pending.unverified }) : emptySequence(m().sequence.defaultTitle)
         )
         if (pending?.plan) writePlanRecord(editor, pending.plan)
+        if (pending?.source) writePageSource(editor, pending.source)
         editor.zoomToFit()
       }
       setMeta({ version: server.version, dirty: true })

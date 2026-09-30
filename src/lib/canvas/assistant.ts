@@ -20,6 +20,7 @@ import { setReview } from './review'
 import { revealOrder } from './tree'
 import { extractAround } from '../map/extract'
 import { presetSettingsAtom } from './presets'
+import { readPageSource } from './source'
 
 /** Vocabulaire proposé à l'IA : tous les préréglages visibles (pas seulement l'essentiel), avec leur définition. */
 export function promptVocabulary(): VocabularyLine[] {
@@ -56,6 +57,8 @@ export interface PromptOptions {
   wholeMap?: boolean
   /** « review » : ce qu'on attend de la relecture. */
   reviewFocus?: ReviewFocus[]
+  /** S'appuyer sur le texte source de la page, s'il y en a un. */
+  withSource?: boolean
 }
 
 /** Demande pour une tâche, sur le schéma ouvert (le schéma et la sélection compris). */
@@ -65,6 +68,7 @@ export function editorPromptInput(editor: Editor, task: Task, instruction: strin
   const focus = opts.focus && refOf.get(opts.focus)
   const partial = !!focus && opts.wholeMap === false
   const map = exported && (partial ? extractAround(exported.map, focus) : exported.map)
+  const source = readPageSource(editor)
   return {
     task,
     instruction,
@@ -74,6 +78,7 @@ export function editorPromptInput(editor: Editor, task: Task, instruction: strin
     ...(partial && { partial }),
     ...(task === 'sequence' && exported && { order: defaultOrder(editor, exported.map, refOf) }),
     ...(task === 'review' && opts.reviewFocus && { reviewFocus: opts.reviewFocus }),
+    ...(opts.withSource && source && { source: { text: source.text, ...(source.label && { label: source.label }) } }),
     vocabulary: promptVocabulary(),
     lang: map?.lang ?? clientLocale(),
     delivery: opts.delivery ?? 'clipboard',

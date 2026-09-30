@@ -63,6 +63,10 @@ export const sequencePanelWidthAtom = atom<number>(
 )
 export const sequencePanelOpenAtom = atom<boolean>('sequencePanelOpen', readStoredValue('sequencePanelOpen') !== 'false')
 
+/** Barre du texte source, à gauche (mode édition) : largeur réglable. */
+export const SOURCE_PANEL_WIDTH: WidthLimits = { min: 260, default: 400 }
+export const sourcePanelWidthAtom = atom<number>('sourcePanelWidth', readStoredWidth('sourcePanelWidth', SOURCE_PANEL_WIDTH))
+
 function readStoredValue(key: string) {
   try {
     return localStorage.getItem(key)

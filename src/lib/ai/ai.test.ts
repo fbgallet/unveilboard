@@ -161,6 +161,8 @@ describe('réflexion du modèle', () => {
     expect(reasoningParams('https://openrouter.ai/api/v1', 'off')).toEqual({ reasoning: { enabled: false } })
     expect(reasoningParams('http://localhost:11434/v1', 'low')).toEqual({ reasoning_effort: 'low' })
     expect(reasoningParams('http://localhost:11434/v1', 'off')).toEqual({})
+    expect(reasoningParams('https://openrouter.ai/api/v1', 'max')).toEqual({ reasoning: { enabled: true, effort: 'max' } })
+    expect(reasoningParams('https://api.openai.com/v1', 'max')).toEqual({ reasoning_effort: 'xhigh' })
     expect(reasoningParams('https://openrouter.ai/api/v1', 'default')).toEqual({})
   })
 })

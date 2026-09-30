@@ -14,8 +14,8 @@
       "price": { "input": 0.1, "output": 0.5 }
     },
     {
-      "id": "openai/gpt-6-sol",
-      "label": "GPT-6 sol",
+      "id": "openai/gpt-6.1-sol",
+      "label": "GPT-6.1 sol",
       "price": { "input": 2, "output": 10 }
     },
     {

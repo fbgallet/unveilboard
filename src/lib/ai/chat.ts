@@ -15,23 +15,37 @@ export interface ChatMessage {
   content: string | ContentPart[]
 }
 
-/** Réflexion du modèle (raisonnement) : celle du modèle par défaut, coupée, ou d'un niveau donné. */
-export const REASONING_EFFORTS = ['default', 'off', 'low', 'medium', 'high'] as const
+/**
+ * Réflexion du modèle (raisonnement) : celle du modèle par défaut, coupée, ou d'un niveau donné — les
+ * sept niveaux d'OpenRouter, qui ramène chacun au plus proche que le modèle connaît (ex. : Gemini
+ * n'a pas « xhigh », Anthropic n'a pas « minimal »).
+ */
+export const REASONING_EFFORTS = ['default', 'off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const
 export type ReasoningEffort = (typeof REASONING_EFFORTS)[number]
 
 /**
  * Champs de la demande pour un niveau de réflexion. OpenRouter : `reasoning` ({ enabled: false }
  * coupe la réflexion des modèles qui réfléchissent d'eux-mêmes). Autres serveurs compatibles
- * OpenAI : `reasoning_effort` (ignoré par ceux qui ne le connaissent pas ; « off » n'y a pas d'équivalent).
+ * OpenAI : `reasoning_effort` (ignoré par ceux qui ne le connaissent pas ; « off » n'y a pas d'équivalent ;
+ * « max », inconnu d'OpenAI, y devient « xhigh »).
  */
 export function reasoningParams(baseUrl: string, effort: ReasoningEffort | undefined): Record<string, unknown> {
   if (!effort || effort === 'default') return {}
   if (isOpenRouter(baseUrl)) return { reasoning: effort === 'off' ? { enabled: false } : { enabled: true, effort } }
-  return effort === 'off' ? {} : { reasoning_effort: effort }
+  return effort === 'off' ? {} : { reasoning_effort: effort === 'max' ? 'xhigh' : effort }
 }
 
 /** Jetons en plus à prévoir pour la réflexion (elle se décompte du même plafond que la réponse). */
-export const REASONING_HEADROOM: Record<ReasoningEffort, number> = { default: 0, off: 0, low: 2000, medium: 5000, high: 10000 }
+export const REASONING_HEADROOM: Record<ReasoningEffort, number> = {
+  default: 0,
+  off: 0,
+  minimal: 1000,
+  low: 2000,
+  medium: 5000,
+  high: 10000,
+  xhigh: 16000,
+  max: 24000,
+}
 
 export interface ChatRequest {
   /** Adresse de l'API, jusqu'à /v1 compris (ex. : https://openrouter.ai/api/v1, http://localhost:11434/v1). */

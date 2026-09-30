@@ -43,6 +43,8 @@ import { storageModeAtom } from '@/lib/sync/documentSync'
 import { useT } from '@/i18n/client'
 import { presetName, presetRole } from '@/lib/presets/labels'
 import type { Messages } from '@/i18n/config'
+import { readPageSource } from '@/lib/canvas/source'
+import { openSourcePanel } from './SourcePanel'
 
 export const presetManagerOpenAtom = atom<boolean>('presetManagerOpen', false)
 export const presetGuideOpenAtom = atom<boolean>('presetGuideOpen', false)
@@ -452,7 +454,7 @@ export function ProvenanceField({ editor, id }: { editor: Editor; id: TLShapeId 
       // Une citation introuvable n'a pas toujours d'extrait : elle vient du texte, par définition.
       const origin = meta.origin === 'text' || meta.origin === 'reconstruction' ? meta.origin : excerpt || meta.excerptUnverified ? 'text' : null
       if (!origin) return null
-      return { origin, excerpt, unverified: !!meta.excerptUnverified }
+      return { origin, excerpt, unverified: !!meta.excerptUnverified, hasSource: !!readPageSource(editor) }
     },
     [editor, id]
   )
@@ -461,6 +463,11 @@ export function ProvenanceField({ editor, id }: { editor: Editor; id: TLShapeId 
     <div className="provenance">
       <span className="font-semibold uppercase tracking-wide">{info.origin === 'text' ? t.source.fromText : t.source.reconstruction}</span>
       {info.excerpt && <blockquote title={info.excerpt}>{info.excerpt}</blockquote>}
+      {info.excerpt && info.hasSource && (
+        <button className="btn-xs justify-self-start" onClick={openSourcePanel}>
+          {t.source.showInText}
+        </button>
+      )}
       {info.unverified && (
         <span className="flex flex-wrap items-center gap-2 text-red-700">
           {t.source.unverified}

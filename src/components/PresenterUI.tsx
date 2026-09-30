@@ -194,7 +194,18 @@ export function NarrationPanel({ editor, top, onPinScale }: { editor: Editor; to
  * onProject : ouvre la fenêtre public du double affichage ; onRemote : appaire un téléphone.
  * Absents dans le lecteur d'un lien partagé.
  */
-export function ProgressBar({ editor, onProject, onRemote }: { editor: Editor; onProject?: () => void; onRemote?: () => void }) {
+export function ProgressBar({
+  editor,
+  onProject,
+  onRemote,
+  sourceText,
+}: {
+  editor: Editor
+  onProject?: () => void
+  onRemote?: () => void
+  /** Texte source de la page : l'afficher ou le masquer (barre de gauche). */
+  sourceText?: { open: boolean; toggle(): void }
+}) {
   const t = useT()
   const seq = useValue('sequence', () => readSequence(editor), [editor])
   const index = useValue(stepIndexAtom)
@@ -248,6 +259,7 @@ export function ProgressBar({ editor, onProject, onRemote }: { editor: Editor; o
           items={[
             { label: t.presenter.recenter, icon: 'recenter', onClick: recenter },
             { label: t.help.menu, icon: 'help', onClick: () => shortcutsHelpOpenAtom.set(true) },
+            ...(sourceText ? [{ label: t.source.panelTitle, icon: 'text' as IconName, onClick: sourceText.toggle, active: sourceText.open }] : []),
             ...(viewer
               ? []
               : [
@@ -538,11 +550,13 @@ type IconName =
   | 'panel'
   | 'fullscreen'
   | 'close'
+  | 'text'
 
 const ICONS: Record<IconName, ReactNode> = {
   prev: <path d="m15 18-6-6 6-6" />,
   screen: <path d="M3 4h18v12H3zM8 20h8M12 16v4" />,
   help: <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01" />,
+  text: <path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7" />,
   more: <path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth="3" />,
   phone: <path d="M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM11 18h2" />,
   next: <path d="m9 18 6-6-6-6" />,

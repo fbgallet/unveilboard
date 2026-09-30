@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import Markdown, { defaultUrlTransform, type Components } from 'react-markdown'
+import type { Options as MarkdownOptions } from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 
@@ -40,8 +41,22 @@ function urlTransform(url: string, key: string) {
   return defaultUrlTransform(url)
 }
 
-/** resolveSrc : adresse affichable d'une image (ressources du document tldraw). */
-export function Markdownish({ text, resolveSrc }: { text: string; resolveSrc?: (src: string) => string | undefined }) {
+/**
+ * resolveSrc : adresse affichable d'une image (ressources du document tldraw). `remarkPlugins` et
+ * `components` : transformations (avant les retours à la ligne) et rendus en plus (ex. : passages
+ * surlignés du texte source).
+ */
+export function Markdownish({
+  text,
+  resolveSrc,
+  remarkPlugins,
+  components: extra,
+}: {
+  text: string
+  resolveSrc?: (src: string) => string | undefined
+  remarkPlugins?: NonNullable<MarkdownOptions['remarkPlugins']>
+  components?: Components
+}) {
   const components = useMemo<Components>(
     () => ({
       ...baseComponents,
@@ -50,11 +65,12 @@ export function Markdownish({ text, resolveSrc }: { text: string; resolveSrc?: (
         // eslint-disable-next-line @next/next/no-img-element -- adresses quelconques, pas d'optimisation Next
         return url ? <img src={url} alt={alt ?? ''} className="max-h-[60vh] max-w-full rounded-md" /> : <span className="italic text-stone-400">[{alt}]</span>
       },
+      ...extra,
     }),
-    [resolveSrc]
+    [resolveSrc, extra]
   )
   return (
-    <Markdown remarkPlugins={[remarkGfm, remarkBreaks]} components={components} urlTransform={urlTransform}>
+    <Markdown remarkPlugins={[remarkGfm, ...(remarkPlugins ?? []), remarkBreaks]} components={components} urlTransform={urlTransform}>
       {text}
     </Markdown>
   )

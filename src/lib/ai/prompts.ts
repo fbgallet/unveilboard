@@ -10,7 +10,7 @@ import { PlanSchema, type DiagramPlan } from '../map/plan'
 import { numberedSource, passageOf, sourceParagraphs } from '../source/paragraphs'
 import { FOCUS_OF_KIND, REMARK_KINDS, REVIEW_FOCUS, type ReviewFocus } from '../map/review'
 
-export const PROMPT_VERSION = 6
+export const PROMPT_VERSION = 7
 
 export const TASKS = ['create', 'enrich', 'sequence', 'review', 'edit', 'expand', 'plan', 'develop', 'finish'] as const
 export type Task = (typeof TASKS)[number]
@@ -133,13 +133,14 @@ export function buildPrompt(input: PromptInput): string {
         : input.task === 'develop'
           ? developTaskText(input)
           : input.task === 'plan' && input.source
-            ? `${TASK_TEXT.plan}\n\n${planSourceText(input)}`
+            ? `${TASK_TEXT.plan}\n\n${planSourceText(input)}${input.map?.elements.length ? `\n\n${PLAN_EXISTING_TEXT}` : ''}`
             : input.task === 'plan' && input.map?.elements.length
               ? `${TASK_TEXT.plan}\n\n${PLAN_EXISTING_TEXT}`
               : input.task === 'finish' && input.withSequence === false
                 ? FINISH_LINKS_TEXT
           : TASK_TEXT[input.task].replace('{focus}', input.focus ?? ''),
     input.instruction.trim() ? `## The user's request\n\n${input.instruction.trim()}` : '',
+    sourceWorkText(input),
     sourceFor(input),
     input.task === 'sequence' && input.order?.length
       ? `## Default order\n\nA default order, depth first (what the app's “Reveal the map” button does): ${input.order.map((s) => `\`${s}\``).join(', ')}. Follow it unless the user's instructions, or the logic of the argument, call for another.`
@@ -349,6 +350,29 @@ function planSourceText(input: PromptInput) {
 - \`brief\`: what the section must bring out of its passage (theses, reasons, examples, distinctions, objections).`
 }
 
+/** Tâches sur un schéma existant qui peuvent s'appuyer sur le texte source de la page. */
+const TEXT_WORK_TASKS: Task[] = ['enrich', 'edit', 'expand', 'sequence', 'review']
+
+/** Travailler sur un schéma tiré d'un texte : s'y appuyer, fidèlement (ou, pour une relecture, s'y confronter). */
+function sourceWorkText(input: PromptInput): string {
+  if (!input.source || !TEXT_WORK_TASKS.includes(input.task)) return ''
+  if (input.task === 'review') {
+    return `## The source text
+
+The diagram is drawn from the source text given below. Check the diagram against it: an element that misrepresents the text, an excerpt or quotation that is inexact or attributed to the wrong element, an important point of the text that the diagram leaves out (remark kinds \`faithfulness\` and \`gap\`).`
+  }
+  if (input.task === 'sequence') {
+    return `## The source text
+
+The diagram is drawn from the source text given below: the narration may explain the text to students, in its own terms, and follow its progression when it makes sense.`
+  }
+  return `## The source text
+
+The diagram is drawn from the source text given below. Base what you add on it, and say where it comes from.
+
+${FIDELITY_TEXT}`
+}
+
 /** Le texte source, selon l'étape : entier (création), numéroté (plan), ou le passage d'une section. */
 function sourceFor(input: PromptInput): string {
   const source = input.source
@@ -356,6 +380,8 @@ function sourceFor(input: PromptInput): string {
   if (input.task === 'create') return sourceText(source)
   const reference = source.label ? `\n\nReference: ${source.label}` : ''
   if (input.task === 'plan') return `## The source text (numbered paragraphs)${reference}\n\n<source>\n${numberedSource(sourceParagraphs(source.text))}\n</source>`
+  // Enrichir, modifier, développer, relire un schéma tiré d'un texte : le texte entier.
+  if (TEXT_WORK_TASKS.includes(input.task)) return sourceText(source)
   if (input.task !== 'develop') return ''
   const range = input.plan?.sections.find((s) => s.id === input.focus)?.paragraphs
   if (!range) return sourceText(source)

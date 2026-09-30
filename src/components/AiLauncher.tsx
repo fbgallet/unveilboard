@@ -9,6 +9,8 @@ import { aiSettingsOpenAtom } from './AiSettingsDialog'
 import { elementAiAtom } from './ElementAi'
 import { planPanelOpenAtom } from './PlanPanel'
 import { readPlanRecord } from '@/lib/canvas/plan'
+import { readPageSource } from '@/lib/canvas/source'
+import { setSourcePanelOpen, sourcePanelOpenAtom } from './SourcePanel'
 import { mapImportOpenAtom, openAssistant } from './MapJsonDialog'
 import { sourceDialogOpenAtom } from './SourceDialog'
 
@@ -101,6 +103,9 @@ export function AiLauncher() {
     [editor]
   )
   const hasPlan = useValue('has plan', () => !!readPlanRecord(editor), [editor])
+  const hasSource = useValue('has source', () => !!readPageSource(editor), [editor])
+  const sourceOpen = useValue(sourcePanelOpenAtom)
+  const dark = useValue('dark mode', () => editor.user.getIsDarkMode(), [editor])
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -164,6 +169,36 @@ export function AiLauncher() {
 
   return (
     <div className="ai-launcher" ref={ref}>
+      {/* Mode sombre de tldraw (les panneaux de l'app le suivent). */}
+      <button
+        className="ai-launcher-icon"
+        aria-label={dark ? t.launcher.lightMode : t.launcher.darkMode}
+        title={dark ? t.launcher.lightMode : t.launcher.darkMode}
+        onClick={() => editor.user.updateUserPreferences({ colorScheme: dark ? 'light' : 'dark' })}
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          {dark ? (
+            // Soleil : revenir au mode clair
+            <>
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" />
+            </>
+          ) : (
+            // Lune : passer au mode sombre
+            <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />
+          )}
+        </svg>
+      </button>
+      {/* Texte source de la page : l'afficher à gauche (ou en associer un). */}
+      <button
+        className={`ai-launcher-icon ${sourceOpen ? 'ai-launcher-icon-on' : ''} ${hasSource ? '' : 'ai-launcher-icon-quiet'}`}
+        aria-pressed={sourceOpen}
+        aria-label={t.source.toggle}
+        title={t.source.toggle}
+        onClick={() => setSourcePanelOpen(!sourceOpen)}
+      >
+        <MenuIcon name="document" />
+      </button>
       <button
         className={`ai-launcher-icon ${open ? 'ai-launcher-icon-on' : ''}`}
         aria-expanded={open}

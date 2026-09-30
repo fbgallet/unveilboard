@@ -8,6 +8,8 @@ import { toAiError } from '@/lib/ai/errors'
 import { buildPrompt } from '@/lib/ai/prompts'
 import { editorPromptInput, readPasted } from '@/lib/canvas/assistant'
 import { applyPatch } from '@/lib/canvas/mapPatch'
+import { reverifyExcerpts } from '@/lib/canvas/passage'
+import { readPageSource } from '@/lib/canvas/source'
 import type { MapIssue } from '@/lib/map/check'
 import type { ReadResult } from '@/lib/map/read'
 import { aiSettingsOpenAtom } from './AiSettingsDialog'
@@ -15,6 +17,8 @@ import { Markdownish } from './Markdownish'
 
 /** Élément d'où partir (panneau ouvert), ou null. */
 export const elementAiAtom = atom<TLShapeId | null>('elementAi', null)
+/** Demande préremplie à l'ouverture (ex. : à partir d'un passage du texte source). */
+export const elementAiRequestAtom = atom<string>('elementAiRequest', '')
 
 /** Demandes toutes faites : la clé d'une phrase de t.elementAi.quick. */
 const QUICK = ['arguments', 'objections', 'answers', 'examples', 'assumptions', 'distinctions', 'definitions', 'consequences'] as const
@@ -55,7 +59,11 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
     },
     [editor, id]
   )
-  const [instruction, setInstruction] = useState('')
+  const [instruction, setInstruction] = useState(() => {
+    const request = elementAiRequestAtom.get()
+    elementAiRequestAtom.set('')
+    return request
+  })
   const [wholeMap, setWholeMap] = useState(true)
   const [ghost, setGhost] = useState(true)
   const [notes, setNotes] = useState(true)
@@ -66,7 +74,12 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
   const [failure, setFailure] = useState<string | null>(null)
   const [done, setDone] = useState<{ added: number; skipped: number; summary?: string } | null>(null)
 
-  const input = () => ({ ...editorPromptInput(editor, 'expand', instruction, { focus: id, wholeMap, delivery: ready ? 'api' : 'clipboard' }), notes })
+  const pageSource = useValue('page source', () => readPageSource(editor), [editor])
+  const [useSource, setUseSource] = useState(true)
+  const input = () => ({
+    ...editorPromptInput(editor, 'expand', instruction, { focus: id, wholeMap, delivery: ready ? 'api' : 'clipboard', withSource: useSource }),
+    notes,
+  })
   const reset = () => {
     setIssues([])
     setFailure(null)
@@ -78,6 +91,8 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
     if (!result.ok || result.kind !== 'patch') return setIssues(result.issues.filter((i) => i.level === 'error'))
     const added = result.patch.operations.filter((o) => o.op === 'add' || o.op === 'link').length
     const { skipped } = applyPatch(editor, result.patch, { ghost })
+    // Schéma tiré d'un texte : les extraits ajoutés sont cherchés dans le texte (sinon « à vérifier »).
+    if (pageSource) reverifyExcerpts(editor, pageSource.text)
     setDone({ added, skipped, summary: result.patch.summary })
     setPasted('')
     setPasting(false)
@@ -153,6 +168,12 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
         <input type="checkbox" checked={notes} onChange={(e) => setNotes(e.target.checked)} />
         {t.ai.notesOption}
       </label>
+      {pageSource && (
+        <label className="flex items-center gap-2 text-xs" title={t.source.useSourceHint}>
+          <input type="checkbox" checked={useSource} onChange={(e) => setUseSource(e.target.checked)} />
+          {t.source.useSource}
+        </label>
+      )}
       <div className="flex flex-wrap items-center gap-3 text-xs" role="radiogroup" aria-label={t.elementAi.resultLabel}>
         <label className="flex items-center gap-1">
           <input type="radio" name="element-ai-mode" checked={ghost} onChange={() => setGhost(true)} />

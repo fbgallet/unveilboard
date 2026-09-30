@@ -10,6 +10,8 @@ import { SpotlightShapeUtil } from '@/lib/canvas/spotlight'
 import { modeAtom, stepIndexAtom, viewerAtom } from '@/lib/presentation/store'
 import { PresShapeWrapper } from './PresShapeWrapper'
 import { Legend, NarrationPanel, NoteMarkers, ProgressBar } from './PresenterUI'
+import { SourcePanel, sourcePresentOpenAtom } from './SourcePanel'
+import { readPageSource } from '@/lib/canvas/source'
 import { SpotlightOverlay } from './SpotlightOverlay'
 import { FoldBadges } from './TreeTools'
 import { enterPresentation, usePresentation } from './usePresentation'
@@ -51,6 +53,8 @@ export default function Viewer({
   const t = useT()
   const [editor, setEditor] = useState<Editor | null>(null)
   const dark = useValue('dark mode', () => editor?.user.getIsDarkMode() ?? false, [editor])
+  const sourceOpen = useValue(sourcePresentOpenAtom)
+  const hasSource = useValue('has source', () => !!editor && !!readPageSource(editor), [editor])
 
   useEffect(() => {
     viewerAtom.set(true)
@@ -74,6 +78,8 @@ export default function Viewer({
 
   return (
     <div className="studio flex h-dvh w-full overflow-hidden" data-mode="present" data-unlocked="false" data-theme={dark ? 'dark' : 'light'}>
+      {/* Texte source, s'il a été partagé avec le schéma : au choix du lecteur (menu « Plus »). */}
+      {editor && <SourcePanel editor={editor} presenting />}
       <div className="relative min-w-0 flex-1">
         <Tldraw
           snapshot={snapshot}
@@ -92,7 +98,7 @@ export default function Viewer({
           Unveilboard
         </Link>
         {reportShareId && <ReportButton shareId={reportShareId} />}
-        {editor && <ProgressBar editor={editor} />}
+        {editor && <ProgressBar editor={editor} sourceText={hasSource ? { open: sourceOpen, toggle: () => sourcePresentOpenAtom.set(!sourceOpen) } : undefined} />}
         {editor && <Legend editor={editor} />}
         <ShortcutsHelp />
       </div>

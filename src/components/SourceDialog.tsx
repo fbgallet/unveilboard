@@ -14,10 +14,19 @@ import type { ReadResult } from '@/lib/map/read'
 import { LONG_SOURCE_CHARS, MAX_SOURCE_CHARS, MAX_TRANSCRIBE_BYTES, estimateTokens, fileToDataUri, readSourceFile } from '@/lib/source/read'
 import { aiSettingsOpenAtom } from './AiSettingsDialog'
 import { planPanelOpenAtom } from './PlanPanel'
+import { openSourcePanel } from './SourcePanel'
+import { readPageSource } from '@/lib/canvas/source'
 import { StagedCreate } from './StagedCreate'
 import { skeletonMap } from '@/lib/map/plan'
 
 export const sourceDialogOpenAtom = atom<boolean>('sourceDialogOpen', false)
+
+/** Ouvre la boîte, remplie avec le texte source de la page (barre « Texte source »). */
+export function openSourceDialogWithPageText() {
+  prefillPageTextAtom.set(true)
+  sourceDialogOpenAtom.set(true)
+}
+const prefillPageTextAtom = atom<boolean>('sourceDialogPrefill', false)
 
 type Checked = ReadResult & { excerpts?: ExcerptCheck }
 
@@ -40,8 +49,15 @@ function SourceView({ editor }: { editor: Editor }) {
   const ready = isAiReady(settings, server)
   const close = () => sourceDialogOpenAtom.set(false)
 
-  const [text, setText] = useState('')
-  const [label, setLabel] = useState('')
+  const pageSource = useValue('page source', () => readPageSource(editor), [editor])
+  // Ouverte depuis la barre du texte : remplie avec le texte de la page.
+  const [prefilled] = useState(() => {
+    const on = prefillPageTextAtom.get()
+    prefillPageTextAtom.set(false)
+    return on ? readPageSource(editor) : null
+  })
+  const [text, setText] = useState(prefilled?.text ?? '')
+  const [label, setLabel] = useState(prefilled?.label ?? '')
   const [fileNote, setFileNote] = useState<string | null>(null)
   const [toTranscribe, setToTranscribe] = useState<{ file: File; reason: 'image' | 'scanned' } | null>(null)
   const [kind, setKind] = useState<NonNullable<PromptInput['kind']>>('auto')
@@ -54,6 +70,7 @@ function SourceView({ editor }: { editor: Editor }) {
   const [answer, setAnswer] = useState('')
   const [busy, setBusy] = useState(false)
   const [staged, setStaged] = useState(false)
+  const [keepText, setKeepText] = useState(true)
 
   const input = (delivery: PromptInput['delivery']): PromptInput => ({
     ...editorPromptInput(editor, 'create', instruction, { delivery }),
@@ -156,7 +173,11 @@ function SourceView({ editor }: { editor: Editor }) {
     if (!checked?.ok || checked.kind !== 'map') return
     setBusy(true)
     try {
-      const id = await createDocumentFromMap(checked.map, { unverified: checked.excerpts?.unverified })
+      const id = await createDocumentFromMap(checked.map, {
+        unverified: checked.excerpts?.unverified,
+        ...(keepText && { source: { text, ...(label.trim() && { label: label.trim() }) } }),
+      })
+      if (keepText) openSourcePanel()
       close()
       router.push(`/d/${id}`)
     } catch (e) {
@@ -221,6 +242,18 @@ function SourceView({ editor }: { editor: Editor }) {
                 onChange={(e) => void pickFile(e.target.files?.[0])}
               />
             </label>
+            {pageSource && text !== pageSource.text && (
+              <button
+                className="btn-xs"
+                onClick={() => {
+                  setText(pageSource.text)
+                  if (pageSource.label) setLabel(pageSource.label)
+                  setFileNote(null)
+                }}
+              >
+                {t.source.usePageText}
+              </button>
+            )}
             {fileNote && <span className="text-xs text-zinc-600">{fileNote}</span>}
             {toTranscribe &&
               (ready ? (
@@ -289,8 +322,12 @@ function SourceView({ editor }: { editor: Editor }) {
               canStart={!!text.trim() && !tooLong}
               onResult={(map) => setAnswer(JSON.stringify(map, null, 2))}
               onLive={async (record) => {
-                const id = await createDocumentFromMap(skeletonMap(record.plan, { source: true }), { plan: record })
+                const id = await createDocumentFromMap(skeletonMap(record.plan, { source: true }), {
+                  plan: { ...record, source: undefined },
+                  source: record.source,
+                })
                 planPanelOpenAtom.set(true)
+                openSourcePanel()
                 close()
                 router.push(`/d/${id}`)
               }}
@@ -358,7 +395,11 @@ function SourceView({ editor }: { editor: Editor }) {
             )}
             {errors.length > 0 && <ul className="map-json-issues text-xs text-red-700">{errors.map(issueLine)}</ul>}
             {warnings.length > 0 && <ul className="map-json-issues text-xs text-amber-700">{warnings.map(issueLine)}</ul>}
-            <footer className="flex justify-end gap-2">
+            <footer className="flex flex-wrap items-center justify-end gap-2">
+              <label className="mr-auto flex items-center gap-2 text-xs">
+                <input type="checkbox" checked={keepText} onChange={(e) => setKeepText(e.target.checked)} />
+                {t.source.keepText}
+              </label>
               <button className="btn" onClick={close}>
                 {t.common.cancel}
               </button>

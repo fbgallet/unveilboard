@@ -945,6 +945,9 @@ button.review-badge {
   touch-action: none;
   z-index: 10;
 }
+.resize-handle-left {
+  inset: 0 -8px 0 auto;
+}
 .resize-handle::after {
   content: '';
   position: absolute;
@@ -1451,6 +1454,64 @@ svg.preset-swatch {
   display: grid;
   gap: 4px;
 }
+/* Barre du texte source (à gauche) : mis en forme, passages cités surlignés aux couleurs de leurs
+   éléments (plus fort pour la sélection), actions sur un passage sélectionné. */
+.source-text {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  /* Défilement fin, collé au bord droit de la barre (au-delà de sa marge intérieure). */
+  margin-right: -12px;
+  padding-right: 12px;
+  scrollbar-width: thin;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.source-text > * + * {
+  margin-top: 0.8em;
+}
+.source-mark {
+  --mark-color: var(--color-amber-400);
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--mark-color) 18%, transparent);
+  box-shadow: inset 0 -2px 0 color-mix(in oklab, var(--mark-color) 60%, transparent);
+  color: inherit;
+  cursor: pointer;
+}
+.source-mark:hover {
+  background: color-mix(in oklab, var(--mark-color) 30%, transparent);
+}
+.source-mark-active {
+  background: color-mix(in oklab, var(--mark-color) 38%, transparent);
+  outline: 1.5px solid var(--mark-color);
+}
+.source-edit {
+  min-height: 0;
+  flex: 1;
+  font-family: inherit;
+  font-size: 13px;
+}
+.source-passage-actions {
+  position: absolute;
+  left: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--color-stone-200);
+  border-radius: 8px;
+  background: var(--color-white);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
+}
+.ai-launcher {
+  display: flex;
+  gap: 2px;
+}
+.ai-launcher-icon-quiet {
+  opacity: 0.55;
+}
+
 /* Création en plusieurs étapes : plan à relire, progression des sections. */
 .staged-section {
   padding: 8px;
@@ -2289,4 +2350,102 @@ button.tag-chip:hover,
 }
 .preset-more {
   margin-right: 6px;
+}
+.source-target {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--color-sky-50, #f0f9ff);
+  color: var(--color-sky-800, #075985);
+}
+.preset-icon-on {
+  background: var(--color-stone-200);
+  color: var(--color-stone-900);
+}
+.source-layers {
+  display: grid;
+  /* Colonnes à la largeur de la barre : un long nom se coupe au lieu de l'élargir. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-stone-200);
+  border-radius: 8px;
+  background: var(--color-white);
+}
+.source-layer-swatch {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+.source-layer-name {
+  min-width: 0;
+  flex: 1;
+  padding: 1px 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  font: inherit;
+}
+.source-layer-name:hover,
+.source-layer-name:focus {
+  border-color: var(--color-stone-300);
+  background: var(--color-white);
+}
+.source-target {
+  min-width: 0;
+  overflow: hidden;
+}
+.source-clicked {
+  right: 0;
+  flex-direction: column;
+  align-items: stretch;
+}
+.source-size {
+  width: auto;
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.source-mark-remove {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin: -6px 0 0 -4px;
+  border: 1px solid var(--color-stone-300);
+  border-radius: 999px;
+  background: var(--color-white);
+  color: var(--color-stone-600);
+  font-size: 9px;
+  line-height: 1;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
+}
+.source-mark-remove:hover {
+  border-color: var(--color-red-400);
+  color: var(--color-red-600);
+}
+
+/* Infobulles de l'app (src/components/Tooltips.tsx) : lisibles en clair comme en sombre. */
+.app-tooltip {
+  position: fixed;
+  z-index: 10000;
+  max-width: 260px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgb(28 25 23 / 0.94);
+  color: #fafaf9;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.18);
+  animation: app-tooltip-in 120ms ease-out;
+}
+@keyframes app-tooltip-in {
+  from {
+    opacity: 0;
+  }
 }

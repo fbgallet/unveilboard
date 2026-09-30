@@ -22,10 +22,12 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/documents/[
 }
 
 /** Publie la dernière version enregistrée du document. */
-export async function PUT(_request: Request, ctx: RouteContext<'/api/documents/[id]/share'>) {
+export async function PUT(request: Request, ctx: RouteContext<'/api/documents/[id]/share'>) {
   const { denied, id } = await guard(ctx)
   if (denied) return denied
-  const share = await publishDocument(id)
+  // Le texte source n'est publié que si l'auteur le demande.
+  const body = (await request.json().catch(() => null)) as { includeSource?: unknown } | null
+  const share = await publishDocument(id, { keepSource: body?.includeSource === true })
   if (!share) return NextResponse.json({ error: 'Empty document' }, { status: 409 })
   return NextResponse.json({ share })
 }

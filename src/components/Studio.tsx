@@ -48,6 +48,8 @@ import { ElementAiPanel, elementAiAtom } from './ElementAi'
 import { SourceDialog, sourceDialogOpenAtom } from './SourceDialog'
 import { ReviewBadges, ReviewPanel } from './ReviewPanel'
 import { PlanPanel } from './PlanPanel'
+import { SourcePanel, sourcePresentOpenAtom } from './SourcePanel'
+import { readPageSource } from '@/lib/canvas/source'
 import { AiLauncher } from './AiLauncher'
 import { loadReview, reviewOpenAtom } from '@/lib/canvas/review'
 
@@ -137,6 +139,8 @@ export default function Studio({
   const mode = useValue(modeAtom)
   const unlocked = useValue(editUnlockedAtom)
   const quickSequence = useValue(quickSequenceAtom)
+  const sourceOpen = useValue(sourcePresentOpenAtom)
+  const hasSource = useValue('has source', () => !!editor && !!readPageSource(editor), [editor])
   // Le thème choisi dans tldraw (clair, sombre ou système) s'applique aussi à nos panneaux.
   const dark = useValue('dark mode', () => editor?.user.getIsDarkMode() ?? false, [editor])
 
@@ -197,6 +201,8 @@ export default function Studio({
 
   return (
     <div className="studio flex h-dvh w-full overflow-hidden" data-mode={mode} data-unlocked={unlocked} data-theme={dark ? 'dark' : 'light'}>
+      {/* Texte source : en édition, et en présentation (lecture seule, au fil des étapes). */}
+      {editor && <SourcePanel editor={editor} presenting={mode === 'present' && !unlocked} />}
       <div className="relative min-w-0 flex-1">
         <Tldraw
           // Cache local (IndexedDB) propre à chaque document.
@@ -220,6 +226,7 @@ export default function Studio({
               void startRemote(editor)
               remoteDialogOpenAtom.set(true)
             }}
+            sourceText={hasSource ? { open: sourceOpen, toggle: () => sourcePresentOpenAtom.set(!sourceOpen) } : undefined}
           />
         )}
         {editor && mode === 'present' && <Legend editor={editor} />}

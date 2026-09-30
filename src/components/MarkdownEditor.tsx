@@ -22,6 +22,10 @@ interface Props {
   storeImage?: (file: File) => Promise<string>
   /** Adresse affichable d'une image (aperçu). */
   resolveSrc?: (src: string) => string | undefined
+  /** Occuper toute la hauteur disponible (texte long, ex. : le texte source). */
+  fill?: boolean
+  /** Nom accessible de la zone de saisie. */
+  label?: string
 }
 
 export function MarkdownEditor(props: Props) {
@@ -29,8 +33,14 @@ export function MarkdownEditor(props: Props) {
   const [preview, setPreview] = useState(false)
   const [expanded, setExpanded] = useState(false)
   return (
-    <div className="md-editor">
-      <MarkdownField {...props} preview={preview} onTogglePreview={() => setPreview(!preview)} onExpand={() => setExpanded(true)} />
+    <div className={`md-editor ${props.fill ? 'flex min-h-0 flex-1 flex-col' : ''}`}>
+      <MarkdownField
+        {...props}
+        preview={preview}
+        onTogglePreview={() => setPreview(!preview)}
+        onExpand={() => setExpanded(true)}
+        large={props.fill}
+      />
       {expanded &&
         createPortal(
           <div className="md-overlay" onPointerDown={(e) => e.target === e.currentTarget && setExpanded(false)}>
@@ -67,6 +77,7 @@ function MarkdownField({
   onTogglePreview,
   onExpand,
   large,
+  label,
 }: Props & { preview?: boolean; onTogglePreview?(): void; onExpand?(): void; large?: boolean }) {
   const t = useT()
   const ref = useRef<HTMLTextAreaElement>(null)
@@ -152,11 +163,25 @@ function MarkdownField({
     input.click()
   }
 
+  /**
+   * Raccourcis Markdown usuels : Ctrl/⌘ + B, I, K, E (code) ; + Maj : X (barré), 7 (liste
+   * numérotée), 8 (liste), 9 (citation) ; + Alt : 1 à 3 (titres). Les chiffres par leur touche
+   * physique (e.code), quelle que soit la disposition du clavier.
+   */
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (!(e.metaKey || e.ctrlKey) || e.altKey) return
+    if (!(e.metaKey || e.ctrlKey)) return
     const key = e.key.toLowerCase()
-    if (key === 'b') wrap('**', t.editor.boldText)
+    const digit = /^(?:Digit|Numpad)(\d)$/.exec(e.code)?.[1]
+    if (e.altKey && !e.shiftKey && digit && '123'.includes(digit)) prefixLines(`${'#'.repeat(Number(digit))} `)
+    else if (e.altKey) return
+    else if (e.shiftKey && key === 'x') wrap('~~', t.editor.strikeText)
+    else if (e.shiftKey && digit === '7') prefixLines('1. ')
+    else if (e.shiftKey && digit === '8') prefixLines('- ')
+    else if (e.shiftKey && digit === '9') prefixLines('> ')
+    else if (e.shiftKey) return
+    else if (key === 'b') wrap('**', t.editor.boldText)
     else if (key === 'i') wrap('*', t.editor.italicText)
+    else if (key === 'e') wrap('`', t.editor.codeText)
     else if (key === 'k') link()
     else return
     e.preventDefault()
@@ -168,6 +193,8 @@ function MarkdownField({
       <div className="md-toolbar">
         <Tool label={<b>B</b>} title={t.editor.bold} onAction={() => wrap('**', t.editor.boldText)} />
         <Tool label={<i className="font-serif">I</i>} title={t.editor.italic} onAction={() => wrap('*', t.editor.italicText)} />
+        <Tool label={<s>S</s>} title={t.editor.strike} onAction={() => wrap('~~', t.editor.strikeText)} />
+        <Tool label={<code className="text-[10px]">{'</>'}</code>} title={t.editor.code} onAction={() => wrap('`', t.editor.codeText)} />
         <Tool label="H" title={t.editor.heading} onAction={() => prefixLines('## ')} />
         <Tool label="•" title={t.editor.list} onAction={() => prefixLines('- ')} />
         <Tool label="1." title={t.editor.numbered} onAction={() => prefixLines('1. ')} />
@@ -194,6 +221,7 @@ function MarkdownField({
           rows={rows}
           value={value}
           placeholder={placeholder}
+          aria-label={label}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}
           onPaste={(e) => {
