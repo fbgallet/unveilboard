@@ -21,8 +21,8 @@ export async function login(_prev: LoginError | null, formData: FormData): Promi
     maxAge: SESSION_MAX_AGE,
   })
   const next = String(formData.get('next') ?? '/')
-  // Uniquement des chemins internes.
-  redirect(next.startsWith('/') && !next.startsWith('//') ? next : '/')
+  // Uniquement des chemins internes (« //hôte » et « /\hôte » mènent ailleurs).
+  redirect(/^\/(?![/\\])/.test(next) ? next : '/')
 }
 
 export async function logout() {

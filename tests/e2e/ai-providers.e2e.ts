@@ -124,14 +124,19 @@ test('OpenRouter : connexion (PKCE), la clé reste dans le navigateur', async ({
   await settings.getByRole('radio', { name: /OpenRouter, with your key/ }).check()
   await settings.getByRole('button', { name: 'Sign in with OpenRouter' }).click()
   // Retour sur le schéma, connecté (l'adresse de départ est aussi celle d'arrivée : on attend la clé).
-  const storedKey = () => page.evaluate(() => localStorage.getItem('ai-key:openrouter')).catch(() => null)
+  // Clé non retenue par défaut : le temps de la séance seulement.
+  const storedKey = () => page.evaluate(() => sessionStorage.getItem('ai-key:openrouter')).catch(() => null)
   await expect.poll(storedKey).toBe('sk-or-test')
   await expect.poll(() => page.url()).toBe(docUrl)
   await page.waitForLoadState()
   expect(exchange).toMatchObject({ code: 'test-code', code_challenge_method: 'S256' })
   expect(typeof (exchange as unknown as { code_verifier: string }).code_verifier).toBe('string')
-  const stored = await page.evaluate(() => ({ key: localStorage.getItem('ai-key:openrouter'), settings: JSON.parse(localStorage.getItem('ai-settings')!) }))
-  expect(stored).toMatchObject({ key: 'sk-or-test', settings: { kind: 'openrouter' } })
+  const stored = await page.evaluate(() => ({
+    key: sessionStorage.getItem('ai-key:openrouter'),
+    remembered: localStorage.getItem('ai-key:openrouter'),
+    settings: JSON.parse(localStorage.getItem('ai-settings')!),
+  }))
+  expect(stored).toMatchObject({ key: 'sk-or-test', remembered: null, settings: { kind: 'openrouter' } })
 })
 
 test('IA de l’instance : absente sans configuration (mode local)', async ({ request }) => {

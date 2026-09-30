@@ -56,6 +56,8 @@ Services et réglages facultatifs (détails dans `.env.example`) :
 | `OPENROUTER_API_KEY` (ou `AI_BASE_URL`, `AI_API_KEY`), `AI_MODEL`, `AI_MAX_TOKENS`, `AI_JSON_MODE` | IA de l’instance, côté serveur (mode cloud ; en mode local seulement avec `AI_PUBLIC=on` et Upstash, avec des limites par adresse IP ; toujours, sans limite, en développement). Voir [Travailler avec une IA](ai.fr.md) |
 | `SITE_URL` | Adresse des aperçus de lien (par défaut `https://unveilboard.com`) |
 
+Le site envoie une politique de sécurité du contenu (CSP, `src/proxy.ts`) : si vous ajoutez un script, une police ou une iframe d'une autre origine, autorisez-la là. Modèle de sécurité : voir [SECURITY.md](../SECURITY.md) (en anglais).
+
 ## Sauvegarde et synchronisation
 
 - Le stockage passe par une interface commune, `DocumentStore` (`src/lib/storage/`) : `cloud.ts` (routes `/api/documents`, Postgres) ou `local.ts` (IndexedDB).

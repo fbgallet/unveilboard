@@ -43,7 +43,7 @@ function AiSettingsView() {
   const server = useValue(serverAiAtom)
   const [draft, setDraft] = useState<AiSettings>(() => aiSettingsAtom.get())
   const [keys, setKeys] = useState({ openrouter: readKey('openrouter'), custom: readKey('custom') })
-  const [remember, setRemember] = useState(() => isKeyRemembered('openrouter') || isKeyRemembered('custom') || !readKey('openrouter'))
+  const [remember, setRemember] = useState(() => isKeyRemembered('openrouter') || isKeyRemembered('custom'))
   const [models, setModels] = useState<string[] | null>(null)
   const [test, setTest] = useState<{ state: 'running' | 'ok' | 'invalid' | 'error'; text: string } | null>(null)
   const close = () => aiSettingsOpenAtom.set(false)
@@ -104,7 +104,12 @@ function AiSettingsView() {
       <input
         className="preset-input"
         type="password"
-        autoComplete="off"
+        // « off » est ignoré sur un mot de passe : le navigateur y mettrait celui du compte (cloud).
+        autoComplete="new-password"
+        data-1p-ignore
+        data-lpignore="true"
+        data-bwignore
+        spellCheck={false}
         value={keys[kind]}
         onChange={(e) => {
           setKeys((k) => ({ ...k, [kind]: e.target.value }))
@@ -112,6 +117,9 @@ function AiSettingsView() {
         }}
         aria-label={label}
       />
+      {kind === 'openrouter' && keys.openrouter.trim() && !keys.openrouter.trim().startsWith('sk-or-') && (
+        <span className="text-xs text-red-700">{t.ai.keyNotOpenRouter}</span>
+      )}
     </label>
   )
 
@@ -192,10 +200,13 @@ function AiSettingsView() {
         )}
 
         {(draft.kind === 'openrouter' || draft.kind === 'custom') && (
-          <label className="flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-            {t.ai.remember}
-          </label>
+          <>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+              {t.ai.remember}
+            </label>
+            <p className="rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">{t.ai.keyWarning}</p>
+          </>
         )}
 
         {draft.kind !== 'clipboard' && (

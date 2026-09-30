@@ -56,6 +56,8 @@ Optional services and settings (details in `.env.example`):
 | `OPENROUTER_API_KEY` (or `AI_BASE_URL`, `AI_API_KEY`), `AI_MODEL`, `AI_MAX_TOKENS`, `AI_JSON_MODE` | AI of the instance, server side (cloud mode; local mode only with `AI_PUBLIC=on` and Upstash, with per-IP limits; always, without limits, in development). See [Working with an AI](ai.md) |
 | `SITE_URL` | Address used in link previews (default `https://unveilboard.com`) |
 
+The site sends a Content Security Policy (`src/proxy.ts`): if you add a script, a font or an iframe from another origin, allow it there. Security model: see [SECURITY.md](../SECURITY.md).
+
 ## Saving and sync
 
 - Storage goes through a common interface, `DocumentStore` (`src/lib/storage/`): `cloud.ts` (`/api/documents` routes, Postgres) or `local.ts` (IndexedDB).

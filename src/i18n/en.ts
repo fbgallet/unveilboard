@@ -1077,6 +1077,9 @@ export const en = {
     orPasteKey: 'or paste a key',
     key: 'API key',
     keyOptional: 'API key (optional)',
+    keyNotOpenRouter: 'This is not an OpenRouter key (they start with “sk-or-”): your browser may have filled in a saved password. Clear it, or sign in again.',
+    keyWarning:
+      'Your key stays in this browser and goes straight to the provider, never through Unveilboard. But anyone using this computer, or a flaw in the site, could use it: create a key just for Unveilboard, with a spending limit and an expiry date, and don’t remember it on a shared computer.',
     remember: 'Remember the key on this device (otherwise, until the tab is closed)',
     price: (input: number, output: number) => `$${input} / $${output} per M tokens`,
     model: 'Model',

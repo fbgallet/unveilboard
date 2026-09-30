@@ -9,6 +9,7 @@ import { MAX_TAG_LENGTH, cleanTag, normalizeTags, sameTag } from '@/lib/tags'
 import { droppedTldrFile, openTldrFile, pickTldrFile, type PickedFile } from '@/lib/storage/tldrFile'
 import type { DocumentSummary, StorageMode } from '@/lib/storage/types'
 import { logout } from './login/actions'
+import { forgetAiKeys } from '@/lib/ai/client'
 import { useLocale, useT } from '@/i18n/client'
 import { LocaleSwitcher } from '@/components/LocaleSwitcher'
 import { HeroDemo } from '@/components/home/HeroDemo'
@@ -273,7 +274,7 @@ function PersonalHome({ docs }: { docs: Documents }) {
         <h1 className="font-serif text-4xl text-stone-900">{t.home.title}</h1>
         <div className="flex items-center gap-4">
           <LocaleSwitcher />
-          <form action={logout}>
+          <form action={logout} onSubmit={forgetAiKeys}>
             <button className="text-sm text-stone-500 hover:text-stone-900">{t.home.logout}</button>
           </form>
         </div>

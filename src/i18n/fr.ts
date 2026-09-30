@@ -1068,6 +1068,9 @@ export const fr: Messages = {
     orPasteKey: 'ou collez une clé',
     key: 'Clé d’API',
     keyOptional: 'Clé d’API (facultative)',
+    keyNotOpenRouter: 'Ce n’est pas une clé OpenRouter (elles commencent par « sk-or- ») : le navigateur y a peut-être mis un mot de passe enregistré. Effacez-la, ou reconnectez-vous.',
+    keyWarning:
+      'Votre clé reste dans ce navigateur et part directement chez le fournisseur, sans passer par Unveilboard. Mais quiconque utilise cet ordinateur, ou une faille du site, pourrait s’en servir : créez une clé réservée à Unveilboard, avec une limite de dépense et une date d’expiration, et ne la retenez pas sur un ordinateur partagé.',
     remember: 'Retenir la clé sur cet appareil (sinon, jusqu’à la fermeture de l’onglet)',
     price: (input, output) => `${input.toLocaleString('fr')} / ${output.toLocaleString('fr')} $ par M de jetons`,
     model: 'Modèle',

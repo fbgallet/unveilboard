@@ -113,6 +113,12 @@ export function writeKey(kind: 'openrouter' | 'custom', key: string, remember: b
   }
 }
 
+/** Efface les clés des fournisseurs (déconnexion : ordinateur partagé). */
+export function forgetAiKeys() {
+  writeKey('openrouter', '', false)
+  writeKey('custom', '', false)
+}
+
 /** Fournisseur prêt à l'emploi (sinon : copier-coller). */
 export function isAiReady(settings: AiSettings, server: ServerAi | null) {
   switch (settings.kind) {
@@ -339,5 +345,6 @@ export async function finishOpenRouterLogin(code: string): Promise<string> {
   writeKey('openrouter', key, pending.remember)
   loadAiSettings(serverAiAtom.get())
   saveAiSettings({ ...aiSettingsAtom.get(), kind: 'openrouter' })
-  return pending.returnTo
+  // Uniquement des chemins internes (« //hôte » et « /\hôte » mènent ailleurs).
+  return /^\/(?![/\\])/.test(pending.returnTo) ? pending.returnTo : '/'
 }
