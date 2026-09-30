@@ -6,10 +6,10 @@ Unveilboard can describe a diagram in a simple JSON format, independent of tldra
 
 The format is used to:
 
-- **export** a diagram (☰ menu › “Export as JSON…”, or “Copy as JSON” to paste it into a conversation with an AI);
-- **import** a diagram written by hand, by an AI or by another tool (☰ menu › “Paste JSON…”): it opens as a new diagram, laid out automatically;
+- **export** a diagram (☰ menu › File › “Export as JSON…”, or “Copy as JSON” to paste it into a conversation with an AI);
+- **import** a diagram written by hand, by an AI or by another tool (☰ menu › File › “Paste JSON…”): it opens as a new diagram, laid out automatically;
 - **change** the open diagram with changes in the sibling “unveilboard/patch” format (see below);
-- let an AI read, create and change diagrams (☰ menu › “Prompt for an AI…”).
+- let an AI read, create and change diagrams (☰ menu › AI › “Create or change the diagram with AI…”).
 
 The exact schema is published as a [JSON Schema](map-format.schema.json) (draft 2020-12). The vocabulary (element types, relations, types of reasoning) is presented in [Building an argument map](argument-maps.md).
 

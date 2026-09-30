@@ -24,7 +24,7 @@ Des styles nommés, en tête du panneau de styles : des **types d'éléments** p
 - Un clic applique le préréglage aux formes ou flèches sélectionnées ; sans sélection, un type arme l'outil de formes : la prochaine forme tracée la reçoit.
 - Chaque type a sa géométrie (Concept : ovale, Question : losange, Difficulté : hexagone, Présupposé : nuage, Fait : parallélogramme, Citation : sans cadre, en serif, avec guillemets…) et une étiquette au-dessus de la forme (« ÉNONCÉ · Hobbes », avec la modalité en pastille : descriptif / normatif) : source (auteur, théorie, position) et modalité se saisissent dans le panneau de droite. Les étiquettes sont dessinées par l'application : sans elle, le schéma garde ses formes et ses couleurs.
 - Communs à tous les schémas : table `settings` en mode cloud, IndexedDB en mode local. Chaque schéma garde une copie des préréglages qu'il utilise, pour rester lisible ailleurs (et dans les liens partagés).
-- Menu ☰ › « Préréglages de styles… » : renommer, réordonner, forme et étiquette des types, sens et type de l'enfant des relations, mettre à jour ou créer d'après la sélection, masquer un préréglage (case à cocher : il reste utilisable dans les schémas existants), masquer la palette ou les étiquettes, revenir aux préréglages de départ.
+- Menu ☰ › Styles et types d’éléments › « Préréglages de styles… » : renommer, réordonner, forme et étiquette des types, sens et type de l'enfant des relations, mettre à jour ou créer d'après la sélection, masquer un préréglage (case à cocher : il reste utilisable dans les schémas existants), masquer la palette ou les étiquettes, revenir aux préréglages de départ.
 - En présentation, <kbd>L</kbd> affiche la légende des types et relations utilisés.
 
 ## Fichiers et formats

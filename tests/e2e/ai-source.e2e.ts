@@ -25,6 +25,7 @@ async function openEditor(page: Page, settings: Record<string, unknown>, key?: s
   await page.reload()
   await page.waitForFunction(() => (window as unknown as { unveilboard?: unknown }).unveilboard && document.querySelector('aside'))
   await page.getByTestId('main-menu.button').click()
+  await page.getByTestId('main-menu-sub.schema-ai-button').click()
   await page.getByText('New diagram from a text…').click()
   return page.getByRole('dialog', { name: 'Create a diagram from a text' })
 }

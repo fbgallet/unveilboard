@@ -24,7 +24,7 @@ Named styles, at the top of the style panel: **element types** for shapes (State
 - A click applies the preset to the selected shapes or arrows; with nothing selected, a type arms the shape tool: the next shape drawn gets it.
 - Each type has its geometry (Concept: oval, Question: diamond, Problem: hexagon, Assumption: cloud, Evidence: parallelogram, Quote: frameless, serif, with quotation marks…) and a label above the shape ("STATEMENT · Hobbes", with the modality as a pill: descriptive / normative): source (author, theory, position) and modality are entered in the side panel. Labels are drawn by the app: without it, the diagram keeps its shapes and colors.
 - Shared by all your diagrams: `settings` table in cloud mode, IndexedDB in local mode. Each diagram keeps a copy of the presets it uses, to stay readable elsewhere (and in shared links).
-- ☰ menu › "Style presets…": rename, reorder, shape and label of element types, direction and child type of relations, update or create from the selection, hide a preset (checkbox: it stays usable in existing diagrams), hide the palette or the labels, restore the default presets.
+- ☰ menu › Styles and element types › "Style presets…": rename, reorder, shape and label of element types, direction and child type of relations, update or create from the selection, hide a preset (checkbox: it stays usable in existing diagrams), hide the palette or the labels, restore the default presets.
 - While presenting, <kbd>L</kbd> shows the legend of the element types and relations used.
 
 ## Files and formats

@@ -48,6 +48,7 @@ test('consigne pour une IA : copier (schéma et sélection compris), coller la r
   })
 
   await page.getByTestId('main-menu.button').click()
+  await page.getByTestId('main-menu-sub.schema-ai-button').click()
   await page.getByText('Create or change the diagram with AI…').click()
   const dialog = page.getByRole('dialog', { name: 'Work with an AI' })
   await expect(dialog.getByRole('radio', { name: 'Enrich' })).toHaveAttribute('aria-checked', 'true')

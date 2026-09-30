@@ -168,7 +168,8 @@ export function AiLauncher() {
   ]
 
   return (
-    <div className="ai-launcher" ref={ref}>
+    // Nos infobulles (Tooltips.tsx), bien que dans une zone de tldraw.
+    <div className="ai-launcher" ref={ref} data-app-tips>
       {/* Mode sombre de tldraw (les panneaux de l'app le suivent). */}
       <button
         className="ai-launcher-icon"

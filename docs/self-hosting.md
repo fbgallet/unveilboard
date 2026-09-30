@@ -8,7 +8,7 @@ Running Unveilboard locally or on your own server: the two storage modes, instal
 
 The mode depends on whether `DATABASE_URL` is set:
 
-- **Local mode** (no `DATABASE_URL`): no database and no password. Diagrams are stored in each visitor's browser (IndexedDB). "Save as…" (steps panel or ☰ menu) creates a `.tldr` file, sequence included; "Open a .tldr file…" (home or ☰ menu), or a drag and drop on the home page, opens it as a new diagram. This is the mode for sharing the app with a simple URL.
+- **Local mode** (no `DATABASE_URL`): no database and no password. Diagrams are stored in each visitor's browser (IndexedDB). "Save as…" (steps panel or ☰ menu › File) creates a `.tldr` file, sequence included; "Open a .tldr file…" (home or ☰ menu › File), or a drag and drop on the home page, opens it as a new diagram. This is the mode for sharing the app with a simple URL.
 - **Cloud mode** (with `DATABASE_URL`): diagrams are stored in Postgres (e.g. [Neon](https://neon.tech)), available on all your devices, and access is protected by a password. This is meant for a personal instance for now: there are no user accounts yet.
 
 ## Running locally

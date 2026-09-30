@@ -31,6 +31,7 @@ test('exporter en JSON, puis réimporter comme nouveau schéma', async ({ page }
 
   // Export : un fichier .unveilboard.json.
   await page.getByTestId('main-menu.button').click()
+  await page.getByTestId('main-menu-sub.schema-file-menu-button').click()
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByText('Export as JSON…').click()])
   expect(download.suggestedFilename()).toBe('Demo Should we always tell the truth.unveilboard.json')
   const json = await readFile(await download.path(), 'utf8')
@@ -51,6 +52,7 @@ test('exporter en JSON, puis réimporter comme nouveau schéma', async ({ page }
 
   // Import : le JSON exporté, collé dans la boîte de dialogue, ouvre un nouveau schéma identique.
   await page.getByTestId('main-menu.button').click()
+  await page.getByTestId('main-menu-sub.schema-file-menu-button').click()
   await page.getByText('Paste JSON (diagram or changes)…').click()
   const dialog = page.getByRole('dialog', { name: 'Paste JSON' })
   await dialog.getByRole('textbox').fill(json)
@@ -66,6 +68,7 @@ test('exporter en JSON, puis réimporter comme nouveau schéma', async ({ page }
 
   // Réexporté, le schéma importé donne le même JSON.
   await page.getByTestId('main-menu.button').click()
+  await page.getByTestId('main-menu-sub.schema-file-menu-button').click()
   const [again] = await Promise.all([page.waitForEvent('download'), page.getByText('Export as JSON…').click()])
   expect(await readFile(await again.path(), 'utf8')).toBe(json)
 })
@@ -73,6 +76,7 @@ test('exporter en JSON, puis réimporter comme nouveau schéma', async ({ page }
 test('import : erreurs signalées, bouton désactivé', async ({ page }) => {
   await openTruthExample(page)
   await page.getByTestId('main-menu.button').click()
+  await page.getByTestId('main-menu-sub.schema-file-menu-button').click()
   await page.getByText('Paste JSON (diagram or changes)…').click()
   const dialog = page.getByRole('dialog', { name: 'Paste JSON' })
   await dialog.getByRole('textbox').fill(
@@ -123,6 +127,7 @@ test.describe('en français', () => {
       },
     }
     await page.getByTestId('main-menu.button').click()
+    await page.getByTestId('main-menu-sub.schema-file-menu-button').click()
     await page.getByText('Coller du JSON (schéma ou modifications)…').click()
     const dialog = page.getByRole('dialog', { name: 'Coller du JSON' })
     await dialog.getByRole('textbox').fill(JSON.stringify(map))

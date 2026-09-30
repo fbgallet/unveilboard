@@ -28,7 +28,7 @@ export const fr: Messages = {
       before: 'Vos schémas sont enregistrés ',
       strong: 'dans ce navigateur uniquement',
       after:
-        '. Pour les sauvegarder ou les transférer : « Enregistrer sous… » (panneau des étapes, ou menu ☰) dans un schéma, puis « Ouvrir un fichier .tldr » ici, ou glisser le fichier sur cette page. Sur Chrome et Edge, le fichier est ensuite tenu à jour : enregistrez-le dans un dossier synchronisé (Google Drive, Dropbox…) pour retrouver votre schéma sur n’importe quel ordinateur.',
+        '. Pour les sauvegarder ou les transférer : « Enregistrer sous… » (panneau des étapes, ou menu ☰ › Fichier) dans un schéma, puis « Ouvrir un fichier .tldr » ici, ou glisser le fichier sur cette page. Sur Chrome et Edge, le fichier est ensuite tenu à jour : enregistrez-le dans un dossier synchronisé (Google Drive, Dropbox…) pour retrouver votre schéma sur n’importe quel ordinateur.',
     },
     newDiagram: '+ Nouveau schéma',
     createExample: 'Créer l’exemple (la liberté)',
@@ -144,7 +144,7 @@ export const fr: Messages = {
     back: 'Mes schémas',
     saveAs: 'Enregistrer sous…',
     saveAsHint:
-      'Enregistrer ce schéma dans un fichier .tldr (séquence comprise) : sauvegarde, transfert, ou ouverture sur tldraw.com. Sur Chrome et Edge, le fichier est ensuite tenu à jour automatiquement (Ctrl/⌘ + S). Aussi dans le menu ☰.',
+      'Enregistrer ce schéma dans un fichier .tldr (séquence comprise) : sauvegarde, transfert, ou ouverture sur tldraw.com. Sur Chrome et Edge, le fichier est ensuite tenu à jour automatiquement (Ctrl/⌘ + S). Aussi dans le menu ☰ › Fichier.',
     collapse: 'Replier le panneau',
     present: '▶ Présenter',
     presentFromStep: '▶ Depuis l’étape',
@@ -276,6 +276,8 @@ export const fr: Messages = {
     fullscreen: 'Plein écran (F)',
     more: 'Plus',
     exit: 'Quitter la présentation (Échap)',
+    exitShort: 'Quitter',
+    end: 'Terminer la présentation',
   },
 
   screen: {
@@ -853,6 +855,17 @@ export const fr: Messages = {
     },
   },
 
+  nav: {
+    file: 'Fichier',
+    ai: 'IA',
+    styles: 'Styles et types d’éléments',
+    myDiagrams: 'Mes schémas',
+    recent: 'Schémas récents',
+    allDiagrams: 'Tous mes schémas…',
+    newDiagram: 'Nouveau schéma',
+    home: 'Revenir à mes schémas',
+  },
+
   files: {
     typeDescription: 'Schéma tldraw',
     defaultName: 'schéma',
@@ -1037,6 +1050,14 @@ export const fr: Messages = {
     finish: 'Liens et séquence',
     finishPending: 'Des suggestions sont en attente : les liens et la séquence ne voient que les éléments acceptés.',
     finished: 'Liens et séquence ajoutés.',
+    next: {
+      label: 'Prochaine étape :',
+      develop: 'développer les sections restantes (bouton ci-dessous), ou une à une avec « Développer ».',
+      decide: 'accepter (✓) ou écarter (✕) les suggestions sur le schéma.',
+      synthesis: (n) => `développer la synthèse (section ${n}), maintenant qu’elle peut voir les autres.`,
+      finish: '« Liens et séquence » : l’IA relie les éléments d’une section à l’autre et écrit la séquence de présentation.',
+      done: 'le schéma est complet. Présentez-le (▶ Présenter), ou complétez une section.',
+    },
     forget: 'Oublier le plan',
     menuNew: 'Structurer avec un plan…',
     proposeIntro: 'L’IA propose un plan pour ce schéma : elle reprend les branches existantes comme sections quand elles conviennent, et ajoute celles qui manquent. Relisez-le, puis développez ici chaque section, en suggestions.',

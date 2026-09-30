@@ -37,6 +37,7 @@ async function open(page: Page) {
 
 const openPanel = async (page: Page) => {
   await page.getByTestId('main-menu.button').click()
+  await page.getByTestId('main-menu-sub.schema-ai-button').click()
   await page.getByText('Critical review…').click()
   return page.getByRole('complementary', { name: 'Critical review' })
 }

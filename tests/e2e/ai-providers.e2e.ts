@@ -50,6 +50,7 @@ test('serveur compatible OpenAI : réglages, essai, demande avec correction, app
 
   // Réglages : serveur compatible OpenAI, modèle choisi dans la liste, essai.
   await page.getByTestId('main-menu.button').click()
+  await page.getByTestId('main-menu-sub.schema-ai-button').click()
   await page.getByText('AI settings…').click()
   const settings = page.getByRole('dialog', { name: 'AI settings' })
   await settings.getByRole('radio', { name: /OpenAI-compatible server/ }).check()
@@ -65,6 +66,7 @@ test('serveur compatible OpenAI : réglages, essai, demande avec correction, app
 
   // Demande : la première réponse est fausse, la seconde (après correction) est bonne.
   await page.getByTestId('main-menu.button').click()
+  await page.getByTestId('main-menu-sub.schema-ai-button').click()
   await page.getByText('Create or change the diagram with AI…').click()
   const dialog = page.getByRole('dialog', { name: 'Work with an AI' })
   await expect(dialog.getByText('AI: OpenAI-compatible server (Ollama, LM Studio…) · fake-model')).toBeVisible()
@@ -96,6 +98,7 @@ test('serveur injoignable : message d’erreur explicite', async ({ page }) => {
   await page.reload()
   await page.waitForFunction(() => (window as unknown as { unveilboard?: unknown }).unveilboard)
   await page.getByTestId('main-menu.button').click()
+  await page.getByTestId('main-menu-sub.schema-ai-button').click()
   await page.getByText('Create or change the diagram with AI…').click()
   const dialog = page.getByRole('dialog', { name: 'Work with an AI' })
   await dialog.getByRole('button', { name: 'Ask the AI' }).click()
@@ -119,6 +122,7 @@ test('OpenRouter : connexion (PKCE), la clé reste dans le navigateur', async ({
   await openTruthExample(page)
   const docUrl = page.url()
   await page.getByTestId('main-menu.button').click()
+  await page.getByTestId('main-menu-sub.schema-ai-button').click()
   await page.getByText('AI settings…').click()
   const settings = page.getByRole('dialog', { name: 'AI settings' })
   await settings.getByRole('radio', { name: /OpenRouter, with your key/ }).check()

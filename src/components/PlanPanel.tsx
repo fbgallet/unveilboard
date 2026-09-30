@@ -281,6 +281,20 @@ function PlanView({ editor }: { editor: Editor }) {
   const progress = (p: { chars: number; thinking: number }) => (!p.chars && p.thinking ? t.staged.status.thinking(p.thinking) : t.staged.status.running(p.chars))
   // Sections restantes : ni développées ni en attente ; en suggestions, les synthèses attendent les autres.
   const remaining = states.filter((s, i) => s.exists && !s.developed && !s.pending && !running[s.id] && (direct || !plan.sections[i].synthesis))
+  // Prochaine étape, pour guider : développer, trancher les suggestions, la synthèse, puis liens et séquence.
+  const synthesis = states.findIndex((s, i) => plan.sections[i].synthesis && s.exists && !s.developed && !s.pending && !running[s.id])
+  const next = busy
+    ? null
+    : remaining.length
+      ? t.plan.next.develop
+      : pending > 0
+        ? t.plan.next.decide
+        : synthesis >= 0
+          ? t.plan.next.synthesis(synthesis + 1)
+          : finished
+            ? t.plan.next.done
+            : t.plan.next.finish
+  const finishNext = !busy && !remaining.length && !pending && synthesis < 0 && !finished
 
   return (
     <aside className="review-panel plan-panel" aria-label={t.plan.title}>
@@ -301,12 +315,12 @@ function PlanView({ editor }: { editor: Editor }) {
       </div>
       {plan.pattern && <p className="patch-summary-text text-xs">{plan.pattern}</p>}
 
-      <ol className="grid gap-2">
+      <ol className="grid grid-cols-1 gap-2">
         {plan.sections.map((section, i) => {
           const state = states[i]
           const run = running[section.id]
           return (
-            <li key={section.id} className="staged-section grid gap-1 text-xs">
+            <li key={section.id} className="staged-section grid grid-cols-1 gap-1 text-xs">
               <div className="staged-row">
                 <span className="staged-row-title font-medium" title={state.text}>
                   {i + 1}. {state.text}
@@ -364,11 +378,20 @@ function PlanView({ editor }: { editor: Editor }) {
         <input type="checkbox" checked={direct} onChange={(e) => setDirect(e.target.checked)} />
         {t.plan.direct}
       </label>
+      {next && (
+        <p className="plan-next text-xs" role="status">
+          <strong>{t.plan.next.label}</strong> {next}
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-2">
-        <button className="btn-primary" disabled={!ready || !remaining.length} onClick={() => void develop(remaining.map((s) => s.id))}>
+        <button
+          className={finishNext ? 'btn' : 'btn-primary'}
+          disabled={!ready || !remaining.length}
+          onClick={() => void develop(remaining.map((s) => s.id))}
+        >
           {t.plan.developAll}
         </button>
-        <button className="btn" disabled={!ready || !!finishing} onClick={() => void finish()}>
+        <button className={finishNext ? 'btn-primary' : 'btn'} disabled={!ready || !!finishing} onClick={() => void finish()}>
           {t.plan.finish}
         </button>
       </div>

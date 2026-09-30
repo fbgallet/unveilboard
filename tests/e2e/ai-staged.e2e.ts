@@ -74,6 +74,7 @@ test('schéma riche : plan relu et modifié, sections en parallèle, section rel
   await page.reload()
   await page.waitForFunction(() => (window as unknown as { unveilboard?: unknown }).unveilboard && document.querySelector('aside'))
   await page.getByTestId('main-menu.button').click()
+  await page.getByTestId('main-menu-sub.schema-ai-button').click()
   await page.getByText('Create or change the diagram with AI…').click()
   const dialog = page.getByRole('dialog', { name: 'Work with an AI' })
   await dialog.getByRole('radio', { name: 'Create a diagram' }).click()
@@ -139,6 +140,7 @@ test('construction en direct : squelette, sections en suggestions, précision, l
   await page.reload()
   await page.waitForFunction(() => (window as unknown as { unveilboard?: unknown }).unveilboard && document.querySelector('aside'))
   await page.getByTestId('main-menu.button').click()
+  await page.getByTestId('main-menu-sub.schema-ai-button').click()
   await page.getByText('Create or change the diagram with AI…').click()
   const dialog = page.getByRole('dialog', { name: 'Work with an AI' })
   await dialog.getByRole('radio', { name: 'Create a diagram' }).click()
@@ -168,7 +170,9 @@ test('construction en direct : squelette, sections en suggestions, précision, l
   await panel.getByRole('button', { name: 'Develop the remaining sections' }).click()
   await expect(rows.nth(1).getByText('2 suggestions to review')).toBeVisible()
   await expect(rows.nth(2).getByText('to develop')).toBeVisible()
+  await expect(panel.getByText(/Next step: accept/)).toBeVisible()
   await page.getByRole('button', { name: 'Accept all' }).click()
+  await expect(panel.getByText(/Next step: develop the synthesis \(section 3\)/)).toBeVisible()
 
   // La synthèse, avec une précision : elle voit les sections acceptées.
   await rows.nth(2).getByText('Brief and precision').click()
@@ -186,9 +190,15 @@ test('construction en direct : squelette, sections en suggestions, précision, l
   expect(prompts.at(-1)).toContain('**This section already has 2 elements**')
   await page.getByRole('button', { name: 'Reject all' }).click()
 
-  // Liens et séquence, appliqués directement.
+  // Liens et séquence, appliqués directement : c'est la prochaine étape indiquée.
+  await expect(panel.getByText(/Next step: “Links and sequence”/)).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Links and sequence' })).toHaveClass(/btn-primary/)
   await panel.getByRole('button', { name: 'Links and sequence' }).click()
   await expect(panel.getByText('Links and sequence added.')).toBeVisible()
+  await expect(panel.getByText(/Next step: the diagram is complete/)).toBeVisible()
+  // Le panneau ne défile pas horizontalement : ✕ reste visible.
+  expect(await panel.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+  await expect(panel.getByRole('button', { name: 'Close' })).toBeInViewport()
   const map = await getMap(page)
   expect(map.elements).toHaveLength(10)
   expect(map.links).toHaveLength(1)
@@ -289,6 +299,7 @@ async function openSource(page: Page) {
   await page.reload()
   await page.waitForFunction(() => (window as unknown as { unveilboard?: unknown }).unveilboard && document.querySelector('aside'))
   await page.getByTestId('main-menu.button').click()
+  await page.getByTestId('main-menu-sub.schema-ai-button').click()
   await page.getByText('New diagram from a text…').click()
   const dialog = page.getByRole('dialog', { name: 'Create a diagram from a text' })
   await dialog.getByRole('textbox', { name: 'Source text' }).fill(TEXT)

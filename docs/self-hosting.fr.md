@@ -8,7 +8,7 @@ Faire tourner Unveilboard en local ou sur votre serveur : les deux modes de stoc
 
 Le mode dépend de la présence de `DATABASE_URL` :
 
-- **Mode local** (sans `DATABASE_URL`) : aucun serveur de données ni mot de passe. Les schémas sont enregistrés dans le navigateur de chacun (IndexedDB). « Enregistrer sous… » (panneau des étapes ou menu ☰) crée un fichier `.tldr`, séquence comprise ; « Ouvrir un fichier .tldr… » (accueil ou menu ☰), ou un glisser-déposer sur l'accueil, le rouvre comme nouveau schéma. Idéal pour partager l'app par une simple URL.
+- **Mode local** (sans `DATABASE_URL`) : aucun serveur de données ni mot de passe. Les schémas sont enregistrés dans le navigateur de chacun (IndexedDB). « Enregistrer sous… » (panneau des étapes ou menu ☰ › Fichier) crée un fichier `.tldr`, séquence comprise ; « Ouvrir un fichier .tldr… » (accueil ou menu ☰ › Fichier), ou un glisser-déposer sur l'accueil, le rouvre comme nouveau schéma. Idéal pour partager l'app par une simple URL.
 - **Mode cloud** (avec `DATABASE_URL`) : les schémas sont enregistrés sur Postgres (par exemple [Neon](https://neon.tech)), accessibles depuis tous vos appareils, et l'accès est protégé par mot de passe. Pensé pour une instance personnelle pour l'instant : il n'y a pas encore de comptes.
 
 ## Démarrage en local

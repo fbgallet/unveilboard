@@ -7,7 +7,8 @@ import { createPortal } from 'react-dom'
 // une bulle discrète qui apparaît vite, pour tout élément qui a un `title` (boutons en icône surtout).
 // Un seul écouteur pour toute la page : aucun composant à envelopper. Pendant le survol, le `title`
 // est retiré (sinon l'infobulle native s'afficherait aussi), puis remis au départ du pointeur ; un
-// élément qui n'avait que lui pour nom reçoit un `aria-label`. Les menus de tldraw ont les leurs.
+// élément qui n'avait que lui pour nom reçoit un `aria-label`. Les menus de tldraw ont les leurs ;
+// nos composants placés dans une zone de tldraw (en haut à droite…) s'y soustraient avec `data-app-tips`.
 
 const DELAY = 300
 const GAP = 6
@@ -41,7 +42,7 @@ export function Tooltips() {
       const el = (e.target as Element | null)?.closest?.<HTMLElement>('[title]')
       if (!el || el === current) return
       // Les composants de tldraw ont leurs propres infobulles.
-      if (el.closest('[class*="tlui-"]')) return
+      if (el.closest('[class*="tlui-"]') && !el.closest('[data-app-tips]')) return
       const text = el.getAttribute('title')?.trim()
       if (!text) return
       restore()

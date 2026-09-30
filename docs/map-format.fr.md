@@ -6,10 +6,10 @@ Unveilboard sait décrire un schéma dans un format JSON simple, indépendant de
 
 Ce format sert à :
 
-- **exporter** un schéma (menu ☰ › « Exporter en JSON… », ou « Copier en JSON » pour le coller dans une conversation avec une IA) ;
-- **importer** un schéma écrit à la main, par une IA ou par un autre outil (menu ☰ › « Coller du JSON… ») : il s'ouvre comme nouveau schéma, mis en page automatiquement ;
+- **exporter** un schéma (menu ☰ › Fichier › « Exporter en JSON… », ou « Copier en JSON » pour le coller dans une conversation avec une IA) ;
+- **importer** un schéma écrit à la main, par une IA ou par un autre outil (menu ☰ › Fichier › « Coller du JSON… ») : il s'ouvre comme nouveau schéma, mis en page automatiquement ;
 - **modifier** le schéma ouvert par des modifications au format voisin « unveilboard/patch » (voir plus bas) ;
-- faire lire, créer et modifier les schémas par une IA (menu ☰ › « Consigne pour une IA… »).
+- faire lire, créer et modifier les schémas par une IA (menu ☰ › IA › « Créer ou modifier le schéma avec l’IA… »).
 
 Le schéma exact est publié en [JSON Schema](map-format.schema.json) (draft 2020-12). Le vocabulaire (types d'éléments, relations, types de raisonnement) est présenté dans [Construire une carte d'argument](argument-maps.fr.md).
 

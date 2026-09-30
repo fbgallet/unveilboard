@@ -69,16 +69,22 @@ export function SequencePanel({ editor }: { editor: Editor }) {
   const open = useValue(sequencePanelOpenAtom)
   const width = useValue(sequencePanelWidthAtom)
   if (!open) {
+    // Replié : le logo reste un chemin vers la liste des schémas.
     return (
-      <button
-        className="flex h-full w-9 shrink-0 flex-col items-center gap-3 border-l border-zinc-200 bg-zinc-50 pt-3 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
-        onClick={() => setPanelOpen(true)}
-        title={t.panel.expand}
-        aria-label={t.panel.expand}
-      >
-        <span aria-hidden="true">«</span>
-        <span className="text-xs font-medium [writing-mode:vertical-rl]">{t.panel.sequence}</span>
-      </button>
+      <div className="flex h-full w-9 shrink-0 flex-col items-center border-l border-zinc-200 bg-zinc-50">
+        <Link href="/" className="group pt-2.5 pb-1" title={t.nav.home} aria-label={t.nav.home}>
+          <LogoMark className="h-5 w-5" />
+        </Link>
+        <button
+          className="flex w-full flex-1 flex-col items-center gap-3 pt-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+          onClick={() => setPanelOpen(true)}
+          title={t.panel.expand}
+          aria-label={t.panel.expand}
+        >
+          <span aria-hidden="true">«</span>
+          <span className="text-xs font-medium [writing-mode:vertical-rl]">{t.panel.sequence}</span>
+        </button>
+      </div>
     )
   }
   return <SequencePanelContent editor={editor} width={width} />
@@ -160,7 +166,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
       <ResizeHandle width={sequencePanelWidthAtom} limits={SEQUENCE_PANEL_WIDTH} storageKey="sequencePanelWidth" />
       <header className="flex flex-col gap-2 border-b border-zinc-200 p-3">
         <div className="flex items-center justify-between">
-          <Link href="/" className="group flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-900">
+          <Link href="/" className="group flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-900" title={t.nav.home}>
             <LogoMark className="h-5 w-5" />
             {t.panel.back}
           </Link>

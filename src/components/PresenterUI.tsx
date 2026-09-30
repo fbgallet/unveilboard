@@ -67,6 +67,7 @@ export function NarrationPanel({ editor, top, onPinScale }: { editor: Editor; to
   const scaleDefault = useValue(narrationScaleDefaultAtom)
   const active = useValue(activeNoteAtom)
   const opened = useValue(openedNotesAtom)
+  const viewer = useValue(viewerAtom)
   const step = seq?.steps[index]
   const tabs = useValue(
     'note tabs',
@@ -101,6 +102,7 @@ export function NarrationPanel({ editor, top, onPinScale }: { editor: Editor; to
 
   if (!seq || !visible) return null
   const note = tabs.find((n) => n.id === active)
+  const last = !viewer && !note && index >= 0 && index === seq.steps.length - 1
 
   return (
     <aside
@@ -127,8 +129,9 @@ export function NarrationPanel({ editor, top, onPinScale }: { editor: Editor; to
         <button className="pbtn narration-size" onClick={() => changeNarrationScale(1)} title={`${t.presenter.textLarger} · ${t.presenter.textReset}`}>
           A+
         </button>
+        {/* » plutôt que ✕ : masquer le panneau n'est pas quitter la présentation. */}
         <button className="pbtn" onClick={toggleNarration} title={t.presenter.hideNarration} aria-label={t.presenter.hideNarrationLabel}>
-          <Icon name="close" />
+          <Icon name="collapse" />
         </button>
       </div>
       {top}
@@ -184,6 +187,12 @@ export function NarrationPanel({ editor, top, onPinScale }: { editor: Editor; to
               </div>
             )}
           </>
+        )}
+        {/* Dernière étape : de quoi sortir, sans chercher le ✕ de la barre du bas. */}
+        {last && (
+          <button className="btn narration-exit mt-[2em]" onClick={exitPresentation}>
+            {t.presenter.end}
+          </button>
         )}
       </div>
     </aside>
@@ -274,7 +283,12 @@ export function ProgressBar({
             ...(onRemote ? [{ label: t.remote.button, icon: 'phone' as IconName, onClick: onRemote, active: remoteConnected, desktopOnly: true }] : []),
           ]}
         />
-        {!viewer && <ToolBtn onClick={exitPresentation} title={t.presenter.exit} icon="close" />}
+        {!viewer && (
+          <button className="pbtn w-auto gap-1 px-2" onClick={exitPresentation} title={t.presenter.exit} aria-label={t.presenter.exit}>
+            <Icon name="close" />
+            <span className="max-md:hidden">{t.presenter.exitShort}</span>
+          </button>
+        )}
       </div>
     </div>
   )
@@ -550,6 +564,7 @@ type IconName =
   | 'panel'
   | 'fullscreen'
   | 'close'
+  | 'collapse'
   | 'text'
 
 const ICONS: Record<IconName, ReactNode> = {
@@ -605,6 +620,7 @@ const ICONS: Record<IconName, ReactNode> = {
   ),
   fullscreen: <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" />,
   close: <path d="M18 6 6 18M6 6l12 12" />,
+  collapse: <path d="m6 17 5-5-5-5M13 17l5-5-5-5" />,
 }
 
 function Icon({ name }: { name: IconName }) {

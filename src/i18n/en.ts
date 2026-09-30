@@ -29,7 +29,7 @@ export const en = {
       before: 'Your diagrams are saved ',
       strong: 'in this browser only',
       after:
-        '. To back them up or move them: use “Save as…” (steps panel, or ☰ menu) in a diagram, then “Open a .tldr file” here, or drop the file on this page. In Chrome and Edge, the file is then kept up to date: save it in a synced folder (Google Drive, Dropbox…) to find your diagram on any computer.',
+        '. To back them up or move them: use “Save as…” (steps panel, or ☰ menu › File) in a diagram, then “Open a .tldr file” here, or drop the file on this page. In Chrome and Edge, the file is then kept up to date: save it in a synced folder (Google Drive, Dropbox…) to find your diagram on any computer.',
     },
     newDiagram: '+ New diagram',
     createExample: 'Create the example (the water cycle)',
@@ -145,7 +145,7 @@ export const en = {
     back: 'My diagrams',
     saveAs: 'Save as…',
     saveAsHint:
-      'Save this diagram to a .tldr file (sequence included): backup, transfer, or opening on tldraw.com. In Chrome and Edge, the file is then kept up to date automatically (Ctrl/⌘ + S). Also in the ☰ menu.',
+      'Save this diagram to a .tldr file (sequence included): backup, transfer, or opening on tldraw.com. In Chrome and Edge, the file is then kept up to date automatically (Ctrl/⌘ + S). Also in the ☰ menu › File.',
     collapse: 'Collapse the panel',
     present: '▶ Present',
     presentFromStep: '▶ From step',
@@ -277,6 +277,8 @@ export const en = {
     fullscreen: 'Fullscreen (F)',
     more: 'More',
     exit: 'Exit the presentation (Esc)',
+    exitShort: 'Exit',
+    end: 'End the presentation',
   },
 
   screen: {
@@ -856,6 +858,17 @@ export const en = {
     } as Record<string, string>,
   },
 
+  nav: {
+    file: 'File',
+    ai: 'AI',
+    styles: 'Styles and element types',
+    myDiagrams: 'My diagrams',
+    recent: 'Recent diagrams',
+    allDiagrams: 'All my diagrams…',
+    newDiagram: 'New diagram',
+    home: 'Back to my diagrams',
+  },
+
   files: {
     typeDescription: 'tldraw diagram',
     defaultName: 'diagram',
@@ -1045,6 +1058,14 @@ export const en = {
     finish: 'Links and sequence',
     finishPending: 'Suggestions are still pending: the links and the sequence only see accepted elements.',
     finished: 'Links and sequence added.',
+    next: {
+      label: 'Next step:',
+      develop: 'develop the remaining sections (button below), or one by one with “Develop”.',
+      decide: 'accept (✓) or reject (✕) the suggestions on the diagram.',
+      synthesis: (n: number) => `develop the synthesis (section ${n}), now that it can see the others.`,
+      finish: '“Links and sequence”: the AI links elements across sections and writes the presentation sequence.',
+      done: 'the diagram is complete. Present it (▶ Present), or complete a section.',
+    },
     forget: 'Forget the plan',
     menuNew: 'Structure with a plan…',
     proposeIntro: 'The AI proposes a plan for this diagram: it keeps the existing branches as sections when they fit, and adds the missing ones. Review it, then develop each section here, as suggestions.',
