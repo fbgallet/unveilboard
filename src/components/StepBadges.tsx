@@ -7,7 +7,8 @@ import { activeStepIdAtom, modeAtom, stepBadgesVisibleAtom } from '@/lib/present
 
 /**
  * Pastilles numérotées sur le canevas, en mode édition : à quelle(s) étape(s) chaque objet apparaît
- * (plusieurs s'il réapparaît après avoir été caché). Seule la séquence de la page courante compte.
+ * (plusieurs s'il réapparaît après avoir été caché). Seule la séquence de la page courante compte ;
+ * les objets d'une branche repliée n'en ont pas, jusqu'au dépliage.
  */
 export function StepBadges() {
   const editor = useEditor()
@@ -20,6 +21,8 @@ export function StepBadges() {
       const activeId = activeStepIdAtom.get()
       const activeTargets = new Set(seq.steps.find((s) => s.id === activeId)?.actions.flatMap((a) => a.targets))
       return [...appearances(seq)].flatMap(([id, steps]) => {
+        // Objet caché (dans une branche repliée, ou flèche qui y mène) : sa pastille aussi.
+        if (editor.isShapeHidden(id as TLShapeId)) return []
         const bounds = editor.getShapePageBounds(id as TLShapeId)
         if (!bounds) return []
         const isArrow = editor.getShape(id as TLShapeId)?.type === 'arrow'

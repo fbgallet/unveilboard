@@ -1,8 +1,9 @@
 // Mise en page d'un arbre (carte mentale) : données pures, indépendantes de tldraw.
 //
 // Chaque sous-arbre occupe une bande perpendiculaire à la direction de l'arbre ;
-// un nœud est centré sur la bande de ses enfants. Les branches repliées gardent leur
-// place : replier ou déplier (en édition comme en présentation) ne déplace rien.
+// un nœud est centré sur la bande de ses enfants. Une branche repliée ne garde que la
+// place de son nœud : les voisins se resserrent, et s'écartent à nouveau au dépliage
+// (ses descendants, cachés, restent placés par rapport à lui).
 // Un nœud déplacé à la main garde son décalage (offset), que suit tout son sous-arbre.
 // « both » : carte mentale équilibrée, les enfants de la racine à droite ou à gauche (side).
 
@@ -33,6 +34,8 @@ export interface TreeNode {
   side?: TreeSide
   /** Écarts propres entre ce nœud et ses enfants (ex. : prémisses liées, resserrées sous leur pastille). */
   gaps?: { main: number; cross: number }
+  /** Branche repliée : elle n'occupe que la place du nœud. */
+  collapsed?: boolean
 }
 
 export const TREE_GAPS = { main: 72, cross: 24 }
@@ -64,7 +67,7 @@ export function layoutTree(
     const g = node.gaps ?? gaps
     const kidsBand = kids.reduce((sum, c) => sum + measure(c), 0) + g.cross * Math.max(0, kids.length - 1)
     visiting.delete(id)
-    const size = Math.max(crossSize(node), kidsBand)
+    const size = node.collapsed ? crossSize(node) : Math.max(crossSize(node), kidsBand)
     band.set(id, size)
     return size
   }
@@ -106,6 +109,25 @@ export function layoutTree(
   measure(rootId)
   place(rootId, rootPos, mainSign)
   return out
+}
+
+/**
+ * Courbure d'une branche courbe (propriété `bend` d'une flèche tldraw en arc), du point de départ
+ * sur le parent au point d'arrivée sur l'enfant : un arc de cercle qui arrive sur l'enfant dans le
+ * sens de l'arbre (à plat, pour un arbre horizontal) ; les branches d'un même parent s'ouvrent
+ * ainsi en éventail. Plafonnée au quart de cercle, quand l'enfant est très décalé.
+ */
+export function branchBend(from: Vec, to: Vec, horizontal: boolean): number {
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  const cross = Math.abs(horizontal ? dy : dx)
+  if (cross < 1) return 0
+  const chord2 = dx * dx + dy * dy
+  const radius = chord2 / (2 * cross)
+  const chord = Math.sqrt(chord2)
+  const sagitta = Math.min(radius - Math.sqrt(Math.max(0, radius * radius - chord2 / 4)), chord * (1 - Math.SQRT1_2) / Math.SQRT2)
+  // tldraw décale le milieu de l'arc de −bend le long de la perpendiculaire (y, −x) à la corde.
+  return (horizontal ? 1 : -1) * Math.sign(dx) * Math.sign(dy) * sagitta
 }
 
 /** Descendants d'un nœud (sans lui-même), en profondeur d'abord. */

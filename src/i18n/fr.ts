@@ -735,6 +735,7 @@ export const fr: Messages = {
     revealNothing: 'Tous les éléments de cette carte apparaissent déjà dans la séquence.',
     revealStep: 'Élément',
     directions: { right: 'Vers la droite', left: 'Vers la gauche', down: 'Vers le bas', up: 'Vers le haut', both: 'Des deux côtés' },
+    edges: { curve: 'Branches courbes', elbow: 'Branches coudées' },
     child: 'enfant',
     enter: 'Entrée',
     sibling: 'frère',

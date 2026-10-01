@@ -15,6 +15,7 @@ import {
   functionOf,
   branchOf,
   directionOf,
+  edgesOf,
   nodeDirection,
   getTreeIndex,
   isThesisRoot,
@@ -26,7 +27,9 @@ import {
   rootOf,
   setArgumentTree,
   setDirection,
+  setEdges,
   toggleFold,
+  type TreeEdges,
 } from '@/lib/canvas/tree'
 import { presetSettingsAtom, swatchColor } from '@/lib/canvas/presets'
 import { PREMISE, offeredPresets, relationsFor, type Preset } from '@/lib/presets/presets'
@@ -40,6 +43,7 @@ import { elementAiAtom } from './ElementAi'
 import { openAssistant } from './MapJsonDialog'
 
 const ARROWS: Record<TreeDirection, string> = { right: '→', left: '←', down: '↓', up: '↑', both: '↔' }
+const EDGE_GLYPHS: Record<TreeEdges, string> = { curve: '╭', elbow: '┌' }
 
 /** Arbre argumentatif : nœud dont on choisit la relation du prochain enfant (Tab). */
 export const relationPickerAtom = atom<TLShapeId | null>('relationPicker', null)
@@ -151,6 +155,7 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
         linkable: canLinkPremise(editor, shape.id),
         junction: isLinked(editor, shape.id),
         dir: directionOf(editor, root),
+        edges: edgesOf(editor, root),
       }
     },
     [editor]
@@ -272,6 +277,21 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
             aria-pressed={info.dir === dir}
           >
             {ARROWS[dir]}
+          </button>
+        ))}
+      </span>
+      {/* Tracé des branches */}
+      <span className="tree-dirs">
+        {(['curve', 'elbow'] as TreeEdges[]).map((edges) => (
+          <button
+            key={edges}
+            className={`tree-dir ${info.edges === edges ? 'tree-dir-active' : ''}`}
+            onClick={() => info.edges !== edges && setEdges(editor, id, edges)}
+            title={t.tree.edges[edges]}
+            aria-label={t.tree.edges[edges]}
+            aria-pressed={info.edges === edges}
+          >
+            {EDGE_GLYPHS[edges]}
           </button>
         ))}
       </span>

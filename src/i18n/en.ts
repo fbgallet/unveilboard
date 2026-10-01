@@ -739,6 +739,7 @@ export const en = {
     revealNothing: 'All the elements of this map already appear in the sequence.',
     revealStep: 'Element',
     directions: { right: 'To the right', left: 'To the left', down: 'Downwards', up: 'Upwards', both: 'On both sides' },
+    edges: { curve: 'Curved branches', elbow: 'Elbow branches' },
     child: 'child',
     enter: 'Enter',
     sibling: 'sibling',

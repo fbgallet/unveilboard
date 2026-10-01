@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { descendantsOf, hasAncestor, layoutTree, lighterSide, type TreeNode } from './layout'
+import { branchBend, descendantsOf, hasAncestor, layoutTree, lighterSide, type TreeNode } from './layout'
 
 const node = (children: string[] = [], w = 100, h = 40, offset = { x: 0, y: 0 }): TreeNode => ({ w, h, offset, children })
 const gaps = { main: 50, cross: 10 }
@@ -31,6 +31,18 @@ describe('layoutTree', () => {
     expect(pos.get('a2')!.y - pos.get('a1')!.y).toBe(44)
     expect(pos.get('a1')!.x).toBe(pos.get('a')!.x + 10 + 20)
     expect(pos.get('b')!.y - pos.get('a1')!.y).toBe(84 + 10)
+  })
+
+  it('une branche repliée ne garde que la place de son nœud : les voisins se resserrent', () => {
+    const folded = new Map(nodes)
+    folded.set('a', { ...nodes.get('a')!, collapsed: true })
+    const pos = layoutTree('r', { x: 0, y: 0 }, folded, 'right', gaps)
+    // Bandes : a (40, replié) + 10 + b (40) = 90, centrée sur r (y = 20).
+    expect(pos.get('a')).toEqual({ x: 150, y: -25 })
+    expect(pos.get('b')).toEqual({ x: 150, y: 25 })
+    // Ses descendants (cachés) restent placés par rapport à lui.
+    expect(pos.get('a1')!.x).toBe(300)
+    expect((pos.get('a1')!.y + pos.get('a2')!.y) / 2).toBe(pos.get('a')!.y)
   })
 
   it('vers le bas : les axes sont échangés', () => {
@@ -100,5 +112,21 @@ describe('parcours', () => {
     expect(descendantsOf(children, 'r').sort()).toEqual(['a', 'a1', 'b'])
     expect(hasAncestor(parent, 'a1', (p) => p === 'r')).toBe(true)
     expect(hasAncestor(parent, 'b', (p) => p === 'a')).toBe(false)
+  })
+})
+
+describe('branchBend', () => {
+  it('droite quand l’enfant est en face, courbée sinon, dans le sens du décalage', () => {
+    expect(branchBend({ x: 0, y: 0 }, { x: 200, y: 0 }, true)).toBe(0)
+    const below = branchBend({ x: 0, y: 0 }, { x: 200, y: 100 }, true)
+    expect(below).toBeCloseTo(26.39, 1)
+    expect(branchBend({ x: 0, y: 0 }, { x: 200, y: -100 }, true)).toBeCloseTo(-below)
+    // Vers la gauche : miroir.
+    expect(branchBend({ x: 0, y: 0 }, { x: -200, y: 100 }, true)).toBeCloseTo(-below)
+  })
+
+  it('plafonnée au quart de cercle quand l’enfant est très décalé', () => {
+    const chord = Math.hypot(100, 400)
+    expect(branchBend({ x: 0, y: 0 }, { x: 100, y: 400 }, true)).toBeCloseTo((chord * (1 - Math.SQRT1_2)) / Math.SQRT2)
   })
 })

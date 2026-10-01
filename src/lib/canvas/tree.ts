@@ -7,12 +7,16 @@
 // meta d'une forme-nœud : folded (branche repliée), treeOffset (décalage manuel),
 // treeDir (sur la racine : 'right' | 'left' | 'down' | 'up' | 'both'),
 // treeSide (disposition « both », enfants de la racine : 'left' | 'right'),
-// argument (sur la racine : arbre argumentatif, Tab propose une relation).
+// argument (sur la racine : arbre argumentatif, Tab propose une relation),
+// treeEdges (sur la racine : 'elbow' | 'curve' ; par défaut, coudées pour une carte
+// d'argument, courbes sinon).
 
 import {
   Box,
   computed,
   createShapeId,
+  getDisplayValues,
+  renderHtmlFromRichTextForMeasurement,
   startEditingShapeWithRichText,
   toRichText,
   type Computed,
@@ -20,6 +24,7 @@ import {
   type TLArrowBinding,
   type TLShape,
   type TLShapeId,
+  type TLRichText,
   type TLShapePartial,
 } from 'tldraw'
 import { applyPresetTo, presetById } from './presets'
@@ -27,6 +32,7 @@ import { LINKED, PREMISE, type Preset } from '../presets/presets'
 import {
   TREE_DIRECTIONS,
   TREE_GAPS,
+  branchBend,
   descendantsOf,
   hasAncestor,
   layoutTree,
@@ -163,10 +169,55 @@ export function nodeDirection(editor: Editor, id: TLShapeId): Exclude<TreeDirect
   return id === rootId ? 'right' : (sidesOf(editor, rootId).get(id) ?? 'right')
 }
 
-/** Recalcule la position des nœuds d'un arbre. `reset` efface les décalages manuels. */
-export function relayout(editor: Editor, anyNodeId: TLShapeId, opts: { reset?: boolean } = {}) {
+/** Tracé des branches d'un arbre. */
+export type TreeEdges = 'elbow' | 'curve'
+
+/** Tracé des branches : celui choisi sur la racine, sinon coudé pour une carte d'argument, courbe pour une carte mentale. */
+export function edgesOf(editor: Editor, rootId: TLShapeId): TreeEdges {
+  const root = editor.getShape(rootId)
+  const chosen = root?.meta.treeEdges
+  return chosen === 'elbow' || chosen === 'curve' ? chosen : root?.meta.argument ? 'elbow' : 'curve'
+}
+
+export function setEdges(editor: Editor, id: TLShapeId, edges: TreeEdges) {
+  const rootId = rootOf(editor, id)
+  const root = editor.getShape(rootId)
+  if (!root) return
+  editor.markHistoryStoppingPoint('tracé des branches')
+  editor.run(() => {
+    editor.updateShape({ id: rootId, type: root.type, meta: { ...root.meta, treeEdges: edges } })
+    relayout(editor, rootId)
+  })
+}
+
+/**
+ * Branches repliées pour la mise en page : celles du document (meta.folded), ou, pendant une
+ * présentation, celles de l'étape en cours (src/components/usePresentation.ts).
+ */
+const foldSources = new WeakMap<Editor, (id: TLShapeId) => boolean>()
+
+export function setFoldSource(editor: Editor, source: ((id: TLShapeId) => boolean) | null) {
+  if (source) foldSources.set(editor, source)
+  else foldSources.delete(editor)
+}
+
+const isCollapsed = (editor: Editor, id: TLShapeId) => (foldSources.get(editor) ?? ((n: TLShapeId) => isFolded(editor, n)))(id)
+
+/** Racines des arbres de la page courante. */
+export function treeRoots(editor: Editor): TLShapeId[] {
+  const { parent, children } = getTreeIndex(editor)
+  return [...children.keys()].filter((id) => !parent.has(id))
+}
+
+/**
+ * Recalcule la position des nœuds d'un arbre. `reset` efface les décalages manuels ; `animate`
+ * fait glisser les nœuds vers leur place (replier, déplier).
+ */
+export function relayout(editor: Editor, anyNodeId: TLShapeId, opts: { reset?: boolean; animate?: boolean } = {}) {
+  // Un glissement en cours s'achève d'abord : le calcul part des places qu'il visait.
+  slides.get(editor)?.()
   const rootId = rootOf(editor, anyNodeId)
-  const { children } = getTreeIndex(editor)
+  const { children, edge } = getTreeIndex(editor)
   const dir = directionOf(editor, rootId)
   const ids = [rootId, ...branchOf(editor, rootId)]
   // Ordre des enfants : celui de leur position actuelle, perpendiculairement à l'arbre.
@@ -174,18 +225,31 @@ export function relayout(editor: Editor, anyNodeId: TLShapeId, opts: { reset?: b
     const b = editor.getShapePageBounds(id)
     return b ? (treeAxis(dir).horizontal ? b.midY : b.midX) : 0
   }
+  const horizontal = treeAxis(dir).horizontal
+  const edges = edgesOf(editor, rootId)
+  // Arbre argumentatif : niveaux plus espacés, pour les étiquettes des relations ; branches courbes :
+  // un peu de longueur, pour que la courbe se lise.
+  const gaps = editor.getShape(rootId)?.meta.argument
+    ? { main: horizontal ? 220 : 170, cross: 44 }
+    : edges === 'curve'
+      ? { main: horizontal ? 110 : 90, cross: TREE_GAPS.cross }
+      : TREE_GAPS
   const nodes = new Map<string, TreeNode>()
   for (const id of ids) {
     const b = editor.getShapePageBounds(id)
     if (!b) continue
+    const kids = [...(children.get(id) ?? [])]
     nodes.set(id, {
       w: b.w,
       h: b.h,
       offset: opts.reset ? { x: 0, y: 0 } : offsetOf(editor.getShape(id)),
-      children: [...(children.get(id) ?? [])].sort((a, b) => crossCenter(a) - crossCenter(b)),
+      children: kids.sort((a, b) => crossCenter(a) - crossCenter(b)),
+      ...(kids.length && isCollapsed(editor, id) && { collapsed: true }),
       // Prémisses liées : serrées contre leur pastille (leurs traits n'ont pas d'étiquette) ; une
       // objection à l'inférence, elle, a une étiquette : il lui faut la place de l'écrire.
-      ...(isLinked(editor, id) && { gaps: onlyPremises(editor, id) ? LINKED_GAPS : { ...LINKED_GAPS, main: 150 } }),
+      ...(isLinked(editor, id)
+        ? { gaps: onlyPremises(editor, id) ? LINKED_GAPS : { ...LINKED_GAPS, main: Math.max(150, labelRoom(editor, kids, horizontal)) } }
+        : kids.length && { gaps: { ...gaps, main: Math.max(gaps.main, labelRoom(editor, kids, horizontal)) } }),
     })
   }
   const sides = dir === 'both' ? sidesOf(editor, rootId) : undefined
@@ -197,11 +261,6 @@ export function relayout(editor: Editor, anyNodeId: TLShapeId, opts: { reset?: b
   }
   const rootBounds = editor.getShapePageBounds(rootId)
   if (!rootBounds) return
-  // Arbre argumentatif : niveaux plus espacés, pour les étiquettes des relations. À l'horizontale,
-  // l'étiquette se loge dans le dernier segment de la flèche coudée (la moitié de l'écart) : il faut
-  // de quoi y tenir « presupposes » sans couper le mot.
-  const horizontal = dir === 'right' || dir === 'left' || dir === 'both'
-  const gaps = editor.getShape(rootId)?.meta.argument ? { main: horizontal ? 220 : 170, cross: 44 } : TREE_GAPS
   const positions = layoutTree(rootId, { x: rootBounds.x, y: rootBounds.y }, nodes, dir, gaps)
 
   const updates: TLShapePartial[] = []
@@ -216,15 +275,144 @@ export function relayout(editor: Editor, anyNodeId: TLShapeId, opts: { reset?: b
     if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5 && !meta) continue
     updates.push({ id: shape.id, type: shape.type, x: shape.x + dx, y: shape.y + dy, ...(meta && { meta }) })
   }
-  const bindings = edgeAnchors(editor, ids, (id) => (sides ? (sides.get(id) ?? 'right') : (dir as Exclude<TreeDirection, 'both'>)))
-  if (!updates.length && !bindings.length) return
-  layingOut = true
-  try {
-    editor.updateShapes(updates)
-    editor.updateBindings(bindings)
-  } finally {
-    layingOut = false
+  const dirOf = (id: TLShapeId) => (sides ? (sides.get(id) ?? 'right') : (dir as Exclude<TreeDirection, 'both'>))
+  // Tracé des branches, d'après la place finale des nœuds.
+  const boxOf = (id: TLShapeId) => {
+    const node = nodes.get(id)
+    const at = id === rootId ? rootBounds : positions.get(id)
+    return node && at ? { x: at.x, y: at.y, w: node.w, h: node.h } : undefined
   }
+  const arrows: TLShapePartial[] = []
+  const { parent } = getTreeIndex(editor)
+  for (const id of ids) {
+    const edgeId = edge.get(id)
+    const arrow = edgeId && editor.getShape(edgeId)
+    const from = boxOf(parent.get(id)!)
+    const to = boxOf(id)
+    if (arrow?.type !== 'arrow' || !from || !to) continue
+    const a = ANCHORS[dirOf(id)]
+    const point = (box: { x: number; y: number; w: number; h: number }, n: Vec) => ({ x: box.x + n.x * box.w, y: box.y + n.y * box.h })
+    // Prémisses liées : traits droits et courts sous leur pastille, quel que soit le tracé de l'arbre.
+    const kind = edges === 'curve' && !isLinked(editor, parent.get(id)!) ? 'arc' : 'elbow'
+    const bend = kind === 'arc' ? Math.round(branchBend(point(from, a.start), point(to, a.end), treeAxis(dirOf(id)).horizontal)) : 0
+    if (arrow.props.kind !== kind || Math.abs(arrow.props.bend - bend) >= 1) arrows.push({ id: arrow.id, type: 'arrow', props: { kind, bend } })
+  }
+  const bindings = edgeAnchors(editor, ids, dirOf)
+  if (!updates.length && !arrows.length && !bindings.length) return
+  writeLayout(editor, [...updates, ...arrows], bindings, opts.animate)
+}
+
+/**
+ * Place à laisser entre un nœud et ses enfants pour que l'étiquette de leur branche (« soutient ·
+ * par analogie ») tienne sur une ligne : tldraw la replie dès qu'elle dépasse la largeur de la
+ * flèche, moins une marge.
+ */
+function labelRoom(editor: Editor, kids: TLShapeId[], horizontal: boolean): number {
+  const { edge } = getTreeIndex(editor)
+  let room = 0
+  for (const c of kids) {
+    const arrow = editor.getShape(edge.get(c)!)
+    if (arrow?.type !== 'arrow' || !hasLabel(arrow.props.richText)) continue
+    const util = editor.getShapeUtil('arrow') as unknown as Parameters<typeof getDisplayValues>[0]
+    const dv = getDisplayValues(util, arrow) as unknown as {
+      labelFontFamily: string
+      labelFontSize: number
+      labelLineHeight: number
+      labelPadding: number
+    }
+    const scale = arrow.props.scale
+    const size = editor.textMeasure.measureHtml(renderHtmlFromRichTextForMeasurement(editor, arrow.props.richText), {
+      fontFamily: dv.labelFontFamily,
+      fontSize: dv.labelFontSize * scale,
+      lineHeight: dv.labelLineHeight,
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      padding: '0px',
+      maxWidth: null,
+    })
+    const w = size.w + dv.labelPadding * 2 * scale
+    const h = size.h + dv.labelPadding * 2 * scale
+    // À l'horizontale, la largeur de l'étiquette, plus la marge de tldraw et un peu d'air ; à la
+    // verticale, sa hauteur, logée dans le dernier segment de la branche.
+    room = Math.max(room, horizontal ? Math.min(w, 360) + 100 : 2 * h + 60)
+  }
+  return room
+}
+
+const hasLabel = (richText: TLRichText | undefined) =>
+  !!richText?.content?.some((block) => (block as { content?: unknown[] }).content?.length)
+
+/** Durée du glissement des nœuds (replier, déplier). */
+const SLIDE_MS = 260
+const slides = new WeakMap<Editor, () => void>()
+
+/**
+ * Écrit la mise en page. En présentation, le document est verrouillé : les positions, propres à
+ * l'étape (branches repliées), s'écrivent sans passer par les commandes de l'éditeur ni par son
+ * historique ; elles sont recalculées au retour en édition.
+ */
+function writeLayout(editor: Editor, partials: TLShapePartial[], bindings: TLArrowBinding[], animate?: boolean) {
+  const locked = editor.getIsReadonly()
+  const put = (shapes: TLShapePartial[], withBindings: boolean) => {
+    layingOut = true
+    try {
+      if (!locked) {
+        editor.updateShapes(shapes)
+        if (withBindings) editor.updateBindings(bindings)
+        return
+      }
+      editor.run(
+        () => {
+          const records = shapes.flatMap((p) => {
+            const shape = editor.getShape(p.id)
+            return shape ? [{ ...shape, ...p, props: { ...shape.props, ...p.props }, meta: { ...shape.meta, ...p.meta } } as TLShape] : []
+          })
+          editor.store.put(records)
+          if (withBindings) editor.store.put(bindings)
+        },
+        { history: 'ignore' }
+      )
+    } finally {
+      layingOut = false
+    }
+  }
+  const moving = animate ? partials.filter((p) => p.x !== undefined || p.y !== undefined) : []
+  if (!moving.length) return put(partials, true)
+  // Glissement : les nœuds vont de leur place à la nouvelle ; les flèches suivent (liées), leur
+  // courbure et le reste s'appliquent d'emblée.
+  const start = new Map(moving.map((p) => [p.id, editor.getShape(p.id)!]))
+  put(
+    partials.map((p) => ({ ...p, x: undefined, y: undefined })).filter((p) => p.props || p.meta),
+    true
+  )
+  let elapsed = 0
+  const ease = (t: number) => 1 - (1 - t) ** 3
+  const frame = (t: number) =>
+    moving.map((p) => {
+      const s = start.get(p.id)!
+      return { id: p.id, type: p.type, x: s.x + ((p.x ?? s.x) - s.x) * t, y: s.y + ((p.y ?? s.y) - s.y) * t } as TLShapePartial
+    })
+  const stop = () => {
+    editor.off('tick', onTick)
+    slides.delete(editor)
+  }
+  const onTick = (dt: number) => {
+    elapsed += dt
+    const t = Math.min(1, elapsed / SLIDE_MS)
+    put(frame(ease(t)), false)
+    if (t === 1) stop()
+  }
+  // Un nouveau calcul pendant le glissement : celui-ci s'achève d'un coup, l'autre repart de là.
+  slides.set(editor, () => {
+    put(frame(1), false)
+    stop()
+  })
+  editor.on('tick', onTick)
+}
+
+/** Recalcule tous les arbres de la page courante. */
+export function relayoutAll(editor: Editor, opts: { animate?: boolean } = {}) {
+  editor.run(() => treeRoots(editor).forEach((r) => editor.getShape(r) && relayout(editor, r, opts)))
 }
 
 /** Écarts entre une pastille de prémisses liées et ses prémisses. */
@@ -522,6 +710,8 @@ export function toggleFold(editor: Editor, id: TLShapeId) {
     const hidden = new Set(branchOf(editor, id))
     editor.setSelectedShapes(editor.getSelectedShapeIds().filter((s) => !hidden.has(s)))
   }
+  // Les voisins se resserrent autour de la branche repliée, ou s'écartent pour la déplier.
+  relayout(editor, id, { animate: true })
 }
 
 export function setDirection(editor: Editor, id: TLShapeId, dir: TreeDirection) {

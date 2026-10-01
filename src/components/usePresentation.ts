@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 import { react, type Editor, type TLCamera, type TLEventInfo } from 'tldraw'
 import { activeSpotlights, boundsOf, computeEditorStage, drawClip, moveCamera, readSequence, writeSequence } from '@/lib/canvas/adapter'
 import { stateOf, type Stage } from '@/lib/sequence/compute'
-import { branchOf, getTreeIndex } from '@/lib/canvas/tree'
+import { branchOf, getTreeIndex, relayoutAll, setFoldSource } from '@/lib/canvas/tree'
 import { noteOf, panelNoteIds } from '@/lib/canvas/notes'
 import { swallowNextKeyUp } from '@/lib/keyboard'
 import { applyLaserTiming } from '@/lib/canvas/laser'
@@ -125,17 +125,41 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
   }, [editor])
 
   // 1. Classes CSS de chaque forme, recalculées dès que la séquence, l'étape ou le document change.
+  //    Les arbres se resserrent autour des branches repliées à l'étape (et s'écartent au dépliage) :
+  //    seule la fenêtre du présentateur (ou du lecteur) les place, la fenêtre public reçoit ses positions.
   useEffect(() => {
     let prevIndex = -2
     let animatedIndex = -2
     let prevSpots = ''
-    return react('presentation classes', () => {
+    /** Branches repliées de la dernière mise en page de présentation (null : celle du document). */
+    let layoutKey: string | null = null
+    let layoutIndex = -2
+    const pages = new Set<string>()
+    const stopStale = react('presentation layout pages', () => {
+      // Pages présentées puis quittées : remises à la mise en page du document quand on y revient.
+      const page = editor.getCurrentPageId()
+      if (modeAtom.get() === 'present' || !pages.has(page)) return
+      pages.delete(page)
+      queueMicrotask(() => {
+        setFoldSource(editor, null)
+        editor.run(() => relayoutAll(editor), { history: 'ignore' })
+      })
+    })
+    const stopClasses = react('presentation classes', () => {
       if (modeAtom.get() !== 'present') {
         prevIndex = -2
         prevSpots = ''
         shapeClassesAtom.set(quickSequenceAtom.get() ? quickSequencePreview(editor) : null)
         activeSpotsAtom.set([])
         foldBadgesAtom.set({ folded: [], open: [] })
+        if (layoutKey !== null) {
+          layoutKey = null
+          pages.delete(editor.getCurrentPageId())
+          queueMicrotask(() => {
+            setFoldSource(editor, null)
+            editor.run(() => relayoutAll(editor), { history: 'ignore' })
+          })
+        }
         return
       }
       const seq = readSequence(editor)
@@ -172,6 +196,24 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
       shapeClassesAtom.set({ byId, fallback: { className: 'pres pres-visible' } })
       foldBadgesAtom.set(foldBadges(editor, stage))
 
+      if (keyboard) {
+        const folded = new Set([...getTreeIndex(editor).children.keys()].filter((id) => stateOf(stage, id).folded))
+        const key = `${editor.getCurrentPageId()}:${[...folded].sort().join(',')}`
+        if (key !== layoutKey) {
+          // Replié ou déplié à la main, sans changer d'étape : les nœuds glissent ; sinon, ils sont en
+          // place avant que la caméra ne cadre l'étape.
+          const animate = layoutKey !== null && index === layoutIndex
+          layoutKey = key
+          layoutIndex = index
+          pages.add(editor.getCurrentPageId())
+          queueMicrotask(() => {
+            setFoldSource(editor, (id) => folded.has(id))
+            relayoutAll(editor, { animate })
+          })
+        }
+        layoutIndex = index
+      }
+
       // Calques occultants : quand la séquence en change, elle reprend la main sur la fenêtre tracée à la volée.
       const spots = activeSpotlights(editor, seq, index, stage)
       const spotsKey = spots.join(',')
@@ -181,7 +223,12 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
         activeSpotsAtom.set(spots)
       }
     })
-  }, [editor])
+    return () => {
+      stopStale()
+      stopClasses()
+      setFoldSource(editor, null)
+    }
+  }, [editor, keyboard])
 
   // 2. Caméra : ne bouge que lorsque l'étape ou la vue d'ensemble change.
   useEffect(() => {

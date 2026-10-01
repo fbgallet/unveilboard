@@ -9,7 +9,7 @@
 import { z } from 'zod'
 import { TREE_DIRECTIONS } from '../tree/layout'
 import { checkMap, type KnownVocabulary, type MapIssue } from './check'
-import { MAP_FORMAT, MAP_VERSION, type UnveilMap } from './format'
+import { MAP_FORMAT, MAP_VERSION, VocabularySchema, type UnveilMap } from './format'
 import { extractJson } from './read'
 import { PATCH_FORMAT, PatchSchema, previewPatch, type MapPatch } from './patch'
 
@@ -46,6 +46,7 @@ export const PlanSchema = z
     direction: z.enum(TREE_DIRECTIONS).optional(),
     root: z.object({ id: Ref, text: z.string().min(1).max(4000), type: VocabularyId.optional() }),
     pattern: z.string().max(2000).optional().describe('Structure shared by all sections, followed the same way by each.'),
+    vocabulary: z.array(VocabularySchema).max(30).optional().describe('New types or relations used by the diagram (also by its sections).'),
     summary: z.string().max(4000).optional().describe('The logic of the plan, for the user.'),
     sections: z.array(PlanSectionSchema).min(1).max(12),
   })
@@ -81,6 +82,7 @@ export function skeletonMap(plan: DiagramPlan, opts: { source?: boolean } = {}):
     version: MAP_VERSION,
     title: plan.title,
     ...(plan.lang && { lang: plan.lang }),
+    ...(plan.vocabulary?.length && { vocabulary: plan.vocabulary }),
     elements: [
       {
         id: plan.root.id,
@@ -166,7 +168,7 @@ export function planPatch(plan: DiagramPlan, map: UnveilMap): MapPatch | null {
       operations.push({ op: 'add', id: s.id, text: s.text, parent: plan.root.id, ...(s.type && { type: s.type }), ...(s.relation && { relation: s.relation }) })
     } else if (head.text !== s.text) operations.push({ op: 'update', id: s.id, text: s.text })
   }
-  return operations.length ? { format: PATCH_FORMAT, version: 1, operations } : null
+  return operations.length ? { format: PATCH_FORMAT, version: 1, ...(plan.vocabulary?.length && { vocabulary: plan.vocabulary }), operations } : null
 }
 
 // ---------- Développement d'une section ----------

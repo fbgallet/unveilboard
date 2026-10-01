@@ -10,7 +10,7 @@ import { PlanSchema, type DiagramPlan } from '../map/plan'
 import { numberedSource, passageOf, sourceParagraphs } from '../source/paragraphs'
 import { FOCUS_OF_KIND, REMARK_KINDS, REVIEW_FOCUS, type ReviewFocus } from '../map/review'
 
-export const PROMPT_VERSION = 7
+export const PROMPT_VERSION = 8
 
 export const TASKS = ['create', 'enrich', 'sequence', 'review', 'edit', 'expand', 'plan', 'develop', 'finish'] as const
 export type Task = (typeof TASKS)[number]
@@ -149,6 +149,9 @@ export function buildPrompt(input: PromptInput): string {
       ? `## Selected elements\n\nThe user selected these elements; focus on them: ${input.selection.map((s) => `\`${s}\``).join(', ')}.`
       : '',
     input.task === 'plan' && input.plan ? planRevisionText(input.plan, input.planRemarks) : '',
+    SHAPE_TASKS.includes(input.task)
+      ? `## The shape of the diagram\n\n${(input.task === 'create' || input.task === 'plan') && input.kind !== 'argument' ? `${FORM_TEXT}\n\n` : ''}${DEPTH_TEXT}`
+      : '',
     vocabularyText(input.vocabulary),
     MAP_FORMAT_TEXT,
     output === 'patch' ? PATCH_FORMAT_TEXT : output === 'review' ? reviewFormatText(input.reviewFocus ?? REVIEW_FOCUS) : output === 'plan' ? PLAN_FORMAT_TEXT : '',
@@ -169,18 +172,37 @@ ${JSON.stringify(input.plan, null, 1)}
 
 const INTRO = `# Unveilboard
 
-You are helping a teacher with Unveilboard, an app that shows diagrams step by step (argument maps and mind maps, often for teaching philosophy). A diagram is made of **elements** (boxes) of a given **type**, arranged in **trees**: each child is connected to its parent by a **relation** (supports, objects to…). In an argument map, the relation gives the child its **function** (Justification, Objection…). A **sequence** of steps reveals the diagram progressively, with a narration for the audience.`
+You are helping a teacher with Unveilboard, an app that shows diagrams step by step (argument maps, mind maps, classifications, processes, comparisons…, often for teaching philosophy). A diagram is made of **elements** (boxes) of a given **type**, arranged in **trees**: each child is connected to its parent by a **relation** (supports, objects to…). In an argument map, the relation gives the child its **function** (Justification, Objection…). A **sequence** of steps reveals the diagram progressively, with a narration for the audience.`
+
+/** Tâches qui construisent la structure d'un schéma : sa forme (à la création), sa profondeur. */
+const SHAPE_TASKS: Task[] = ['create', 'plan', 'develop', 'enrich', 'expand']
+
+/** La forme du schéma, selon la matière (création et plan). */
+const FORM_TEXT = `Choose the form that fits the material, rather than a tree of arguments by habit:
+- a debate, a reasoning (a question, theses, reasons, objections, answers) → an **argument map** (\`"kind": "argument"\`);
+- a set of notions, a course → a **mind map** (\`"kind": "mindmap"\`), opening on both sides (\`"direction": "both"\`) when the root has more than three or four branches;
+- a classification, a typology, a hierarchy of notions → a mind map **downwards** (\`"direction": "down"\`), with relations such as “is a kind of”, “is divided into”;
+- a process, a chronology, a chain of causes → a **chain**: each step is the child of the previous one, with a relation that says the passage (“leads to”, “then”, “causes”); a cycle is closed by a link from the last step back to the first;
+- a comparison (two doctrines, authors, periods) → **one tree per term**, side by side (several roots), and links between the points that correspond or oppose;
+- notions bound by many mutual relations → a tree for the main structure, and links for the other relations.`
+
+/** La profondeur plutôt que la largeur. */
+const DEPTH_TEXT = `**Prefer depth to width.** A reader takes in three to five branches at a glance; a long row of siblings is hard to read and to present. This is a strong preference, not a fixed limit: follow the material.
+- The root usually has few children (2 to 5): the main articulations of the subject. When more points come to mind, look for what groups them and put them under a common head rather than lining them up.
+- Likewise, when an element gathers more than four or five children, check whether some of them belong together, and if so add an intermediate element that groups them (a distinction, a sub-thesis, a family of examples). Keep more children only when the material really calls for it (seven parts of a text, a list whose items are of the same rank and cannot be grouped meaningfully): never group artificially.
+- Develop where it matters, over several levels (three or four below the root is common for a rich subject): a reason is justified, an objection answered, a notion divided, an example attached to what it illustrates.
+- More depth does not mean more text: each box stays short, and most elements need no note.`
 
 const TASK_TEXT: Record<Task, string> = {
   create: `## Your task: create a diagram
 
-Build a complete diagram from the user's request below (a subject, a course, or a text to analyse), with its presentation sequence. Choose an argument map when the material is a debate or a reasoning (a question, theses, reasons, objections, answers), a mind map when it is a set of notions to organise.`,
+Build a complete diagram from the user's request below (a subject, a course, or a text to analyse), with its presentation sequence. Choose its form from the material (see “The shape of the diagram” below), and structure it in depth.`,
   enrich: `## Your task: enrich the diagram
 
 Propose new elements for the diagram below, as requested (arguments, objections, answers, examples, assumptions, distinctions, definitions…): add them where they belong in the tree, with the right type and relation. Do not repeat what the diagram already says. If the request is vague, add what the reasoning most needs (an unanswered objection, a missing premise, an implicit assumption, an example).`,
   sequence: `## Your task: write the presentation sequence
 
-Write the sequence that reveals the diagram below step by step, following the user's instructions if any: a clear order (usually the question or thesis first, then each line of argument with its objections and answers), a short title per step, and a narration the teacher can read or say (2 to 5 sentences, Markdown allowed). Replace the current sequence (\`"mode": "replace"\`) unless asked to extend it.`,
+Write the sequence that reveals the diagram below step by step, following the user's instructions if any: a clear order (usually the question or thesis first, then each line of argument with its objections and answers), a short title per step, and a narration the teacher can read or say (see below: it adds to the boxes, never repeats them). Replace the current sequence (\`"mode": "replace"\`) unless asked to extend it.`,
   review: reviewTaskText([...REVIEW_FOCUS]),
   edit: `## Your task: change the diagram
 
@@ -192,13 +214,14 @@ Starting from the element \`{focus}\`, do what the user asks below. Add new elem
 
 The user wants a rich diagram, too large to be written in one answer. It will be built in several passes: first this **plan**, then each section developed separately (by other calls, in parallel, which will see this plan), then the cross-links and the presentation sequence. Write only the plan.
 
-- \`kind\`: an argument map when the material is a debate or a reasoning (a question, theses, reasons, objections, answers), a mind map when it is a set of notions to organise.
+- \`kind\` and \`direction\`: the form that fits the material (see “The shape of the diagram” below).
 - \`root\`: the root element (the question, the thesis or the central notion), as a real box.
-- \`sections\`: the main children of the root, in reading order, usually 3 to 8 (at most 12). Each head is a real box, explicit and self-sufficient (“The prisoners take shadows for reality”, not “Stage 1”), with its relation to the root.
-  - \`brief\`: what the section must develop (the points to make, the authors or texts to use) and where it stops, so that sections developed in parallel neither overlap nor leave gaps.
-  - \`size\`: the number of elements the section needs under its head, usually 4 to 12: more for a central section, fewer for a secondary one.
+- \`sections\`: the main children of the root, in reading order, **usually 3 to 5**: the main articulations of the subject, not a list of every point. When more points come to mind, group them into fewer, broader sections when they belong together; their sub-points belong in the briefs. More sections are fine when the material really has more parts of the same rank. Each head is a real box, explicit and self-sufficient (“The prisoners take shadows for reality”, not “Stage 1”), with its relation to the root.
+  - \`brief\`: what the section must develop (the points to make, the authors or texts to use), how it is organised in depth (its two to four sub-articulations, each developed below), and where it stops, so that sections developed in parallel neither overlap nor leave gaps.
+  - \`size\`: the number of elements the section needs under its head, usually 6 to 15: more for a central section, fewer for a secondary one.
   - \`synthesis\`: \`true\` for a section that draws on the others (an overall interpretation, a conclusion, the stakes of the whole): it is developed after them, seeing their content.
 - \`pattern\`: when the sections share a structure (e.g. each stage → its interpretation → its philosophical interest), describe it precisely (relations, types, order), so that every section follows it the same way. Omit it otherwise.
+- \`vocabulary\`: the types or relations you add to the vocabulary, if the material needs them (see the rules), so that every section uses the same ones.
 - \`summary\`: the logic of the plan in two to four sentences, for the user, who will review it.
 - Short ids: \`root\`, \`s1\`, \`s2\`…`,
   develop: '', // developTaskText : propre à chaque section
@@ -207,7 +230,7 @@ The user wants a rich diagram, too large to be written in one answer. It will be
 The diagram below was built in several passes: a plan (given after the rules), then each section developed separately. Finish it:
 
 - **Cross-links** (\`link\`): a few strong links between elements of different sections that are really related (one answers, prepares, illustrates or contradicts another), with the right relation. None where the tree already expresses the relation: few and meaningful.
-- **Sequence** (\`{ "op": "sequence", "mode": "replace", "intro"?, "steps" }\`): the presentation of the whole diagram, following the plan: the root first, then each section in turn, revealing its elements progressively (group those that go together), and an overview at the end. Each step has a short title and a narration the teacher can read or say (2 to 5 sentences).
+- **Sequence** (\`{ "op": "sequence", "mode": "replace", "intro"?, "steps" }\`): the presentation of the whole diagram, following the plan: the root first, then each section in turn, revealing its elements progressively (group those that go together), and an overview at the end. Each step has a short title and a narration the teacher can read or say, which adds to the boxes without repeating them.
 
 Use only \`link\` and \`sequence\` operations: do not change the elements.`,
 }
@@ -241,7 +264,7 @@ The diagram is built in several passes: a plan (given after the rules) split it 
 
 ${section ? `**Brief of this section**: ${section.brief}\n\n` : ''}${input.sectionRequest?.trim() ? `**The user's precision for this pass**: ${input.sectionRequest.trim()}\n\n` : ''}${
     existing ? `**This section already has ${existing} element${existing > 1 ? 's' : ''}** (in the diagram below): complete it, adding what is missing, without repeating or changing what is there.\n\n` : ''
-  }${plan?.pattern ? `**Common pattern** (every section follows it the same way): ${plan.pattern}\n\n` : ''}- Add the elements of the section as descendants of \`${id}\` (children, grandchildren…), with the right type and relation${section?.size ? `: about ${section.size} elements` : ''}.
+  }${plan?.pattern ? `**Common pattern** (every section follows it the same way): ${plan.pattern}\n\n` : ''}- Add the elements of the section as descendants of \`${id}\` (children, grandchildren…), with the right type and relation${section?.size ? `: about ${section.size} elements` : ''}. Prefer depth: usually a few direct children under the head (2 to 4), each developed by its own children, rather than a long list of siblings; more when the material calls for it.
 - Stay within the brief: the other sections cover the rest (see the plan); do not repeat them.${
     section?.synthesis
       ? '\n- This is a synthesis: the other sections are already developed, in the diagram below. Draw on them without repeating them, and link to their elements (`link`) where it helps.'
@@ -269,7 +292,7 @@ const PLAN_FORMAT_TEXT = `## The plan format (JSON)
 { "format": "unveilboard/plan", "version": 1, "title": "…", "lang": "fr", "summary": "…",
   "kind": "argument" | "mindmap", "direction"?: "right" | "left" | "down" | "up" | "both",
   "root": { "id", "text", "type"? },
-  "pattern"?: "…",
+  "pattern"?: "…", "vocabulary"?: [ { "id", "kind", "name", "description"?, … } ],
   "sections": [ { "id", "text", "type"?, "relation"?, "brief", "size"?, "synthesis"? } ] }
 \`\`\`
 
@@ -316,7 +339,7 @@ Give each remark its \`targets\` (the ids concerned), a clear \`message\` (what 
 const SOURCE_KIND_TEXT: Record<NonNullable<PromptInput['kind']>, string> = {
   argument: 'Build an **argument map** (`"tree": { "kind": "argument" }`): the question or thesis at the root, then the reasons, objections, answers, examples, assumptions and distinctions of the text.',
   mindmap: 'Build a **mind map** (`"tree": { "kind": "mindmap" }`): the central notion at the root, then its aspects, distinctions, definitions and examples, as the text organises them.',
-  auto: 'Choose the kind of diagram: an **argument map** (`"tree": { "kind": "argument" }`) when the text defends a thesis or discusses a question (reasons, objections, answers), a **mind map** (`"tree": { "kind": "mindmap" }`) when it presents a set of notions to organise.',
+  auto: 'Choose the form of the diagram from the text (see “The shape of the diagram” below): an **argument map** (`"tree": { "kind": "argument" }`) when it defends a thesis or discusses a question (reasons, objections, answers); otherwise a **mind map** (`"tree": { "kind": "mindmap" }`), shaped as the text is organised: a set of notions, a classification, a process, a comparison.',
 }
 
 /** Fidélité au texte source, vérifiée par l'app. */
@@ -493,7 +516,7 @@ A **Step**: \`{ "title", "narration"?, "camera"?: "follow" | "overview" | "keep"
 - Targeting an element acts on its box **and** the arrow to its parent (\`show\` makes the box rise and draws the arrow). \`part\`: \`"node"\` or \`"edge"\` to act on one of them only.
 - **Visibility rule**: an element that no step shows is visible from the start, but only while its parent is visible. So showing a thesis shows its whole tree, except what later steps show. To reveal a tree progressively, show every element in its own step (or group elements that go together); never show a child before its parent.
 - \`camera\`: \`follow\` (default) frames what the step shows; use \`overview\` for the first and last steps.
-- \`narration\`: what the teacher says at that step (Markdown), not a repetition of the box.
+- \`narration\`: what the teacher says at that step (Markdown): what the boxes do not say, such as the link with the previous step, why this point matters, a question to the class, a transition. Never paraphrase or restate the boxes shown; one to three sentences is usually enough, and a step whose boxes speak for themselves needs little or none.
 - \`intro\` (on the sequence, optional): shown under the title before the first step (Markdown): the question to the class, instructions or an outline. Short.`
 
 /** Boîte et note : l'essentiel, explicite, dans la boîte ; la note précise, sans le remplacer. */
@@ -502,7 +525,7 @@ function writingRules(notes: boolean) {
   if (!notes) return `${box}
 - Do not write notes: everything goes in the boxes, concisely.`
   return `${box}
-- **Note** (\`note\`, optional, Markdown): only when it helps, a precision the box cannot hold: the argument spelled out, an example, a full quotation, a reference. Brief (two to four sentences), longer only if the user asks for developments. Never put the essential in the note alone: the box must still say it.`
+- **Note** (\`note\`, optional, Markdown): rare. Most elements have none. Add one only for a precise detail the box cannot hold: a full quotation, an exact reference, a date or figure, a technical precision, a worked example. Never to restate, paraphrase or introduce the box. Brief (one to three sentences), longer only if the user asks for developments. Never put the essential in the note alone: the box must still say it.`
 }
 
 function rules(lang: string, notes: boolean) {
@@ -512,7 +535,7 @@ function rules(lang: string, notes: boolean) {
 ${writingRules(notes)}
 - Write all content (texts, notes, titles, narration, summary) in ${name}, except quotations, kept in their language.
 - Be faithful: never invent a quotation, a source or a reference. A \`quote\` element must be an exact quotation with its \`source\`; when you are not sure of the exact words, write a \`statement\` without \`source\`. Mark your own reconstructions with \`"origin": "reconstruction"\`.
-- Use the vocabulary above (ids, not names). If a request really needs another type or relation, declare it in \`vocabulary\` (\`{ "id", "kind": "type" | "relation", "name", "description" }\`).
+- Use the vocabulary above (ids, not names). It was designed for arguments and theories: when the material calls for other kinds of elements or relations (a step, an event, a period, a cause, a character, a work; “leads to”, “precedes”, “is a kind of”, “is part of”, “causes”, “influences”…), declare them in \`vocabulary\` rather than forcing a type or relation that does not fit: \`{ "id", "kind": "type" | "relation", "name" (in the content language), "description", "direction"?, "childType"?, "style"? }\`. A relation reads “child RELATION parent” unless \`"direction": "toChild"\` (“parent RELATION child”: “leads to”, “is divided into”). \`style\` (optional): for a type, \`{ "geo": "rectangle" | "oval" | "ellipse" | "diamond" | "hexagon" | "cloud" | "rhombus", "color", "fill": "semi" | "solid" | "none", "dash": "draw" | "solid" | "dashed" | "dotted" }\`; for a relation, \`{ "color", "dash" }\`; colors: \`black\`, \`grey\`, \`violet\`, \`light-violet\`, \`blue\`, \`light-blue\`, \`yellow\`, \`orange\`, \`green\`, \`light-green\`, \`red\`, \`light-red\`. Keep such additions few and consistent.
 - Nothing may rely on colors or positions: they are computed by the app.
 - Never write an element's \`id\` in text meant for the user (message, summary, reason, rationale, narration): the user does not see ids. Name the element by its text, briefly quoted.`
 }

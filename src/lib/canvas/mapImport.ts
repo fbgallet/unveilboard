@@ -3,14 +3,27 @@
 // raisonnement, puis mise en page automatique des arbres. Le schéma doit avoir été contrôlé
 // (parseMap) : les références inconnues sont ignorées.
 
-import { createShapeId, toRichText, type Editor, type TLRichText, type TLShapeId } from 'tldraw'
+import {
+  ArrowShapeArrowheadStartStyle,
+  DefaultColorStyle,
+  DefaultDashStyle,
+  DefaultFillStyle,
+  DefaultFontStyle,
+  DefaultSizeStyle,
+  GeoShapeGeoStyle,
+  createShapeId,
+  toRichText,
+  type Editor,
+  type TLRichText,
+  type TLShapeId,
+} from 'tldraw'
 import { markdownToRichText } from '../map/markdown'
 import { clientLocale, m } from '@/i18n/client'
 import { isLocale, type Locale } from '@/i18n/config'
 import type { KnownVocabulary } from '../map/check'
 import type { MapElement, MapLink, MapVocabulary, UnveilMap } from '../map/format'
 import { toEngineSteps, type RefShapes } from '../map/sequence'
-import type { Preset } from '../presets/presets'
+import { ARROW_STYLE_KEYS, SHAPE_STYLE_KEYS, type Preset } from '../presets/presets'
 import { SEQUENCE_VERSION, newId, type Sequence } from '../sequence/types'
 import { lighterSide, treeAxis, type TreeSide, type Vec } from '../tree/layout'
 import { applyPresetTo, documentPresets, presetById, presetSettingsAtom, setReasoning } from './presets'
@@ -210,7 +223,7 @@ export function presetResolver(editor: Editor, entries: MapVocabulary[] | undefi
       id: v.id,
       name: v.name,
       target,
-      style: v.style ?? {},
+      style: validStyle(v.style, target),
       ...(v.description && { description: v.description }),
       ...(target === 'arrow' && {
         label: v.name,
@@ -220,6 +233,27 @@ export function presetResolver(editor: Editor, entries: MapVocabulary[] | undefi
       }),
     }
   }
+}
+
+/** Valeurs permises de chaque propriété de style (celles de tldraw). */
+const STYLE_VALUES: Record<string, readonly string[]> = {
+  geo: GeoShapeGeoStyle.values,
+  color: DefaultColorStyle.values,
+  fill: DefaultFillStyle.values,
+  dash: DefaultDashStyle.values,
+  size: DefaultSizeStyle.values,
+  font: DefaultFontStyle.values,
+  arrowheadStart: ArrowShapeArrowheadStartStyle.values,
+  arrowheadEnd: ArrowShapeArrowheadStartStyle.values,
+}
+
+/**
+ * Style d'un type ou d'une relation venu d'un schéma (écrit par une IA, ou d'une autre instance) :
+ * seules les propriétés de son genre et les valeurs connues de tldraw sont gardées.
+ */
+export function validStyle(style: Record<string, string> | undefined, target: Preset['target']): Preset['style'] {
+  const keys: readonly string[] = target === 'arrow' ? ARROW_STYLE_KEYS : SHAPE_STYLE_KEYS
+  return Object.fromEntries(Object.entries(style ?? {}).filter(([k, v]) => keys.includes(k) && STYLE_VALUES[k]?.includes(v)))
 }
 
 /**
