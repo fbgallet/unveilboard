@@ -65,6 +65,11 @@ export const en = {
     newDiagram: 'New diagram',
     openFile: 'or open a .tldr file',
     privacy: 'No account needed. Your diagrams stay in your browser.',
+    desktop: {
+      text: 'Also as an app for your computer (macOS, Windows, Linux), which can use your ChatGPT plan for the AI.',
+      download: 'Download',
+      guide: 'Installation guide',
+    },
     examples: {
       title: 'Examples',
       items: {

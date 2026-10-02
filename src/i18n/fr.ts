@@ -64,6 +64,11 @@ export const fr: Messages = {
     newDiagram: 'Nouveau schéma',
     openFile: 'ou ouvrir un fichier .tldr',
     privacy: 'Sans compte. Vos schémas restent dans votre navigateur.',
+    desktop: {
+      text: 'Aussi en application pour votre ordinateur (macOS, Windows, Linux), qui peut utiliser votre forfait ChatGPT pour l’IA.',
+      download: 'Télécharger',
+      guide: 'Guide d’installation',
+    },
     examples: {
       title: 'Exemples',
       items: {
