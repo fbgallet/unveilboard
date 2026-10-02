@@ -3,6 +3,8 @@
 
 import { en, type Messages } from './en'
 import { fr } from './fr'
+import { DESKTOP_MESSAGES, withOverrides } from './desktop'
+import { isDesktop } from '@/lib/desktop'
 
 export const LOCALES = ['en', 'fr'] as const
 export type Locale = (typeof LOCALES)[number]
@@ -14,8 +16,12 @@ export const LOCALE_NAMES: Record<Locale, string> = { en: 'English', fr: 'Franç
 
 const MESSAGES: Record<Locale, Messages> = { en, fr }
 
+const desktopMessages: Partial<Record<Locale, Messages>> = {}
+
+/** Libellés d'une langue ; dans l'application de bureau, avec ses propres variantes (desktop.ts). */
 export function messagesFor(locale: Locale): Messages {
-  return MESSAGES[locale]
+  if (!isDesktop()) return MESSAGES[locale]
+  return (desktopMessages[locale] ??= withOverrides(MESSAGES[locale], DESKTOP_MESSAGES[locale]))
 }
 
 export function isLocale(value: unknown): value is Locale {

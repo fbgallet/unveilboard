@@ -40,6 +40,8 @@ pnpm dev
 
 That's all for the local mode: no database, no password, diagrams stay in the browser. To deploy on Vercel, set `TLDRAW_LICENSE_KEY`; for the cloud mode (Postgres, password), public sharing and the instance's AI, see [Self-hosting](docs/self-hosting.md).
 
+Prefer an app on your computer, with nothing to install by hand? See the [desktop app](docs/desktop.md) (macOS, Windows, Linux).
+
 ## Documentation
 
 | | |
@@ -50,6 +52,7 @@ That's all for the local mode: no database, no password, diagrams stay in the br
 | [Building diagrams](docs/diagrams.md) | Trees, argument maps, style presets, files |
 | [Building argument maps](docs/argument-maps.md) | Element types and relations, with examples |
 | [The JSON diagram format](docs/map-format.md) | Diagrams, changes and reviews as JSON |
+| [Desktop app](docs/desktop.md) | Installing, updates, building and publishing the installers |
 | [Self-hosting](docs/self-hosting.md) | Storage modes, deployment, settings, saving and sync |
 | [Architecture](docs/architecture.md) | Code organisation, tests, languages |
 

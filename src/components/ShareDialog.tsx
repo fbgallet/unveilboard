@@ -8,6 +8,7 @@ import { sourcesLength } from '@/lib/canvas/source'
 import { useLocale, useT } from '@/i18n/client'
 import { encodeShare, LONG_LINK_CHARS, withoutEmbeddedImages } from '@/lib/share/link'
 import { settingsStore } from '@/lib/storage'
+import { publicOrigin } from '@/lib/desktop'
 import { QrOverlay } from './QrCode'
 import { readSequence } from '@/lib/canvas/adapter'
 import { storageModeAtom, syncStatusAtom } from '@/lib/sync/documentSync'
@@ -87,7 +88,7 @@ function LinkSection({ editor }: { editor: Editor }) {
     setError(null)
     try {
       const { fragment, droppedImages } = await encodeShare(sharedSnapshot(editor))
-      setResult({ url: `${location.origin}/p#${fragment}`, droppedImages })
+      setResult({ url: `${publicOrigin()}/p#${fragment}`, droppedImages })
     } catch (e) {
       setError(e instanceof Error ? e.message : t.common.genericError)
     }

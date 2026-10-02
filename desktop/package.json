@@ -1,0 +1,24 @@
+{
+  "name": "unveilboard-desktop",
+  "productName": "Unveilboard",
+  "version": "0.2.0",
+  "description": "Show your diagrams step by step: progressive presentations on a tldraw canvas.",
+  "homepage": "https://unveilboard.com",
+  "author": "Fabrice Gallet (https://www.the-thought-experimenter.com)",
+  "license": "MIT",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "server": "node scripts/prepare-server.mjs",
+    "start": "electron .",
+    "dist": "electron-builder --publish never",
+    "release": "electron-builder --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  },
+  "devDependencies": {
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3"
+  }
+}

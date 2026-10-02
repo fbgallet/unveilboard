@@ -12,7 +12,15 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Application de bureau : serveur copié et installateurs générés.
+    "desktop/server/**",
+    "desktop/dist/**",
   ]),
+  // Processus Electron, en CommonJS.
+  {
+    files: ["desktop/**/*.js", "desktop/**/*.cjs"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
 ]);
 
 export default eslintConfig;

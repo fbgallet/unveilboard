@@ -1,0 +1,92 @@
+name: Desktop
+
+# Installateurs de l'application de bureau (desktop/), sur les machines de GitHub.
+# - Étiquette v* (ex. `git tag v0.3.0 && git push origin v0.3.0`) : construit et dépose les
+#   installateurs dans une release en brouillon. La publier (à la main, sur GitHub) la rend visible
+#   des applications installées, qui se mettent à jour.
+# - Lancement manuel (onglet Actions) : construit seulement, installateurs en artefacts du workflow.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # Le brouillon est créé avant les builds : en parallèle, chacun en créerait sinon le sien.
+  release:
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --generate-notes --title "Unveilboard ${GITHUB_REF_NAME#v}"
+
+  build:
+    needs: release
+    # Lancement manuel : pas de brouillon (job sauté), on construit quand même.
+    if: always() && (needs.release.result == 'success' || needs.release.result == 'skipped')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Deux builds Mac, un par processeur : chacun publie son latest-mac.yml, le second remplace
+          # le premier. Sans conséquence : sur Mac, l'application n'y lit que le numéro de version.
+          - os: macos-latest # Apple Silicon
+            target: --mac --arm64
+          - os: macos-15-intel
+            target: --mac --x64
+          - os: windows-latest
+            target: --win --x64
+          - os: ubuntu-latest
+            target: --linux --x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      # Sans liens symboliques (node_modules « à plat ») : le serveur autonome de Next en contient
+      # sinon, et il doit être copié tel quel dans l'application.
+      - run: pnpm install --frozen-lockfile --config.node-linker=hoisted
+      - name: Build Next (standalone, local mode)
+        run: pnpm build
+        env:
+          NEXT_OUTPUT: standalone
+          NEXT_TELEMETRY_DISABLED: 1
+      - name: Desktop dependencies
+        working-directory: desktop
+        run: npm ci
+      - name: Embedded server
+        working-directory: desktop
+        run: npm run server
+      - name: Installers
+        working-directory: desktop
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Aucun certificat : pas de signature Apple ni Windows (signature ad hoc sur Mac).
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            # La version de l'application est celle de l'étiquette.
+            npx electron-builder ${{ matrix.target }} --publish always -c.extraMetadata.version="${GITHUB_REF_NAME#v}"
+          else
+            npx electron-builder ${{ matrix.target }} --publish never
+          fi
+      - if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unveilboard-${{ matrix.os }}
+          path: |
+            desktop/dist/*.dmg
+            desktop/dist/*.exe
+            desktop/dist/*.AppImage
+          retention-days: 7

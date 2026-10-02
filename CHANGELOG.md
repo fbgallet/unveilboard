@@ -5,6 +5,7 @@ All notable changes to Unveilboard. The format follows [Keep a Changelog](https:
 ## [Unreleased]
 
 ### Added
+- Desktop app (`desktop/`, Electron) for macOS, Windows and Linux: the local mode in a window, with Next's standalone server embedded on `127.0.0.1:43117`. A GitHub Actions workflow builds the installers on each `v*` tag into a draft release; installed apps update themselves on Windows and Linux, and announce new versions on macOS (installers not signed by Apple or Microsoft). In the app, the phone remote and shared links point to unveilboard.com, and texts say “on this computer” instead of “in this browser” (`src/i18n/desktop.ts`). → [Desktop app](docs/desktop.md)
 - A dark mode button at the top right of the canvas, next to the source text button (it sets tldraw's color scheme; the app's panels follow).
 - Tooltips: every button with a title shows a quick, styled tooltip instead of the browser's slow native one (tldraw's own menus keep theirs).
 - The AI and the text of a page: a ✦ menu in the source text sidebar (create a new diagram from the text, enrich, structure with a plan, write the sequence, review faithfulness), and “Use the source text of this page” (checked by default) in the assistant and “✦ AI…” from an element; the review and the plan use the text too. Excerpts added by the AI are searched for in the text. “Create a diagram from a text” can take the page's text.
@@ -27,6 +28,7 @@ All notable changes to Unveilboard. The format follows [Keep a Changelog](https:
 - Linked `.tldr` files (Chrome, Edge): a diagram opened from a file, or saved to one, keeps it up to date automatically (<kbd>Ctrl/⌘</kbd>+<kbd>S</kbd> to save at once, <kbd>Ctrl/⌘</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> to save elsewhere), so it can live in a synced folder (Google Drive, Dropbox…). Changes made elsewhere are reloaded, conflicts are asked about, and reopening the file no longer creates a duplicate.
 
 ### Changed
+- Vercel Analytics is only loaded on Vercel (not on self-hosted instances or in the desktop app).
 - Relation labels written on arrows follow the language of the content (the map's `lang`, kept in the document) rather than the language in which the default presets were first created.
 - Horizontal argument trees are more widely spaced (220 px between levels), so relation labels ("presupposes", "illustrates") no longer break mid-word. Existing trees widen at their next layout.
 - CI generates Next's route types before type checking (`pnpm typecheck`).

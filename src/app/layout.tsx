@@ -42,7 +42,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="h-full" suppressHydrationWarning>
         <I18nProvider locale={locale}>{children}</I18nProvider>
         <Tooltips />
-        <Analytics />
+        {/* Statistiques de visite : sur Vercel seulement (ni instance auto-hébergée, ni application de bureau). */}
+        {process.env.VERCEL && <Analytics />}
       </body>
     </html>
   );

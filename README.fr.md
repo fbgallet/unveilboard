@@ -40,6 +40,8 @@ pnpm dev
 
 C'est tout pour le mode local : pas de base de données, pas de mot de passe, les schémas restent dans le navigateur. Pour mettre en ligne sur Vercel, renseignez `TLDRAW_LICENSE_KEY` ; pour le mode cloud (Postgres, mot de passe), le partage public et l'IA de l'instance, voir [Héberger Unveilboard](docs/self-hosting.fr.md).
 
+Vous préférez une application sur votre ordinateur, sans rien installer à la main ? Voir l'[application de bureau](docs/desktop.fr.md) (macOS, Windows, Linux).
+
 ## Documentation
 
 | | |
@@ -50,6 +52,7 @@ C'est tout pour le mode local : pas de base de données, pas de mot de passe, le
 | [Construire des schémas](docs/diagrams.fr.md) | Arbres, cartes d'argument, préréglages de styles, fichiers |
 | [Construire une carte d'argument](docs/argument-maps.fr.md) | Types d'éléments et relations, avec des exemples |
 | [Le format JSON des schémas](docs/map-format.fr.md) | Schémas, modifications et relectures en JSON |
+| [Application de bureau](docs/desktop.fr.md) | Installation, mises à jour, construire et publier les installateurs |
 | [Héberger Unveilboard](docs/self-hosting.fr.md) | Modes de stockage, mise en ligne, réglages, sauvegarde et synchronisation |
 | [Architecture](docs/architecture.fr.md) | Organisation du code, tests, langues |
 

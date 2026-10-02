@@ -1,0 +1,52 @@
+# Installateurs de l'application de bureau. Construits par .github/workflows/desktop.yml à chaque
+# étiquette v*, et déposés dans une release GitHub en brouillon, à publier à la main.
+appId: com.unveilboard.app
+productName: Unveilboard
+copyright: Copyright © Fabrice Gallet
+directories:
+  output: dist
+  buildResources: build
+files:
+  - main.js
+  - preload.js
+  - updater.js
+  - package.json
+# Le serveur Next autonome (préparé par scripts/prepare-server.mjs) est copié dans les ressources,
+# hors de l'archive asar, par scripts/after-pack.cjs.
+afterPack: scripts/after-pack.cjs
+# Sans certificat Apple (pas de compte développeur payant) : signature « ad hoc » par
+# scripts/adhoc-sign.cjs. Au premier lancement sur Mac : Réglages Système → Confidentialité et
+# sécurité → Ouvrir quand même.
+afterSign: scripts/adhoc-sign.cjs
+# Durcissement : le binaire ne peut pas servir d'interpréteur Node (ELECTRON_RUN_AS_NODE, NODE_OPTIONS,
+# --inspect) et ne charge que l'archive de l'application.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  onlyLoadAppFromAsar: true
+mac:
+  identity: null
+  category: public.app-category.education
+  # Le zip sert au contrôle des mises à jour (latest-mac.yml), le dmg à l'installation.
+  target: [dmg, zip]
+  artifactName: ${productName}-${version}-mac-${arch}.${ext}
+dmg:
+  artifactName: ${productName}-${version}-mac-${arch}.${ext}
+win:
+  target: [nsis]
+  artifactName: ${productName}-${version}-windows-setup.${ext}
+# Installation pour l'utilisateur seul : aucun droit d'administrateur requis (postes d'établissement).
+nsis:
+  oneClick: true
+  perMachine: false
+linux:
+  # AppImage : le seul format Linux qu'electron-updater sait mettre à jour.
+  target: [AppImage]
+  category: Education
+  artifactName: ${productName}-${version}-linux-${arch}.${ext}
+publish:
+  provider: github
+  owner: fbgallet
+  repo: unveilboard
+  releaseType: draft

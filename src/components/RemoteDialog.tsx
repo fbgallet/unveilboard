@@ -3,6 +3,7 @@
 import { useValue, type Editor } from 'tldraw'
 import { useT } from '@/i18n/client'
 import { remoteDialogOpenAtom, remoteStatusAtom, startRemote, stopRemote } from '@/lib/remote/host'
+import { publicOrigin } from '@/lib/desktop'
 import { QrCode } from './QrCode'
 
 /** Erreurs du service de mise en relation (par opposition à l'échec de la connexion directe). */
@@ -33,10 +34,10 @@ export function RemoteDialog({ editor }: { editor: Editor }) {
         <p className="text-zinc-500">{t.remote.intro}</p>
         {id && status.state !== 'failed' && status.state !== 'connected' && (
           <>
-            <QrCode value={`${location.origin}/r#${id}`} className="remote-qr mx-auto" />
+            <QrCode value={`${publicOrigin()}/r#${id}`} className="remote-qr mx-auto" />
             {/* Le même lien, à s'envoyer par message si le téléphone ne lit pas le QR code. */}
-            <a className="remote-link mx-auto" href={`${location.origin}/r#${id}`} target="_blank" rel="noreferrer">
-              {`${location.host}/r#${id}`}
+            <a className="remote-link mx-auto" href={`${publicOrigin()}/r#${id}`} target="_blank" rel="noreferrer">
+              {`${new URL(publicOrigin()).host}/r#${id}`}
             </a>
           </>
         )}
