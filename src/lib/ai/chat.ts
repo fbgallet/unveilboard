@@ -178,7 +178,7 @@ export async function readChatStream(res: Response, onText?: (text: string, thin
 }
 
 /** Lecture suivante du flux, abandonnée après `ms` sans données ; coupure réseau → « interrupted ». */
-async function readWithin(reader: ReadableStreamDefaultReader<Uint8Array>, ms: number) {
+export async function readWithin(reader: ReadableStreamDefaultReader<Uint8Array>, ms: number) {
   let timer: ReturnType<typeof setTimeout> | undefined
   const stalled = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new AiError('timeout', `${ms / 1000} s`)), ms)

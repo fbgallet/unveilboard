@@ -15,7 +15,8 @@
     "release": "electron-builder --publish always"
   },
   "dependencies": {
-    "electron-updater": "^6.8.9"
+    "electron-updater": "^6.8.9",
+    "jose": "^6.2.12"
   },
   "devDependencies": {
     "electron": "^44.5.1",

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { atom, useValue } from 'tldraw'
 import { useT } from '@/i18n/client'
 import type { Messages } from '@/i18n/config'
@@ -21,6 +21,16 @@ import {
 import { toAiError } from '@/lib/ai/errors'
 import { MODELS } from '@/lib/ai/models'
 import { REASONING_EFFORTS, type ReasoningEffort } from '@/lib/ai/chat'
+import {
+  CHATGPT_USAGE_URL,
+  cancelChatGptSignIn,
+  chatGptAvailable,
+  chatGptStateAtom,
+  listChatGptModels,
+  signInChatGpt,
+  signOutChatGpt,
+  type ChatGptModel,
+} from '@/lib/ai/chatgpt'
 
 export const aiSettingsOpenAtom = atom<boolean>('aiSettingsOpen', false)
 
@@ -47,7 +57,7 @@ function AiSettingsView() {
   const [models, setModels] = useState<string[] | null>(null)
   const [test, setTest] = useState<{ state: 'running' | 'ok' | 'invalid' | 'error'; text: string } | null>(null)
   const close = () => aiSettingsOpenAtom.set(false)
-  const kinds = PROVIDERS.filter((k) => k !== 'server' || server)
+  const kinds = PROVIDERS.filter((k) => (k !== 'server' || server) && (k !== 'chatgpt' || chatGptAvailable()))
   const set = (patch: Partial<AiSettings>) => {
     setDraft((d) => ({ ...d, ...patch }))
     setTest(null)
@@ -163,6 +173,8 @@ function AiSettingsView() {
           </label>
         )}
 
+        {draft.kind === 'chatgpt' && <ChatGptSection model={draft.chatgptModel} onModel={(slug) => set({ chatgptModel: slug })} />}
+
         {draft.kind === 'openrouter' && (
           <section className="share-section">
             <div className="flex flex-wrap items-center gap-2">
@@ -260,5 +272,167 @@ function AiSettingsView() {
         </footer>
       </div>
     </div>
+  )
+}
+
+const WELCOME_KEY = 'chatgpt-welcome-seen'
+/** Échecs de connexion qui, en pratique, viennent d'un forfait ChatGPT gratuit. */
+const PLAN_REFUSALS = new Set(['invalid_grant', 'access_denied', 'unauthorized_client'])
+
+/**
+ * Connexion à ChatGPT (application de bureau) : bouton « Continuer avec ChatGPT », compte connecté,
+ * modèles du forfait, lien « Gérer l'usage », et un mot d'accueil à la première connexion — d'après les
+ * consignes d'interface d'OpenAI. Les jetons restent dans le processus principal d'Electron.
+ */
+function ChatGptSection({ model, onModel }: { model: string; onModel: (slug: string) => void }) {
+  const t = useT()
+  const state = useValue(chatGptStateAtom)
+  const [models, setModels] = useState<ChatGptModel[] | null>(null)
+  const [modelsError, setModelsError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [welcome, setWelcome] = useState(false)
+  const ready = state?.status === 'connected' && state.planUsage
+  const who = state?.email ?? state?.name ?? ''
+
+  // Premier modèle du catalogue si aucun (ou un autre compte) n'est choisi.
+  const pickDefault = useEffectEvent((list: ChatGptModel[]) => {
+    if (list[0] && !list.some((m) => m.slug === model)) onModel(list[0].slug)
+  })
+  useEffect(() => {
+    if (!ready) return
+    let live = true
+    listChatGptModels()
+      .then((list) => {
+        if (!live) return
+        setModels(list)
+        setModelsError(null)
+        pickDefault(list)
+      })
+      .catch((e) => live && setModelsError(toAiError(e).detail ?? t.ai.chatgpt.noModels))
+    return () => {
+      live = false
+    }
+  }, [ready, who, t])
+
+  async function signIn(options?: { newAccount?: boolean; consent?: boolean }) {
+    setNotice(null)
+    await signInChatGpt(options)
+    const next = chatGptStateAtom.get()
+    let seen = true
+    try {
+      seen = !!localStorage.getItem(WELCOME_KEY)
+    } catch {
+      // Stockage indisponible : pas de mot d'accueil.
+    }
+    if (next?.status === 'connected' && next.planUsage && !seen) setWelcome(true)
+  }
+
+  async function signOut() {
+    const revoked = await signOutChatGpt()
+    // Plus de modèle : l'IA n'est plus « prête » ailleurs dans l'application.
+    saveAiSettings({ ...aiSettingsAtom.get(), chatgptModel: '' })
+    onModel('')
+    setModels(null)
+    setNotice(revoked ? null : t.ai.chatgpt.revokeFailed)
+  }
+
+  function dismissWelcome() {
+    setWelcome(false)
+    try {
+      localStorage.setItem(WELCOME_KEY, '1')
+    } catch {
+      // Stockage indisponible.
+    }
+  }
+
+  const usageLink = (
+    <a className="underline" href={CHATGPT_USAGE_URL} target="_blank" rel="noreferrer">
+      {t.ai.chatgpt.manageUsage}
+    </a>
+  )
+
+  return (
+    <section className="share-section">
+      {state?.status === 'connecting' ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm">{t.ai.chatgpt.waiting}</span>
+          <button className="btn-xs" onClick={() => void cancelChatGptSignIn()}>
+            {t.ai.chatgpt.cancel}
+          </button>
+        </div>
+      ) : state?.status !== 'connected' ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            className="rounded-md bg-black px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800"
+            onClick={() => void signIn()}
+          >
+            {t.ai.chatgpt.continue}
+          </button>
+          {state?.status === 'signed_out' && who && <span className="text-xs text-zinc-500">{t.ai.chatgpt.signedOut(who)}</span>}
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm">{t.ai.chatgpt.connectedAs(who)}</span>
+            <span className="flex gap-2">
+              <button className="btn-xs" onClick={() => void signIn({ newAccount: true })}>
+                {t.ai.chatgpt.changeAccount}
+              </button>
+              <button className="btn-xs" onClick={() => void signOut()}>
+                {t.ai.chatgpt.signOut}
+              </button>
+            </span>
+          </div>
+          {!state.planUsage ? (
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span>{t.ai.chatgpt.noPlanUsage}</span>
+              <button className="btn-xs" onClick={() => void signIn({ consent: true })}>
+                {t.ai.chatgpt.allow}
+              </button>
+            </div>
+          ) : (
+            <>
+              <label className="grid gap-1">
+                <span className="text-xs text-zinc-500">{t.ai.model}</span>
+                {models?.length ? (
+                  <select className="preset-input" value={model} onChange={(e) => onModel(e.target.value)} aria-label={t.ai.model}>
+                    {models.map((m) => (
+                      <option key={m.slug} value={m.slug}>
+                        {m.displayName}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-xs text-zinc-500">{modelsError ?? (models ? t.ai.chatgpt.noModels : t.ai.chatgpt.loadingModels)}</span>
+                )}
+                {!!models?.length && <span className="text-xs text-zinc-500">{t.ai.chatgpt.modelsHint}</span>}
+              </label>
+              <p className="text-xs text-zinc-500">
+                {t.ai.chatgpt.inUse} · {usageLink}
+              </p>
+            </>
+          )}
+        </>
+      )}
+      {state?.error && (
+        <p className="text-xs text-red-700">
+          {/* Refus de l'autorisation, ou échange du code refusé : en pratique, un forfait gratuit. */}
+          {PLAN_REFUSALS.has(state.error.code) ? `${t.ai.chatgpt.planRequired} (${state.error.code})` : t.ai.chatgpt.failed(state.error.message)}
+        </p>
+      )}
+      {state && !state.persistent && <p className="text-xs text-amber-800">{t.ai.chatgpt.notPersistent}</p>}
+      {notice && <p className="text-xs text-amber-800">{notice}</p>}
+      {welcome && (
+        <div role="status" className="grid gap-1 rounded border border-emerald-300 bg-emerald-50 p-2 text-xs text-emerald-900">
+          <strong>{t.ai.chatgpt.welcomeTitle}</strong>
+          <span>
+            {t.ai.chatgpt.welcomeText} {usageLink}
+          </span>
+          <button className="btn-xs justify-self-end" onClick={dismissWelcome}>
+            {t.ai.chatgpt.gotIt}
+          </button>
+        </div>
+      )}
+    </section>
   )
 }

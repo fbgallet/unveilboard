@@ -20,7 +20,7 @@ Working on a text? Build the diagram from it: the text stays beside the diagram,
 
 **Build it from a text.** Paste a text or open a file: it stays in a sidebar, its cited passages highlighted in the colors of their elements, even while presenting. Select a passage to turn it into an element, or link it to an existing one. → [Source texts](docs/source-texts.md)
 
-**Use an AI, if you want.** Your own AI (through a copied prompt or your OpenRouter key), a local model, or the instance's: create, enrich, sequence or review a diagram, or build a rich one section by section from a plan. Answers are checked, and excerpts are searched for in the text. → [Working with an AI](docs/ai.md)
+**Use an AI, if you want.** Your own AI (through a copied prompt or your OpenRouter key), your ChatGPT plan (desktop app), a local model, or the instance's: create, enrich, sequence or review a diagram, or build a rich one section by section from a plan. Answers are checked, and excerpts are searched for in the text. → [Working with an AI](docs/ai.md)
 
 ## At a glance
 
@@ -40,7 +40,7 @@ pnpm dev
 
 That's all for the local mode: no database, no password, diagrams stay in the browser. To deploy on Vercel, set `TLDRAW_LICENSE_KEY`; for the cloud mode (Postgres, password), public sharing and the instance's AI, see [Self-hosting](docs/self-hosting.md).
 
-Prefer an app on your computer, with nothing to install by hand? See the [desktop app](docs/desktop.md) (macOS, Windows, Linux).
+Prefer an app on your computer, with nothing to install by hand? The [desktop app](docs/desktop.md) (macOS, Windows, Linux) installs in a few clicks, and can use your ChatGPT plan (paid plan) for the AI.
 
 ## Documentation
 

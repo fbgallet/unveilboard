@@ -20,7 +20,7 @@ Vous travaillez sur un texte ? Construisez le schéma à partir de lui : le text
 
 **Le construire à partir d'un texte.** Collez un texte ou ouvrez un fichier : il reste dans une barre latérale, ses passages cités surlignés aux couleurs de leurs éléments, jusque dans la présentation. Sélectionnez un passage pour en faire un élément, ou le relier à un élément existant. → [Textes source](docs/source-texts.fr.md)
 
-**S'aider d'une IA, si vous voulez.** La vôtre (par une consigne copiée ou votre clé OpenRouter), un modèle local, ou celle de l'instance : créer, enrichir, séquencer ou relire un schéma, ou en construire un riche section par section à partir d'un plan. Les réponses sont contrôlées, et les extraits cherchés dans le texte. → [Travailler avec une IA](docs/ai.fr.md)
+**S'aider d'une IA, si vous voulez.** La vôtre (par une consigne copiée ou votre clé OpenRouter), votre forfait ChatGPT (application de bureau), un modèle local, ou celle de l'instance : créer, enrichir, séquencer ou relire un schéma, ou en construire un riche section par section à partir d'un plan. Les réponses sont contrôlées, et les extraits cherchés dans le texte. → [Travailler avec une IA](docs/ai.fr.md)
 
 ## En bref
 
@@ -40,7 +40,7 @@ pnpm dev
 
 C'est tout pour le mode local : pas de base de données, pas de mot de passe, les schémas restent dans le navigateur. Pour mettre en ligne sur Vercel, renseignez `TLDRAW_LICENSE_KEY` ; pour le mode cloud (Postgres, mot de passe), le partage public et l'IA de l'instance, voir [Héberger Unveilboard](docs/self-hosting.fr.md).
 
-Vous préférez une application sur votre ordinateur, sans rien installer à la main ? Voir l'[application de bureau](docs/desktop.fr.md) (macOS, Windows, Linux).
+Vous préférez une application sur votre ordinateur, sans rien installer à la main ? L'[application de bureau](docs/desktop.fr.md) (macOS, Windows, Linux) s'installe en quelques clics, et peut utiliser votre forfait ChatGPT (forfait payant) pour l'IA.
 
 ## Documentation
 

@@ -2,50 +2,90 @@
 
 [English](desktop.md) · **Français**
 
-Unveilboard comme application installée sur votre ordinateur (macOS, Windows, Linux), sans rien cloner ni passer par le terminal. C'est le mode local de l'application web : les schémas restent sur l'ordinateur, sans compte.
+Unveilboard s'installe aussi comme une application sur votre ordinateur (macOS, Windows, Linux), sans compte et sans rien d'autre à installer. Vos schémas restent sur l'ordinateur. Elle permet en plus d'utiliser **votre forfait ChatGPT** pour l'IA, ce que le site ne permet pas.
 
-## Installation
+## Installer
 
-Téléchargez l'installateur de votre système dans la [dernière version](https://github.com/fbgallet/unveilboard/releases/latest) :
+Téléchargez le fichier de votre système dans la [dernière version](https://github.com/fbgallet/unveilboard/releases/latest), section « Assets » :
 
-| Système | Fichier |
+| Votre ordinateur | Fichier à télécharger |
 |---|---|
-| macOS (Apple Silicon : M1 et suivants) | `Unveilboard-<version>-mac-arm64.dmg` |
-| macOS (Intel) | `Unveilboard-<version>-mac-x64.dmg` |
+| Mac récent (puce Apple : M1, M2…) | `Unveilboard-<version>-mac-arm64.dmg` |
+| Mac plus ancien (processeur Intel) | `Unveilboard-<version>-mac-x64.dmg` |
 | Windows | `Unveilboard-<version>-windows-setup.exe` |
 | Linux | `Unveilboard-<version>-linux-x86_64.AppImage` |
 
-Les installateurs ne sont pas signés par Apple ni par Microsoft (c'est payant chaque année). Votre système vous avertit donc **la première fois** que vous ouvrez l'application :
+Sur Mac, pour savoir quelle puce vous avez : menu Pomme › « À propos de ce Mac » (ligne « Puce » ou « Processeur »).
 
-- **macOS** : ouvrez le `.dmg` et glissez Unveilboard dans Applications, puis ouvrez-la. macOS refuse : cliquez sur **OK**, puis allez dans **Réglages Système › Confidentialité et sécurité**, descendez jusqu'à « Unveilboard a été bloquée… » et cliquez sur **Ouvrir quand même**, puis confirmez. (Depuis macOS 15, clic droit › Ouvrir ne contourne plus l'avertissement.)
-- **Windows** : « Windows a protégé votre ordinateur » (SmartScreen) : cliquez sur **Informations complémentaires**, puis **Exécuter quand même**. L'application s'installe pour votre seul compte, sans droits d'administrateur.
-- **Linux** : rendez le fichier exécutable (Propriétés › Permissions, ou `chmod +x`), puis ouvrez-le. Sur Ubuntu 22.04 et suivants, les AppImage demandent `libfuse2` (`sudo apt install libfuse2t64` sur 24.04).
+L'application n'est pas signée par Apple ni par Microsoft (c'est payant chaque année) : votre système vous avertit donc **une seule fois**, au premier lancement. C'est normal.
+
+### Sur Mac
+
+1. Ouvrez le fichier `.dmg` téléchargé, puis glissez **Unveilboard** dans le dossier **Applications**.
+2. Ouvrez Unveilboard depuis le dossier Applications. macOS refuse de l'ouvrir : cliquez sur **OK** (ou **Terminé**).
+3. Ouvrez **Réglages Système › Confidentialité et sécurité**, descendez jusqu'au message « Unveilboard a été bloquée… » et cliquez sur **Ouvrir quand même**. Confirmez avec votre mot de passe.
+
+Ensuite, Unveilboard s'ouvre normalement, comme toute application.
+
+### Sur Windows
+
+1. Ouvrez le fichier `Unveilboard-…-windows-setup.exe` téléchargé.
+2. Si Windows affiche « Windows a protégé votre ordinateur », cliquez sur **Informations complémentaires**, puis sur **Exécuter quand même**.
+3. L'installation se fait toute seule, sans droits d'administrateur. Unveilboard apparaît dans le menu Démarrer.
+
+### Sur Linux
+
+1. Rendez le fichier `.AppImage` exécutable : clic droit › Propriétés › Permissions › « Autoriser l'exécution » (ou `chmod +x` dans un terminal).
+2. Double-cliquez dessus.
+
+Sur Ubuntu 22.04 et suivants, s'il ne s'ouvre pas, installez `libfuse2` (`sudo apt install libfuse2t64` sur Ubuntu 24.04).
+
+## Utiliser votre forfait ChatGPT
+
+Dans l'application, l'IA d'Unveilboard peut utiliser votre abonnement ChatGPT : pas de clé d'API à créer, pas de crédit à acheter ailleurs.
+
+**Ce qu'il faut** : un forfait ChatGPT **payant**. Avec un compte gratuit, ChatGPT refuse la connexion (« Une autorisation requise est indisponible… ») et propose de changer d'offre.
+
+**Les modèles dépendent de votre forfait.** Unveilboard affiche ceux qu'OpenAI ouvre à votre compte. Le forfait **ChatGPT Go** en propose peu : en octobre 2026, GPT-5.5, GPT-5.6 Terra et GPT-5.6 Luna. Si un modèle peine sur une tâche lourde (un grand schéma à partir d'un long texte), essayez-en un autre, ou passez par OpenRouter.
+
+Pour vous connecter :
+
+1. Ouvrez un schéma, cliquez sur **✦** en haut à droite, puis sur **Réglages de l'IA…**.
+2. Choisissez **Votre forfait ChatGPT**, puis cliquez sur **Continuer avec ChatGPT**.
+3. Votre navigateur s'ouvre : connectez-vous à ChatGPT et autorisez Unveilboard.
+4. Revenez dans Unveilboard : votre compte s'affiche, avec la liste des modèles. Choisissez-en un, cliquez sur **Tester**, puis sur **Enregistrer**.
+
+Bon à savoir :
+
+- **Usage et limites** : les demandes d'Unveilboard comptent dans l'usage de votre forfait, partagé avec ChatGPT et les autres applications connectées. Le lien **Gérer l'usage** (dans les réglages de l'IA) ouvre les réglages de ChatGPT, où vous pouvez suivre cet usage et fixer une limite propre à Unveilboard. Une limite atteinte arrête les demandes jusqu'à ce qu'elle se renouvelle.
+- **Sécurité** : la connexion reste sur votre ordinateur, chiffrée par le système (Trousseau sur Mac). Unveilboard ne voit pas vos conversations ChatGPT.
+- **Se déconnecter** : réglages de l'IA › **Se déconnecter**. Vous pouvez aussi retirer Unveilboard des applications connectées, dans les réglages de ChatGPT.
+
+Les autres choix d'IA restent disponibles : copier-coller la consigne dans l'assistant de votre choix, OpenRouter avec votre clé, ou un modèle local (Ollama, LM Studio). Voir [Travailler avec une IA](ai.fr.md).
 
 ## Mises à jour
 
-L'application cherche une nouvelle version au démarrage, puis toutes les six heures.
+L'application vérifie au démarrage s'il existe une nouvelle version.
 
-- **Windows et Linux** : la mise à jour se télécharge en arrière-plan ; l'application propose de redémarrer, ou l'installe quand vous la quittez.
-- **macOS** : sans signature Apple, macOS ne laisse pas l'application se remplacer elle-même. Elle vous signale la nouvelle version et ouvre la page de téléchargement : remplacez l'application du dossier Applications par la nouvelle. Vos schémas sont conservés.
+- **Windows et Linux** : elle se met à jour toute seule. Elle propose de redémarrer, ou s'installe quand vous la quittez.
+- **Mac** : elle vous signale la nouvelle version et ouvre la page de téléchargement. Remplacez l'application du dossier Applications par la nouvelle (même démarche qu'à l'installation). Vos schémas sont conservés.
 
 ## Vos schémas
 
-Ils sont enregistrés dans le dossier de données de l'application, comme dans un navigateur (IndexedDB) :
+Ils restent sur votre ordinateur, dans le dossier de l'application, et survivent aux mises à jour. Pour sauvegarder un schéma ou le passer sur un autre ordinateur : **Enregistrer sous…** (fichier `.tldr`), puis **Ouvrir un fichier .tldr** sur l'autre ordinateur.
 
-- macOS : `~/Library/Application Support/Unveilboard`
-- Windows : `%APPDATA%\Unveilboard`
-- Linux : `~/.config/Unveilboard`
-
-Ils survivent aux mises à jour. Pour sauvegarder un schéma ou le passer sur un autre ordinateur : « Enregistrer sous… » (fichier `.tldr`).
+Emplacement, pour les curieux : `~/Library/Application Support/Unveilboard` (Mac), `%APPDATA%\Unveilboard` (Windows), `~/.config/Unveilboard` (Linux).
 
 ## Ce qui change par rapport au site
 
-- **Télécommande et liens partagés** pointent vers unveilboard.com, qui sert les mêmes pages : un téléphone ne peut pas joindre l'application sur votre ordinateur. La connexion elle-même reste directe entre les deux appareils.
-- **Internet** : l'application fonctionne sans compte, mais certaines choses demandent encore une connexion : les polices et traductions de tldraw, la télécommande, une IA en ligne.
-- **IA** : les mêmes fournisseurs que sur le site (consigne copiée, OpenRouter avec votre clé, un modèle local comme Ollama ou LM Studio). Pour un modèle local, autorisez l'origine `http://127.0.0.1:43117`.
+- **Télécommande et liens partagés** passent par unveilboard.com : un téléphone ne peut pas joindre l'application sur votre ordinateur. La connexion entre les deux appareils reste directe.
+- **Internet** : il en faut encore pour les polices du canevas, la télécommande et une IA en ligne.
+- **Modèle local** (Ollama, LM Studio) : autorisez l'origine `http://127.0.0.1:43117`.
 - **Licence tldraw** : le canevas affiche la mention « Get a license for production », comme toute application tldraw sans licence pour cet usage.
 
-## La construire vous-même
+## Pour les contributeurs
+
+### Construire l'application
 
 À la racine du dépôt :
 
@@ -61,9 +101,9 @@ npx electron-builder --mac --arm64 --publish never   # ou --win, --linux ; insta
 
 Depuis un terminal de VS Code, retirez d'abord `ELECTRON_RUN_AS_NODE` (`env -u ELECTRON_RUN_AS_NODE npm start`) : VS Code la définit, et Electron se comporte alors comme un simple Node.
 
-Fonctionnement : le processus principal d'Electron (`desktop/main.js`) lance le serveur autonome de Next sur `127.0.0.1:43117`, toujours en mode local, puis l'affiche dans une fenêtre. Le port est fixe parce que le stockage du navigateur y est rattaché : un autre port, et les schémas seraient introuvables. Les pages de l'application s'ouvrent dans des fenêtres Electron (fenêtre de projection comprise) ; les autres liens, dans votre navigateur.
+Fonctionnement : le processus principal d'Electron (`desktop/main.js`) lance le serveur autonome de Next sur `127.0.0.1:43117`, toujours en mode local, puis l'affiche dans une fenêtre. Le port est fixe parce que le stockage du navigateur y est rattaché : un autre port, et les schémas seraient introuvables. Les pages de l'application s'ouvrent dans des fenêtres Electron (fenêtre de projection comprise) ; les autres liens, dans votre navigateur. La connexion à ChatGPT (`desktop/chatgpt.js`) suit le protocole publié par OpenAI ; ses jetons ne quittent jamais le processus principal.
 
-## Publier une version
+### Publier une version
 
 1. Mettez à jour la version dans `package.json` et `desktop/package.json`, et le changelog.
 2. Poussez une étiquette : `git tag v0.3.0 && git push origin v0.3.0`.

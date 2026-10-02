@@ -6,6 +6,7 @@ const { app, BrowserWindow, dialog, shell, utilityProcess } = require('electron'
 const net = require('node:net')
 const path = require('node:path')
 const { setupUpdates } = require('./updater')
+const { setupChatGpt } = require('./chatgpt')
 
 // Port fixe : le stockage du navigateur est rattaché à l'origine (hôte + port). Un autre port,
 // et l'utilisateur ne retrouverait plus ses schémas.
@@ -17,6 +18,11 @@ const ORIGIN = `http://${HOST}:${PORT}`
 const IN_APP_HOSTS = new Set(['openrouter.ai'])
 
 const fr = () => app.getLocale().startsWith('fr')
+/**
+ * Icône d'Unveilboard. Installée, l'application a déjà la sienne (générée par electron-builder) ; elle
+ * sert aux fenêtres sur Windows et Linux, et au Dock lancée en développement (sinon celle d'Electron).
+ */
+const ICON = path.join(__dirname, 'build', 'icon.png')
 
 let server = null
 let mainWindow = null
@@ -34,6 +40,7 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 async function start() {
+  if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(ICON)
   if (!(await portFree())) {
     fail(
       fr()
@@ -49,6 +56,16 @@ async function start() {
     fail(String(e instanceof Error ? e.message : e))
     return
   }
+  setupChatGpt({
+    trusted: isApp,
+    // Retour de la connexion dans le navigateur : l'application repasse au premier plan.
+    focusApp: () => {
+      if (!mainWindow) return
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.show()
+      app.focus({ steal: true })
+    },
+  })
   createWindow()
   setupUpdates()
 }
@@ -106,6 +123,7 @@ function createWindow() {
     show: false,
     backgroundColor: '#fbfaf7',
     autoHideMenuBar: true,
+    ...(process.platform !== 'darwin' && { icon: ICON }),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true },
   })
   mainWindow.once('ready-to-show', () => mainWindow.show())
@@ -143,7 +161,9 @@ const isInAppHost = (url) => {
 // son parcours (connexion Google, GitHub…) jusqu'au retour sur l'application.
 app.on('web-contents-created', (_event, contents) => {
   contents.setWindowOpenHandler(({ url }) => {
-    if (isApp(url)) return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, backgroundColor: '#000000' } }
+    if (isApp(url)) {
+      return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, backgroundColor: '#000000', ...(process.platform !== 'darwin' && { icon: ICON }) } }
+    }
     if (!isApp(contents.getURL())) return { action: 'allow' }
     openExternal(url)
     return { action: 'deny' }

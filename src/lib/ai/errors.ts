@@ -26,6 +26,12 @@ export type AiErrorKind =
   | 'length'
   /** IA de l'instance non configurée ou désactivée. */
   | 'unavailable'
+  /** ChatGPT : connexion absente, expirée ou retirée ; se reconnecter dans les réglages de l'IA. */
+  | 'signin'
+  /** ChatGPT : limite d'usage du forfait, ou de celle fixée pour Unveilboard, atteinte. */
+  | 'usage_limit'
+  /** ChatGPT : ce compte (ou son espace de travail) ne permet pas d'utiliser son forfait ici. */
+  | 'not_eligible'
   | 'aborted'
   | 'server'
 

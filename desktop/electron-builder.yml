@@ -10,7 +10,10 @@ files:
   - main.js
   - preload.js
   - updater.js
+  - chatgpt.js
   - package.json
+  # Icône des fenêtres (Windows, Linux) ; celle de l'application est générée depuis build/.
+  - build/icon.png
 # Le serveur Next autonome (préparé par scripts/prepare-server.mjs) est copié dans les ressources,
 # hors de l'archive asar, par scripts/after-pack.cjs.
 afterPack: scripts/after-pack.cjs

@@ -2,7 +2,7 @@
 
 **English** · [Français](ai.fr.md)
 
-The AI is optional: copy a prompt for the assistant of your choice, or connect OpenRouter (your own key), a local or remote OpenAI-compatible server, or the instance’s AI. To build a diagram from a text, and keep the text beside it, see [Source texts](source-texts.md). The answer formats are described in [The JSON diagram format](map-format.md).
+The AI is optional: copy a prompt for the assistant of your choice, or connect your ChatGPT plan (desktop app), OpenRouter (your own key), a local or remote OpenAI-compatible server, or the instance’s AI. To build a diagram from a text, and keep the text beside it, see [Source texts](source-texts.md). The answer formats are described in [The JSON diagram format](map-format.md).
 
 You can use your own AI without connecting anything, or connect one. All these features are also in the menu of the ✦ icon, at the top right of the canvas while editing (a dot marks pending review remarks).
 
@@ -23,6 +23,7 @@ Relation labels (“supports”, “objects to”…) are written in the languag
 - **Model's thinking** (AI settings): the model's default, none, light, medium or deep. Sent as `reasoning` to OpenRouter (and to the instance's AI, which then adds headroom to the answer's token budget), as `reasoning_effort` to other OpenAI-compatible servers. More thinking gives sharper answers, but slower and dearer ones. Transcription always runs without thinking.
 - **Create a diagram from a text**: see [Source texts](source-texts.md).
 - **☰ menu › AI › “AI settings…”**: the provider, kept on this device (never in the document or on the server):
+  - **Your ChatGPT plan** ([desktop app](desktop.md) only): “Continue with ChatGPT” signs in with your ChatGPT account in your browser; AI requests then use your ChatGPT plan or credits, with no API key, with the models your plan offers (few on ChatGPT Go). It requires a paid plan: with a free plan, ChatGPT stops the sign-in and offers to upgrade. Usage and limits are managed in ChatGPT (“Manage usage”, [chatgpt.com/settings/usage](https://chatgpt.com/settings/usage)); a usage limit stops requests until you raise it or it resets. The sign-in stays on this computer, encrypted by the system (Keychain on macOS), and never reaches the pages: the app's main process sends the requests (OpenAI's Responses API). OpenAI offers this to open-source apps that run on the user's computer, which is why it isn't available on the website;
   - **OpenRouter, with your key**: “Sign in with OpenRouter” creates a key for Unveilboard (OAuth PKCE: the key is exchanged in the browser), or paste your own. The browser calls OpenRouter directly;
   - **OpenAI-compatible server**, local or remote (Ollama, LM Studio, llama.cpp…): address (up to `/v1`), optional key, model (“List the models”). The browser calls it directly: the server must accept the site's origin (Ollama: `OLLAMA_ORIGINS`, and a large enough context, `num_ctx`; LM Studio: enable CORS);
   - **the instance's AI**, if it has one (server-side key, see `.env.example`);

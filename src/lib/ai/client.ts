@@ -2,7 +2,9 @@
 // - « clipboard » : aucune IA branchée, on copie la consigne et on colle la réponse (par défaut) ;
 // - « server » : l'IA de cette instance (clé côté serveur, route /api/ai) ;
 // - « openrouter » : OpenRouter avec la clé de l'utilisateur, appelé directement depuis le navigateur ;
-// - « custom » : tout serveur compatible OpenAI (Ollama, LM Studio, llama.cpp…), local ou distant.
+// - « custom » : tout serveur compatible OpenAI (Ollama, LM Studio, llama.cpp…), local ou distant ;
+// - « chatgpt » : le forfait ChatGPT de l'utilisateur, dans l'application de bureau seulement
+//   (jetons dans le processus principal d'Electron, voir chatgpt.ts).
 //
 // Réglages et clé restent sur cet appareil (localStorage, ou sessionStorage pour une clé à ne pas
 // retenir) : jamais dans le document, ni dans les réglages synchronisés, ni sur le serveur.
@@ -16,8 +18,9 @@ import { chatMessages, runWithRepair, type AiRun, type Repair } from './run'
 import { DEFAULT_MODEL, TRANSCRIPTION_MODEL } from './models'
 import { OPENROUTER_PDF_PLUGIN, readTranscription, transcriptionMessages } from './transcribe'
 import type { MapIssue } from '../map/check'
+import { chatGptAvailable, chatGptChat, initChatGpt } from './chatgpt'
 
-export const PROVIDERS = ['clipboard', 'server', 'openrouter', 'custom'] as const
+export const PROVIDERS = ['clipboard', 'server', 'chatgpt', 'openrouter', 'custom'] as const
 export type ProviderKind = (typeof PROVIDERS)[number]
 
 export interface AiSettings {
@@ -30,6 +33,8 @@ export interface AiSettings {
   customUrl: string
   customModel: string
   customJsonMode: boolean
+  /** ChatGPT : modèle choisi dans le catalogue du forfait (vide : pas encore connecté). */
+  chatgptModel: string
   /** Réflexion du modèle (tous les fournisseurs ne l'acceptent pas). */
   reasoning: ReasoningEffort
 }
@@ -42,6 +47,7 @@ export const DEFAULT_AI_SETTINGS: AiSettings = {
   customUrl: 'http://localhost:11434/v1',
   customModel: '',
   customJsonMode: false,
+  chatgptModel: '',
   reasoning: 'default',
 }
 
@@ -68,12 +74,13 @@ export function loadAiSettings(server: ServerAi | null = null) {
   try {
     const raw = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? 'null') as Partial<AiSettings> | null
     const next = { ...fallback, ...raw }
-    if (!PROVIDERS.includes(next.kind)) next.kind = fallback.kind
+    if (!PROVIDERS.includes(next.kind) || (next.kind === 'chatgpt' && !chatGptAvailable())) next.kind = fallback.kind
     if (!REASONING_EFFORTS.includes(next.reasoning)) next.reasoning = 'default'
     aiSettingsAtom.set(next)
   } catch {
     aiSettingsAtom.set(fallback)
   }
+  void initChatGpt()
 }
 
 export function saveAiSettings(next: AiSettings) {
@@ -128,6 +135,9 @@ export function isAiReady(settings: AiSettings, server: ServerAi | null) {
       return !!readKey('openrouter') && !!settings.openrouterModel.trim()
     case 'custom':
       return !!settings.customUrl.trim() && !!settings.customModel.trim()
+    case 'chatgpt':
+      // Le modèle n'est choisi qu'une fois connecté, et effacé à la déconnexion.
+      return chatGptAvailable() && !!settings.chatgptModel
     default:
       return false
   }
@@ -138,6 +148,7 @@ export function modelName(settings: AiSettings, server: ServerAi | null) {
   if (settings.kind === 'server') return serverModelOf(settings, server) ?? ''
   if (settings.kind === 'openrouter') return settings.openrouterModel
   if (settings.kind === 'custom') return settings.customModel
+  if (settings.kind === 'chatgpt') return settings.chatgptModel
   return ''
 }
 
@@ -193,6 +204,7 @@ async function sendOnce(settings: AiSettings, input: PromptInput, opts: CallOpti
       return result
     }
     const messages = chatMessages(buildPrompt({ ...input, delivery: 'api' }), repair)
+    if (settings.kind === 'chatgpt') return await chatGptChat({ model: settings.chatgptModel, messages, reasoning: settings.reasoning, signal: opts.signal }, opts.onText)
     return await chat({ ...endpoint(settings), messages, reasoning: settings.reasoning, signal: opts.signal }, opts.onText)
   } catch (e) {
     throw toAiError(e)
@@ -255,6 +267,9 @@ async function transcribeOnce(settings: AiSettings, file: { name: string; type: 
     if (!res.ok) throw await errorFromResponse(res)
     return readChatStream(res, opts.onText)
   }
+  if (settings.kind === 'chatgpt') {
+    return chatGptChat({ model: settings.chatgptModel, messages: transcriptionMessages(file), reasoning: 'off', signal: opts.signal }, opts.onText)
+  }
   const target = endpoint(settings)
   const openRouter = settings.kind === 'openrouter'
   return chat(
@@ -280,6 +295,8 @@ export async function testAi(settings: AiSettings, signal?: AbortSignal): Promis
     if (settings.kind === 'server') {
       // Pas de route d'essai : la tâche la plus courte, sur un schéma vide.
       result = await sender(settings, { task: 'edit', instruction: prompt, vocabulary: [], lang: 'en', delivery: 'api' }, { signal })()
+    } else if (settings.kind === 'chatgpt') {
+      result = await chatGptChat({ model: settings.chatgptModel, messages: [{ role: 'user', content: prompt }], signal })
     } else {
       result = await chat({ ...endpoint(settings), messages: [{ role: 'user', content: prompt }], signal })
     }

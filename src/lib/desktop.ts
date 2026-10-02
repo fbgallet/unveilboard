@@ -1,10 +1,41 @@
 // Application de bureau (desktop/) : les pages y sont servies sur la boucle locale de l'ordinateur,
 // injoignable depuis un téléphone ou par un destinataire.
 
+/** État de la connexion ChatGPT, tel que le donne le processus principal (desktop/chatgpt.js). */
+export interface ChatGptState {
+  /** none : jamais connecté ; signed_out : inscription gardée, jetons effacés. */
+  status: 'none' | 'signed_out' | 'connecting' | 'connected'
+  email?: string
+  name?: string
+  /** Permission d'utiliser le forfait ChatGPT accordée. */
+  planUsage: boolean
+  /** Identifiants chiffrés sur le disque (sinon, le temps de la séance). */
+  persistent: boolean
+  error?: { code: string; message: string; status?: number }
+}
+
+/** Réponse du processus principal à une demande ; les jetons n'en sortent jamais. */
+export type ChatGptReply =
+  | { ok: true }
+  | { ok: false; status?: number; body?: string; requestId?: string | null; error?: { code: string; message: string; status?: number } }
+
+export interface ChatGptBridge {
+  state(): Promise<ChatGptState>
+  signIn(options?: { newAccount?: boolean; consent?: boolean }): Promise<ChatGptState>
+  cancelSignIn(): Promise<ChatGptState>
+  signOut(): Promise<{ state: ChatGptState; revoked: boolean }>
+  models(): Promise<{ ok: true; models: { slug: string; displayName: string }[] } | { ok: false; error: { code: string; message: string } }>
+  /** Demande à l'API Responses ; le flux arrive par onChunk, la promesse se résout à la fin. */
+  request(id: string, body: Record<string, unknown>): Promise<ChatGptReply>
+  abort(id: string): Promise<void>
+  onState(listener: (state: ChatGptState) => void): () => void
+  onChunk(listener: (id: string, text: string) => void): () => void
+}
+
 declare global {
   interface Window {
     /** Posé par le preload d'Electron (desktop/preload.js). */
-    unveilboardDesktop?: { platform: string }
+    unveilboardDesktop?: { platform: string; chatgpt?: ChatGptBridge }
   }
 }
 

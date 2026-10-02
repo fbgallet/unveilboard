@@ -31,6 +31,29 @@ const rootNode = (page: Page) =>
     return { id, x: origin.x + p.x, y: origin.y + p.y, folded: !!editor.getShape(id as never)!.meta.folded }
   })
 
+/**
+ * Racine une fois la caméra et l'arbre immobiles : tldraw ne met pas à jour la forme survolée pendant
+ * que la caméra bouge (cadrage de l'étape, arbre resserré ou écarté), et un survol pendant le
+ * mouvement resterait sans effet.
+ */
+async function settledRoot(page: Page) {
+  let last = ''
+  await expect
+    .poll(
+      async () => {
+        const root = await rootNode(page)
+        const camera = await page.evaluate(() => JSON.stringify((window as unknown as Win).editor.getCamera()))
+        const now = `${camera}|${root.x},${root.y}`
+        const still = now === last
+        last = now
+        return still
+      },
+      { intervals: [250] }
+    )
+    .toBe(true)
+  return rootNode(page)
+}
+
 test('présentation : replier et déplier une branche à la main', async ({ page, context }) => {
   await openTruthExample(page)
   await present(page)
@@ -42,7 +65,7 @@ test('présentation : replier et déplier une branche à la main', async ({ page
   const before = await hiddenShapes(page)
 
   // Survol de la racine : « − » pour replier sa branche.
-  const root = await rootNode(page)
+  const root = await settledRoot(page)
   await page.mouse.move(root.x, root.y)
   const collapse = page.locator('.fold-badge-open')
   await expect(collapse).toHaveCount(1)
@@ -62,7 +85,9 @@ test('présentation : replier et déplier une branche à la main', async ({ page
   await expect.poll(() => hiddenShapes(page)).toBe(before)
 
   // Revenir en arrière efface les gestes faits à la main.
-  await page.mouse.move(root.x, root.y)
+  const again = await settledRoot(page)
+  await page.mouse.move(again.x - 1, again.y)
+  await page.mouse.move(again.x, again.y)
   await page.locator('.fold-badge-open').click()
   await expect.poll(() => hiddenShapes(page)).toBeGreaterThan(before)
   await page.keyboard.press('ArrowLeft')
