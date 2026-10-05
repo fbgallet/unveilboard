@@ -10,6 +10,7 @@ import { z } from 'zod'
 import { TREE_DIRECTIONS } from '../tree/layout'
 import { checkMap, type KnownVocabulary, type MapIssue } from './check'
 import { MAP_FORMAT, MAP_VERSION, VocabularySchema, type UnveilMap } from './format'
+import type { PromptMethod } from '../ai/prompts'
 import { extractJson } from './read'
 import { PATCH_FORMAT, PatchSchema, previewPatch, type MapPatch } from './patch'
 
@@ -69,6 +70,8 @@ export interface PlanRecord {
   source?: { text: string; label?: string }
   /** Écrire la séquence à la finition (par défaut : oui). */
   withSequence?: boolean
+  /** Méthode de la bibliothèque de prompts choisie pour la création : suivie par chaque section. */
+  method?: PromptMethod
 }
 
 /**

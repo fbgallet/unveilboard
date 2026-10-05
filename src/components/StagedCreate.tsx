@@ -129,8 +129,15 @@ export function StagedCreate({
     if (!checkedPlan(current)) return
     setOpening(true)
     try {
-      const { instruction, notes, source, withSequence } = input()
-      await onLive({ plan: current, request: instruction, notes: notes !== false, ...(source && { source }), ...(withSequence === false && { withSequence }) })
+      const { instruction, notes, source, withSequence, method } = input()
+      await onLive({
+        plan: current,
+        request: instruction,
+        notes: notes !== false,
+        ...(source && { source }),
+        ...(withSequence === false && { withSequence }),
+        ...(method && { method }),
+      })
     } catch (e) {
       setFailure(errorText(toAiError(e)))
       setOpening(false)

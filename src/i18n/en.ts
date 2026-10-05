@@ -1432,6 +1432,58 @@ export const en = {
     },
   },
 
+  /** Bibliothèque de prompts : méthodes à suivre pour une tâche de l'IA. */
+  prompts: {
+    menu: 'Prompt library…',
+    title: 'Prompt library',
+    intro:
+      'A prompt is a method the AI follows for a task (an analysis to carry out, a shape of diagram). Choose it in the AI dialogs; Unveilboard still adds its own instructions on the format.',
+    method: 'Method',
+    none: 'None (default instructions)',
+    manage: 'Library…',
+    defaultGroup: 'My prompts',
+    shared: 'Shared collections',
+    sharedHint: 'Show only the collections you need: their prompts are offered in the AI dialogs.',
+    noShared: 'No shared prompts.',
+    count: (n: number) => `${n} prompt${n === 1 ? '' : 's'}`,
+    copy: 'Copy to my prompts',
+    copied: 'Copied to your prompts.',
+    copySuffix: ' (copy)',
+    mine: 'My prompts',
+    mineHint: (cloud: boolean): string =>
+      cloud ? 'Kept with your settings on the server: available on all your devices.' : 'Kept in this browser, with your settings.',
+    noMine: 'No prompts of your own yet.',
+    add: 'New prompt',
+    import: 'Import a .md file',
+    importFailed: 'This file could not be read as a prompt.',
+    edit: 'Edit',
+    export: 'Export',
+    remove: 'Delete',
+    confirmRemove: (title: string) => `Delete the prompt “${title}”?`,
+    save: 'Save',
+    fields: {
+      title: 'Title',
+      group: 'Group',
+      description: 'Description',
+      placeholder: 'Text shown in the request box',
+      tasks: 'Offered for',
+      tasksHint: 'None checked: every task.',
+      source: 'Prompt',
+      sourceHint:
+        'Sent with every task. To add a variant for some tasks only, write a line such as “## @create” or “## @expand @enrich”: what follows is sent only for those tasks.',
+    },
+    tasks: {
+      create: 'Create a diagram',
+      enrich: 'Enrich',
+      expand: 'Develop an element',
+      edit: 'Change',
+      sequence: 'Sequence',
+      review: 'Critical review',
+      plan: 'Plan (multi-pass)',
+    },
+    saveFailed: 'Saving failed:',
+  },
+
   /** Accès permanent à l'IA (en haut à droite du canevas). */
   launcher: {
     menuLabel: 'AI features',

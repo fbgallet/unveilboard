@@ -165,6 +165,7 @@ test('accès permanent à l’IA : une icône, un menu (relecture, à partir de 
     'Structure with a plan…',
     'New diagram from a text…',
     'Paste JSON (diagram or changes)…',
+    'Prompt library…',
     'AI settings…',
   ])
   await expect(menu.getByRole('menuitem', { name: 'Develop the selected element…' })).toBeDisabled()

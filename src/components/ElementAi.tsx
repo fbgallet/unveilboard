@@ -14,6 +14,7 @@ import type { MapIssue } from '@/lib/map/check'
 import type { ReadResult } from '@/lib/map/read'
 import { aiSettingsOpenAtom } from './AiSettingsDialog'
 import { Markdownish } from './Markdownish'
+import { PromptPicker, usePromptChoice } from './PromptPicker'
 
 /** Élément d'où partir (panneau ouvert), ou null. */
 export const elementAiAtom = atom<TLShapeId | null>('elementAi', null)
@@ -76,9 +77,11 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
 
   const pageSource = useValue('page source', () => readPageSource(editor), [editor])
   const [useSource, setUseSource] = useState(true)
+  const prompt = usePromptChoice('expand')
   const input = () => ({
     ...editorPromptInput(editor, 'expand', instruction, { focus: id, wholeMap, delivery: ready ? 'api' : 'clipboard', withSource: useSource }),
     notes,
+    ...(prompt.method && { method: prompt.method }),
   })
   const reset = () => {
     setIssues([])
@@ -148,6 +151,7 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
           </button>
         ))}
       </div>
+      <PromptPicker choice={prompt} disabled={!!run} />
       <textarea
         className="map-json-input assistant-instruction"
         rows={2}

@@ -25,6 +25,7 @@ import { readPageSource } from '@/lib/canvas/source'
 import { checkExcerpts } from '@/lib/map/excerpts'
 import { planPanelOpenAtom } from './PlanPanel'
 import { skeletonMap } from '@/lib/map/plan'
+import { PromptPicker, usePromptChoice } from './PromptPicker'
 
 export const mapImportOpenAtom = atom<boolean>('mapImportOpen', false)
 export const assistantOpenAtom = atom<boolean>('assistantOpen', false)
@@ -260,8 +261,10 @@ function AssistantView({ editor }: { editor: Editor }) {
   const [answer, setAnswer] = useState('')
   const [run, setRun] = useState<{ chars: number; thinking: number; seconds: number; abort: AbortController } | null>(null)
   const [outcome, setOutcome] = useState<AiRun<unknown> & { seconds: number } | null>(null)
+  const prompt = usePromptChoice(task)
+  const method = prompt.method && { method: prompt.method }
 
-  const input = () => ({ ...editorPromptInput(editor, task, instruction, { selection: useSelection && task !== 'create', withSource }), notes })
+  const input = () => ({ ...editorPromptInput(editor, task, instruction, { selection: useSelection && task !== 'create', withSource }), notes, ...method })
   /** Réponse de l'IA ; une création à partir du texte a ses extraits vérifiés (à corriger au premier essai). */
   const check = (text: string, attempt: number) => {
     const result = readPasted(editor, text)
@@ -356,6 +359,7 @@ function AssistantView({ editor }: { editor: Editor }) {
             </>
           )}
         </p>
+        <PromptPicker choice={prompt} disabled={!!run} />
         <textarea
           className="map-json-input assistant-instruction"
           value={instruction}
@@ -363,7 +367,7 @@ function AssistantView({ editor }: { editor: Editor }) {
             setInstruction(e.target.value)
             changed()
           }}
-          placeholder={t.assistant.placeholders[task]}
+          placeholder={(task === 'create' && prompt.template?.placeholder) || t.assistant.placeholders[task]}
           aria-label={t.assistant.instructionLabel}
           rows={task === 'create' ? 6 : 3}
         />
@@ -405,7 +409,7 @@ function AssistantView({ editor }: { editor: Editor }) {
           <StagedCreate
             editor={editor}
             settings={settings}
-            input={() => ({ ...editorPromptInput(editor, 'create', instruction, { delivery: 'api', withSource }), notes })}
+            input={() => ({ ...editorPromptInput(editor, 'create', instruction, { delivery: 'api', withSource }), notes, ...method })}
             canStart={!!instruction.trim() || withSource}
             onResult={(map) => setAnswer(JSON.stringify(map, null, 2))}
             onLive={async (record) => {

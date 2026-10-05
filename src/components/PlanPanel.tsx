@@ -18,6 +18,7 @@ import { previewPatch } from '@/lib/map/patch'
 import { applyPatch } from '@/lib/canvas/mapPatch'
 import { PlanEditor } from './PlanEditor'
 import { aiSettingsOpenAtom } from './AiSettingsDialog'
+import { PromptPicker, usePromptChoice } from './PromptPicker'
 
 export const planPanelOpenAtom = atom<boolean>('planPanelOpen', false)
 
@@ -46,6 +47,7 @@ function PlanProposal({ editor }: { editor: Editor }) {
   const [remarks, setRemarks] = useState('')
   const [run, setRun] = useState<{ chars: number; thinking: number; abort: AbortController } | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
+  const prompt = usePromptChoice('plan')
 
   async function propose(previous?: DiagramPlan) {
     setFailure(null)
@@ -54,7 +56,7 @@ function PlanProposal({ editor }: { editor: Editor }) {
     setRun({ chars: 0, thinking: 0, abort })
     const ask: Ask = (input, check, opts) =>
       askAi({ ...settings, reasoning: opts.reasoning ?? settings.reasoning }, input, check, { signal: abort.signal, onText: opts.onText })
-    const base = editorPromptInput(editor, 'plan', request, { delivery: 'api', withSource: true })
+    const base = { ...editorPromptInput(editor, 'plan', request, { delivery: 'api', withSource: true }), ...(prompt.method && { method: prompt.method }) }
     try {
       const result = await askPlan(
         { ask, known: knownVocabulary(editor), base, reasoning: settings.reasoning, signal: abort.signal },
@@ -83,7 +85,7 @@ function PlanProposal({ editor }: { editor: Editor }) {
       if (errors.length) return setIssues(errors)
       applyPatch(editor, patch)
     }
-    writePlanRecord(editor, { plan: current, request, notes: true })
+    writePlanRecord(editor, { plan: current, request, notes: true, ...(prompt.method && { method: prompt.method }) })
     editor.zoomToFit({ animation: { duration: 300 } })
   }
 
@@ -102,12 +104,13 @@ function PlanProposal({ editor }: { editor: Editor }) {
           {t.ai.configure}
         </button>
       </div>
+      <PromptPicker choice={prompt} disabled={!!run} />
       <textarea
         className="map-json-input assistant-instruction"
         rows={3}
         value={request}
         aria-label={t.plan.request}
-        placeholder={t.plan.requestPlaceholder}
+        placeholder={prompt.template?.placeholder ?? t.plan.requestPlaceholder}
         onChange={(e) => setRequest(e.target.value)}
       />
       <div className="flex flex-wrap items-center gap-2">
@@ -213,6 +216,7 @@ function PlanView({ editor }: { editor: Editor }) {
       // Schéma tiré d'un texte : chaque section reçoit son passage, et ses extraits sont vérifiés.
       ...(source && { source }),
       ...(record.withSequence === false && { withSequence: false }),
+      ...(record.method && { method: record.method }),
     }
     return {
       ctx: { ask, known: knownVocabulary(editor), base, reasoning: settings.reasoning, signal: abort.signal },

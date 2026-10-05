@@ -10,7 +10,7 @@ import { PlanSchema, type DiagramPlan } from '../map/plan'
 import { numberedSource, passageOf, sourceParagraphs } from '../source/paragraphs'
 import { FOCUS_OF_KIND, REMARK_KINDS, REVIEW_FOCUS, type ReviewFocus } from '../map/review'
 
-export const PROMPT_VERSION = 8
+export const PROMPT_VERSION = 9
 
 export const TASKS = ['create', 'enrich', 'sequence', 'review', 'edit', 'expand', 'plan', 'develop', 'finish'] as const
 export type Task = (typeof TASKS)[number]
@@ -21,6 +21,17 @@ export type Task = (typeof TASKS)[number]
  */
 export const ASSISTANT_TASKS = ['create', 'enrich', 'sequence', 'edit'] as const satisfies readonly Task[]
 export type AssistantTask = (typeof ASSISTANT_TASKS)[number]
+
+/**
+ * Méthode choisie dans la bibliothèque de prompts (src/lib/prompts) : une partie commune et, au
+ * besoin, une variante par tâche. Résolue côté navigateur, puis envoyée telle quelle : le serveur
+ * n'a pas besoin de la bibliothèque, et les prompts personnels marchent partout.
+ */
+export interface PromptMethod {
+  title: string
+  body: string
+  variants?: Partial<Record<Task, string>>
+}
 
 /** Une entrée du vocabulaire proposé (préréglages de l'utilisateur, dans sa langue). */
 export interface VocabularyLine {
@@ -66,6 +77,8 @@ export interface PromptInput {
   planRemarks?: string
   /** « develop » : précision de l'utilisateur pour cette section, à cette passe. */
   sectionRequest?: string
+  /** Méthode de la bibliothèque de prompts, à suivre pour cette tâche (et les étapes qui en découlent). */
+  method?: PromptMethod
   vocabulary: VocabularyLine[]
   /** Langue du contenu à écrire (« fr », « en »…). */
   lang: string
@@ -92,6 +105,13 @@ export const PromptInputSchema = z.object({
   plan: PlanSchema.optional(),
   planRemarks: z.string().max(10_000).optional(),
   sectionRequest: z.string().max(10_000).optional(),
+  method: z
+    .object({
+      title: z.string().max(200),
+      body: z.string().max(30_000),
+      variants: z.partialRecord(z.enum(TASKS), z.string().max(30_000)).optional(),
+    })
+    .optional(),
   vocabulary: z
     .array(
       z.object({
@@ -139,6 +159,7 @@ export function buildPrompt(input: PromptInput): string {
               : input.task === 'finish' && input.withSequence === false
                 ? FINISH_LINKS_TEXT
           : TASK_TEXT[input.task].replace('{focus}', input.focus ?? ''),
+    methodText(input.method, input.task),
     input.instruction.trim() ? `## The user's request\n\n${input.instruction.trim()}` : '',
     sourceWorkText(input),
     sourceFor(input),
@@ -173,6 +194,28 @@ ${JSON.stringify(input.plan, null, 1)}
 const INTRO = `# Unveilboard
 
 You are helping a teacher with Unveilboard, an app that shows diagrams step by step (argument maps, mind maps, classifications, processes, comparisons…, often for teaching philosophy). A diagram is made of **elements** (boxes) of a given **type**, arranged in **trees**: each child is connected to its parent by a **relation** (supports, objects to…). In an argument map, the relation gives the child its **function** (Justification, Objection…). A **sequence** of steps reveals the diagram progressively, with a narration for the audience.`
+
+/** Étapes d'une création en plusieurs temps : sans variante propre, elles suivent celle de la création. */
+const STAGE_TASKS: Task[] = ['plan', 'develop', 'finish']
+
+/** La variante d'une méthode pour une tâche (celle de la création pour ses étapes), sinon rien. */
+export function methodVariant(method: PromptMethod, task: Task): string {
+  return (method.variants?.[task] ?? (STAGE_TASKS.includes(task) ? method.variants?.create : undefined) ?? '').trim()
+}
+
+/** La méthode choisie par l'utilisateur : elle oriente le contenu, pas les formats ni les règles. */
+function methodText(method: PromptMethod | undefined, task: Task): string {
+  if (!method) return ''
+  const text = [method.body.trim(), methodVariant(method, task)].filter(Boolean).join('\n\n')
+  if (!text) return ''
+  return `## The method to follow: ${method.title.trim()}
+
+The user chose this method for the task. Follow it closely: on the content, the structure and the vocabulary of the diagram, it takes precedence over the general guidance below (shape, depth). It does not change the JSON format, the ids or the rules on faithfulness. The method may be written in another language than the content: write the content in the language required by the rules.
+
+<method>
+${text}
+</method>`
+}
 
 /** Tâches qui construisent la structure d'un schéma : sa forme (à la création), sa profondeur. */
 const SHAPE_TASKS: Task[] = ['create', 'plan', 'develop', 'enrich', 'expand']

@@ -17,6 +17,7 @@ import { FOCUS_OF_AUTO, REVIEW_FOCUS, autoRemarks, nameRefs, summarizeOperations
 import { readJson, type ReadResult } from '@/lib/map/read'
 import { modeAtom } from '@/lib/presentation/store'
 import { aiSettingsOpenAtom } from './AiSettingsDialog'
+import { PromptPicker, usePromptChoice } from './PromptPicker'
 import { Markdownish } from './Markdownish'
 
 /** Remarque mise en avant (cliquée sur le canevas ou dans la liste). */
@@ -132,8 +133,11 @@ function ReviewView({ editor }: { editor: Editor }) {
   /** Remarques dont la correction ne s'applique plus (le schéma a changé depuis la relecture). */
   const [stale, setStale] = useState<string[]>([])
 
-  const input = (delivery: 'api' | 'clipboard') =>
-    editorPromptInput(editor, 'review', instruction, { selection: useSelection, delivery, reviewFocus: focus, withSource: true })
+  const prompt = usePromptChoice('review')
+  const input = (delivery: 'api' | 'clipboard') => ({
+    ...editorPromptInput(editor, 'review', instruction, { selection: useSelection, delivery, reviewFocus: focus, withSource: true }),
+    ...(prompt.method && { method: prompt.method }),
+  })
   /** Réponse : une relecture ; première réponse d'une IA : une correction invalide est à corriger. */
   const check = (answer: string, attempt: number): ReadResult => {
     const result = readJson(answer, knownVocabulary(editor), exportMap(editor).map, { strict: attempt === 1 })
@@ -211,6 +215,7 @@ function ReviewView({ editor }: { editor: Editor }) {
           </label>
         ))}
       </fieldset>
+      <PromptPicker choice={prompt} disabled={!!run} />
       <textarea
         className="map-json-input assistant-instruction"
         rows={2}

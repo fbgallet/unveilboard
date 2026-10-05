@@ -43,6 +43,8 @@ import { loadPresetSettings, registerPresetSideEffects } from '@/lib/canvas/pres
 import { installPageApi } from '@/lib/canvas/assistant'
 import { loadAiSettings, serverAiAtom } from '@/lib/ai/client'
 import { AiSettingsDialog, aiSettingsOpenAtom } from './AiSettingsDialog'
+import { PromptLibraryDialog } from './PromptLibraryDialog'
+import { loadPromptLibrary, promptLibraryOpenAtom } from '@/lib/prompts/library'
 import { SuggestionBadges, SuggestionBar } from './Suggestions'
 import { ElementAiPanel, elementAiAtom } from './ElementAi'
 import { SourceDialog, sourceDialogOpenAtom } from './SourceDialog'
@@ -163,6 +165,7 @@ export default function Studio({
     // Relecture critique gardée pour ce schéma (sur cet appareil).
     loadReview(docId)
     void loadPresetSettings(settingsStore(storage))
+    void loadPromptLibrary(settingsStore(storage))
     return () => {
       stop()
       stopFile()
@@ -180,6 +183,7 @@ export default function Studio({
       mapImportOpenAtom.set(false)
       assistantOpenAtom.set(false)
       aiSettingsOpenAtom.set(false)
+      promptLibraryOpenAtom.set(false)
       elementAiAtom.set(null)
       sourceDialogOpenAtom.set(false)
       reviewOpenAtom.set(false)
@@ -250,6 +254,7 @@ export default function Studio({
         {editor && <MapImportDialog editor={editor} />}
         {editor && <AssistantDialog editor={editor} />}
         {editor && <AiSettingsDialog />}
+        {editor && <PromptLibraryDialog />}
         {editor && <SourceDialog editor={editor} />}
       </div>
       {editor && <PresentationHost editor={editor} docId={docId} />}

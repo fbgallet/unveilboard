@@ -13,8 +13,9 @@ import { readPageSource } from '@/lib/canvas/source'
 import { setSourcePanelOpen, sourcePanelOpenAtom } from './SourcePanel'
 import { mapImportOpenAtom, openAssistant } from './MapJsonDialog'
 import { sourceDialogOpenAtom } from './SourceDialog'
+import { promptLibraryOpenAtom } from '@/lib/prompts/library'
 
-type IconName = 'branch' | 'wand' | 'steps' | 'review' | 'document' | 'braces' | 'gear' | 'plan'
+type IconName = 'branch' | 'wand' | 'steps' | 'review' | 'document' | 'braces' | 'gear' | 'plan' | 'library'
 
 interface Item {
   id: string
@@ -66,6 +67,8 @@ const ICONS: Record<IconName, React.ReactNode> = {
   ),
   braces: <path d="M9 4c-2 0-2.5 1-2.5 3v2c0 1.5-.8 2.5-2.5 3 1.7.5 2.5 1.5 2.5 3v2c0 2 .5 3 2.5 3M15 4c2 0 2.5 1 2.5 3v2c0 1.5.8 2.5 2.5 3-1.7.5-2.5 1.5-2.5 3v2c0 2-.5 3-2.5 3" />,
   plan: <path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" />,
+  // Livres sur une étagère : la bibliothèque de prompts.
+  library: <path d="M4 4h3v16H4zM9 4h3v16H9zM14.5 4.8l2.9-.8 4 15.4-2.9.8zM3 20.5h18" />,
   gear: (
     <>
       <circle cx="12" cy="12" r="3" />
@@ -85,7 +88,7 @@ function MenuIcon({ name }: { name: IconName }) {
 /**
  * Accès permanent à l'IA, en haut à droite du canevas (en édition) : une icône discrète qui ouvre
  * un menu en trois groupes : ce schéma (développer l'élément sélectionné, créer ou modifier,
- * séquence, relecture critique), un nouveau schéma (depuis un texte, JSON), les réglages.
+ * séquence, relecture critique), un nouveau schéma (depuis un texte, JSON), la bibliothèque de prompts et les réglages.
  * Le menu ☰ garde les mêmes entrées.
  */
 export function AiLauncher() {
@@ -128,7 +131,7 @@ export function AiLauncher() {
     setOpen(false)
     action()
   }
-  // Trois groupes : ce schéma ; un nouveau schéma ; les réglages.
+  // Trois groupes : ce schéma ; un nouveau schéma ; prompts et réglages.
   const groups: Item[][] = [
     [
       {
@@ -164,7 +167,10 @@ export function AiLauncher() {
       { id: 'source', icon: 'document', label: t.source.menu, action: () => sourceDialogOpenAtom.set(true) },
       { id: 'json', icon: 'braces', label: t.mapJson.menuImport, action: () => mapImportOpenAtom.set(true) },
     ],
-    [{ id: 'settings', icon: 'gear', label: t.ai.settingsMenu, action: () => aiSettingsOpenAtom.set(true) }],
+    [
+      { id: 'prompts', icon: 'library', label: t.prompts.menu, action: () => promptLibraryOpenAtom.set(true) },
+      { id: 'settings', icon: 'gear', label: t.ai.settingsMenu, action: () => aiSettingsOpenAtom.set(true) },
+    ],
   ]
 
   return (

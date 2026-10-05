@@ -25,6 +25,7 @@
     "db:studio": "drizzle-kit studio",
     "test": "vitest run",
     "map:schema": "UPDATE_MAP_SCHEMA=1 vitest run src/lib/map",
+    "prompts:build": "UPDATE_PROMPT_LIBRARY=1 vitest run src/lib/prompts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

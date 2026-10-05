@@ -13,6 +13,7 @@ import { checkExcerpts, type ExcerptCheck } from '@/lib/map/excerpts'
 import type { ReadResult } from '@/lib/map/read'
 import { LONG_SOURCE_CHARS, MAX_SOURCE_CHARS, MAX_TRANSCRIBE_BYTES, estimateTokens, fileToDataUri, readSourceFile } from '@/lib/source/read'
 import { aiSettingsOpenAtom } from './AiSettingsDialog'
+import { PromptPicker, usePromptChoice } from './PromptPicker'
 import { planPanelOpenAtom } from './PlanPanel'
 import { openSourcePanel } from './SourcePanel'
 import { readPageSource } from '@/lib/canvas/source'
@@ -71,6 +72,7 @@ function SourceView({ editor }: { editor: Editor }) {
   const [busy, setBusy] = useState(false)
   const [staged, setStaged] = useState(false)
   const [keepText, setKeepText] = useState(true)
+  const prompt = usePromptChoice('create')
 
   const input = (delivery: PromptInput['delivery']): PromptInput => ({
     ...editorPromptInput(editor, 'create', instruction, { delivery }),
@@ -78,6 +80,7 @@ function SourceView({ editor }: { editor: Editor }) {
     kind,
     withSequence,
     notes,
+    ...(prompt.method && { method: prompt.method }),
   })
 
   /** Réponse de l'IA : un schéma entier, dont les extraits sont vérifiés dans le texte. */
@@ -297,12 +300,13 @@ function SourceView({ editor }: { editor: Editor }) {
             <input type="checkbox" checked={notes} onChange={(e) => setNotes(e.target.checked)} />
             {t.ai.notesOption}
           </label>
+          <PromptPicker choice={prompt} disabled={!!run} />
           <textarea
             className="map-json-input assistant-instruction"
             rows={2}
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
-            placeholder={t.source.instructionPlaceholder}
+            placeholder={prompt.template?.placeholder ?? t.source.instructionPlaceholder}
             aria-label={t.source.instructionLabel}
           />
           {ready && (

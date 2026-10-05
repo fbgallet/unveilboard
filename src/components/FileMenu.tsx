@@ -22,6 +22,7 @@ import { presetGuideOpenAtom, presetManagerOpenAtom } from './PresetTools'
 import { shareDialogOpenAtom } from './ShareDialog'
 import { handoutOpenAtom } from './Handout'
 import { aiSettingsOpenAtom } from './AiSettingsDialog'
+import { promptLibraryOpenAtom } from '@/lib/prompts/library'
 import { sourceDialogOpenAtom } from './SourceDialog'
 import { reviewOpenAtom } from '@/lib/canvas/review'
 import { assistantOpenAtom, downloadMapJson, mapImportOpenAtom, mapJsonText } from './MapJsonDialog'
@@ -111,6 +112,7 @@ export function MainMenu() {
             <TldrawUiMenuItem id="from-source" label={t.source.menu} readonlyOk onSelect={() => void sourceDialogOpenAtom.set(true)} />
           </TldrawUiMenuGroup>
           <TldrawUiMenuGroup id="schema-ai-settings">
+            <TldrawUiMenuItem id="ai-prompts" label={t.prompts.menu} readonlyOk onSelect={() => void promptLibraryOpenAtom.set(true)} />
             <TldrawUiMenuItem id="ai-settings" label={t.ai.settingsMenu} readonlyOk onSelect={() => void aiSettingsOpenAtom.set(true)} />
           </TldrawUiMenuGroup>
         </TldrawUiMenuSubmenu>
