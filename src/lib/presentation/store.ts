@@ -102,8 +102,12 @@ export const editUnlockedAtom = atom<boolean>('editUnlocked', false)
 export interface FoldBadgesState {
   folded: { id: string; n: number }[]
   open: string[]
+  /** Profondeur du plus profond des arbres de la page (0 : pas d'arbre à plusieurs niveaux). */
+  depth: number
+  /** Niveau de repli commun aux arbres de la page (null : tout déplié ; undefined : mixte). */
+  level?: number | null
 }
-export const foldBadgesAtom = atom<FoldBadgesState>('foldBadges', { folded: [], open: [] })
+export const foldBadgesAtom = atom<FoldBadgesState>('foldBadges', { folded: [], open: [], depth: 0 })
 
 /**
  * Branches repliées ou dépliées à la main pendant la présentation, sans toucher au document :
@@ -113,8 +117,11 @@ export const foldBadgesAtom = atom<FoldBadgesState>('foldBadges', { folded: [], 
 export type FoldOverrides = Record<string, { folded: boolean; step: number }>
 export const foldOverridesAtom = atom<FoldOverrides>('foldOverrides', {})
 
-export function setFoldOverride(id: string, folded: boolean) {
-  foldOverridesAtom.set({ ...foldOverridesAtom.get(), [id]: { folded, step: stepIndexAtom.get() } })
+export function setFoldOverrides(folds: Iterable<[string, boolean]>) {
+  const step = stepIndexAtom.get()
+  const next = { ...foldOverridesAtom.get() }
+  for (const [id, folded] of folds) next[id] = { folded, step }
+  foldOverridesAtom.set(next)
 }
 
 /** Notes d'objets ouvertes à la main (double-clic) pendant l'étape courante. */

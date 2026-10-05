@@ -1,10 +1,20 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { react, type Editor, type TLCamera, type TLEventInfo } from 'tldraw'
-import { activeSpotlights, boundsOf, computeEditorStage, drawClip, moveCamera, readSequence, writeSequence } from '@/lib/canvas/adapter'
+import { react, type Editor, type TLCamera, type TLEventInfo, type TLShapeId } from 'tldraw'
+import {
+  activeSpotlights,
+  adjacentPage,
+  boundsOf,
+  computeEditorStage,
+  drawClip,
+  moveCamera,
+  presentedSequence,
+  readSequence,
+  writeSequence,
+} from '@/lib/canvas/adapter'
 import { stateOf, type Stage } from '@/lib/sequence/compute'
-import { branchOf, getTreeIndex, relayoutAll, setFoldSource } from '@/lib/canvas/tree'
+import { branchOf, foldLevelOf, foldsForLevel, getTreeIndex, relayoutAll, setFoldSource, treeDepths, treeRoots } from '@/lib/canvas/tree'
 import { noteOf, panelNoteIds } from '@/lib/canvas/notes'
 import { swallowNextKeyUp } from '@/lib/keyboard'
 import { applyLaserTiming } from '@/lib/canvas/laser'
@@ -14,6 +24,7 @@ import {
   editUnlockedAtom,
   foldBadgesAtom,
   foldOverridesAtom,
+  setFoldOverrides,
   laserPopoverOpenAtom,
   laserSettingsAtom,
   liveSpotAtom,
@@ -58,12 +69,25 @@ export function exitPresentation() {
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
 }
 
+/**
+ * Aller à une étape de la page. Un pas après la dernière, on passe au départ de la page suivante ;
+ * un pas avant le départ, à la dernière étape de la page précédente. Au-delà (touches Début, Fin),
+ * on reste sur la page.
+ */
 export function goToStep(editor: Editor, index: number) {
-  const seq = readSequence(editor)
-  if (!seq) return
+  const seq = presentedSequence(editor)
   overviewAtom.set(false)
+  const page = index === seq.steps.length ? adjacentPage(editor, 1) : index === -2 ? adjacentPage(editor, -1) : null
+  if (page) {
+    pendingPageStep = index < -1 ? presentedSequence(editor, page).steps.length - 1 : -1
+    editor.setCurrentPage(page)
+    return
+  }
   stepIndexAtom.set(Math.max(-1, Math.min(index, seq.steps.length - 1)))
 }
+
+/** Étape où arriver sur la page qu'on vient de choisir (goToStep) ; sinon, son départ. */
+let pendingPageStep: number | null = null
 
 /**
  * Branche le moteur de présentation sur l'éditeur : classes CSS, caméra, clavier.
@@ -151,7 +175,7 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
         prevSpots = ''
         shapeClassesAtom.set(quickSequenceAtom.get() ? quickSequencePreview(editor) : null)
         activeSpotsAtom.set([])
-        foldBadgesAtom.set({ folded: [], open: [] })
+        foldBadgesAtom.set({ folded: [], open: [], depth: 0 })
         if (layoutKey !== null) {
           layoutKey = null
           pages.delete(editor.getCurrentPageId())
@@ -162,9 +186,8 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
         }
         return
       }
-      const seq = readSequence(editor)
+      const seq = presentedSequence(editor)
       const index = stepIndexAtom.get()
-      if (!seq) return
       if (index !== prevIndex) {
         // On n'anime les entrées que lorsqu'on avance.
         animatedIndex = index > prevIndex ? index : -2
@@ -238,8 +261,7 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
       const overview = overviewAtom.get()
       recenterAtom.get()
       if (mode !== 'present') return
-      const seq = readSequence(editor)
-      if (!seq) return
+      const seq = presentedSequence(editor)
       // Lecture hors suivi : la caméra ne doit pas se recaler à chaque modification du document.
       queueMicrotask(() => {
         const stage = computeEditorStage(editor, seq, index)
@@ -288,7 +310,8 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
       if (modeAtom.get() !== 'present') return
       clearLiveSpot()
       overviewAtom.set(false)
-      stepIndexAtom.set(-1)
+      stepIndexAtom.set(pendingPageStep ?? -1)
+      pendingPageStep = null
     })
   }, [editor, keyboard])
 
@@ -396,6 +419,22 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
         case 'F':
           toggleFullscreen()
           break
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9': {
+          // Arbres repliés à ce niveau ; la même touche une seconde fois les déplie entièrement.
+          const { depth, level } = foldBadgesAtom.get()
+          const n = Number(e.key)
+          if (n >= depth) handled = false
+          else foldLevelLive(editor, level === n ? null : n)
+          break
+        }
         case 'Escape':
           if (laserPopoverOpenAtom.get() || moreMenuOpenAtom.get() || shortcutsHelpOpenAtom.get()) {
             laserPopoverOpenAtom.set(false)
@@ -436,7 +475,21 @@ function foldBadges(editor: Editor, stage: Stage) {
       if (n > 0) folded.push({ id, n })
     } else if (kids.some(shown)) open.push(id)
   }
-  return { folded, open }
+  // Niveau de repli commun aux arbres de la page, pour le menu et les touches 1 à 9.
+  const roots = treeRoots(editor)
+  const depth = Math.max(0, ...roots.flatMap((r) => [...treeDepths(editor, r).values()]))
+  const levels = new Set(roots.map((r) => foldLevelOf(editor, r, (id) => !!stateOf(stage, id).folded)))
+  return { folded, open, depth, level: levels.size === 1 ? [...levels][0] : undefined }
+}
+
+/** Présentation : déplie une branche tout entière (sous-branches comprises), le temps de la séance. */
+export function unfoldBranchLive(editor: Editor, id: TLShapeId) {
+  setFoldOverrides([id, ...branchOf(editor, id)].map((n) => [n, false]))
+}
+
+/** Présentation : replie tous les arbres de la page à un niveau (null : déplie tout). */
+export function foldLevelLive(editor: Editor, level: number | null) {
+  setFoldOverrides(treeRoots(editor).flatMap((r) => [...foldsForLevel(editor, r, level)]))
 }
 
 /**

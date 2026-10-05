@@ -283,6 +283,7 @@ export const fr: Messages = {
     exit: 'Quitter la présentation (Échap)',
     exitShort: 'Quitter',
     end: 'Terminer la présentation',
+    nextPage: (name: string) => `Page suivante : ${name} →`,
   },
 
   screen: {
@@ -377,8 +378,8 @@ export const fr: Messages = {
     display: 'Affichage',
     tools: 'Outils',
     other: 'Divers',
-    next: 'Étape suivante',
-    previous: 'Étape précédente',
+    next: 'Étape suivante (après la dernière : page suivante)',
+    previous: 'Étape précédente (avant la première : page précédente)',
     firstLast: 'Première / dernière étape',
     overview: 'Vue d’ensemble',
     recenter: 'Recentrer sur l’étape',
@@ -388,6 +389,7 @@ export const fr: Messages = {
     textSize: 'Taille du texte du panneau (0 : par défaut)',
     textSizeWheel: 'Taille du texte, au-dessus du panneau',
     legend: 'Légende',
+    foldLevel: 'Replier les arbres à ce niveau (une seconde fois : tout déplier)',
     laser: 'Pointeur laser',
     mask: 'Calque occultant (tracer la zone à garder)',
     note: 'Ouvrir la note d’un objet',
@@ -746,6 +748,11 @@ export const fr: Messages = {
     sibling: 'frère',
     expandBranch: 'Déplier la branche',
     collapseBranch: 'Replier la branche',
+    levels: 'Niveaux',
+    levelsHint: 'Replier tout l’arbre à un niveau : 1 laisse voir la racine et ses branches principales',
+    foldToLevel: (n: number) => `Replier au niveau ${n}`,
+    unfoldAll: 'Tout déplier',
+    all: 'Tout',
   },
 
   sync: {
@@ -1208,6 +1215,7 @@ export const fr: Messages = {
     title: 'Demander à l’IA à partir de cet élément',
     heading: (text) => (text ? `IA, à partir de « ${text} »` : 'IA, à partir de cet élément'),
     placeholder: 'Que doit ajouter l’IA à partir de cet élément ? Par exemple : deux objections, avec une réponse à chacune.',
+    placeholderMethod: 'Facultatif : la méthode suffit. Vous pouvez préciser (par exemple : une seule série, vers la morale).',
     instructionLabel: 'Votre demande',
     quick: {
       arguments: { label: 'Arguments', request: 'Propose des arguments qui soutiennent cet élément.' },

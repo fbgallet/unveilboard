@@ -53,7 +53,7 @@ test('bibliothèque de prompts : collection partagée, méthode choisie, prompt 
   await page.screenshot({ path: 'test-results/prompt-picker.png' })
   let prompt = await copiedPrompt(page, dialog)
   expect(prompt).toContain('## The method to follow: Réseau conceptuel du sujet')
-  expect(prompt).toContain('Vise trois à six séries par terme clé')
+  expect(prompt).toContain('quinze à vingt-cinq éléments en tout')
   expect(prompt).not.toContain('Relis le schéma comme un réseau conceptuel')
   expect(prompt).not.toContain('## @')
 
@@ -68,4 +68,19 @@ test('bibliothèque de prompts : collection partagée, méthode choisie, prompt 
   // Le choix est retenu par tâche.
   await dialog.getByRole('radio', { name: 'Create a diagram' }).click()
   await expect(dialog.getByRole('combobox', { name: 'Method' })).toHaveValue('philosophie/dissertation/reseau-conceptuel')
+
+  await dialog.getByRole('button', { name: 'Close' }).click()
+
+  // À partir d'un élément : la méthode suffit, la demande écrite devient facultative.
+  await page.evaluate(() => {
+    const { editor } = window as unknown as { editor: import('tldraw').Editor }
+    editor.select(editor.getCurrentPageShapes().find((s) => s.meta.ref === 'thesis')!.id)
+  })
+  await openFromLauncher(page, 'Develop the selected element…')
+  const panel = page.getByRole('dialog', { name: 'Ask the AI from this element' })
+  const ask = panel.getByRole('button', { name: /Ask the AI|Copy the prompt/ })
+  await expect(ask).toBeDisabled()
+  await panel.getByRole('combobox', { name: 'Method' }).selectOption({ label: 'Réseau conceptuel du sujet' })
+  await expect(panel.getByRole('textbox', { name: 'Your request' })).toHaveAttribute('placeholder', /the method is enough/)
+  await expect(ask).toBeEnabled()
 })

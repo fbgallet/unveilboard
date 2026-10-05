@@ -5,12 +5,13 @@ import { renderPlaintextFromRichText, useEditor, useValue, type Editor, type TLP
 import { noteOf, panelNoteIds, plannedNoteIds, resolveTextImage } from '@/lib/canvas/notes'
 import { presetById, swatchColor } from '@/lib/canvas/presets'
 import { presetName } from '@/lib/presets/labels'
-import { pagesWithSteps, readSequence } from '@/lib/canvas/adapter'
+import { adjacentPage, presentedPages, presentedSequence, readSequence } from '@/lib/canvas/adapter'
 import {
   DEFAULT_LASER,
   LASER_COLORS,
   NARRATION_WIDTH,
   editUnlockedAtom,
+  foldBadgesAtom,
   laserPopoverOpenAtom,
   laserSettingsAtom,
   liveSpotAtom,
@@ -45,7 +46,9 @@ import {
   toggleOverview,
   toggleSpotTool,
   toggleUnlocked,
+  foldLevelLive,
 } from './usePresentation'
+import { FoldLevels } from './TreeTools'
 import { ResizeHandle } from './ResizeHandle'
 import { Markdownish } from './Markdownish'
 import { screenConnectedAtom } from '@/lib/presentation/screen'
@@ -61,6 +64,14 @@ export function NarrationPanel({ editor, top, onPinScale }: { editor: Editor; to
   const t = useT()
   const seq = useValue('sequence', () => readSequence(editor), [editor])
   const index = useValue(stepIndexAtom)
+  const nextPage = useValue(
+    'next page',
+    () => {
+      const id = adjacentPage(editor, 1)
+      return id && { name: editor.getPage(id)?.name ?? '' }
+    },
+    [editor]
+  )
   const visible = useValue(narrationVisibleAtom)
   const width = useValue(narrationWidthAtom)
   const scale = useValue(narrationScaleAtom)
@@ -102,7 +113,9 @@ export function NarrationPanel({ editor, top, onPinScale }: { editor: Editor; to
 
   if (!seq || !visible) return null
   const note = tabs.find((n) => n.id === active)
-  const last = !viewer && !note && index >= 0 && index === seq.steps.length - 1
+  // Fin de la page : la page suivante s'il y en a une, sinon (présentateur) de quoi sortir.
+  const atEnd = !note && index === seq.steps.length - 1
+  const last = !viewer && atEnd && index >= 0 && !nextPage
 
   return (
     <aside
@@ -194,6 +207,11 @@ export function NarrationPanel({ editor, top, onPinScale }: { editor: Editor; to
             {t.presenter.end}
           </button>
         )}
+        {atEnd && nextPage && (
+          <button className="btn narration-exit mt-[2em]" onClick={() => goToStep(editor, index + 1)}>
+            {t.presenter.nextPage(nextPage.name)}
+          </button>
+        )}
       </div>
     </aside>
   )
@@ -216,22 +234,24 @@ export function ProgressBar({
   sourceText?: { open: boolean; toggle(): void }
 }) {
   const t = useT()
-  const seq = useValue('sequence', () => readSequence(editor), [editor])
+  const seq = useValue('sequence', () => presentedSequence(editor), [editor])
   const index = useValue(stepIndexAtom)
   const overview = useValue(overviewAtom)
+  const prevPage = useValue('previous page', () => adjacentPage(editor, -1), [editor])
+  const nextPage = useValue('next page', () => adjacentPage(editor, 1), [editor])
   const narration = useValue(narrationVisibleAtom)
   const unlocked = useValue(editUnlockedAtom)
   const viewer = useValue(viewerAtom)
   const screenConnected = useValue(screenConnectedAtom)
   const remoteConnected = useValue('remote connected', () => remoteStatusAtom.get().state === 'connected', [])
   const laser = useValue('laser', () => editor.getCurrentToolId() === 'laser', [editor])
-  if (!seq) return null
+  const fold = useValue(foldBadgesAtom)
   const total = seq.steps.length
 
   return (
     <div className="progress pointer-events-auto absolute inset-x-0 bottom-0 z-[500] flex items-center gap-2 py-2 pl-2 pr-32 text-xs text-stone-500 md:gap-3 md:pl-16 md:pr-44">
       <PagePicker editor={editor} />
-      <ToolBtn onClick={() => goToStep(editor, index - 1)} disabled={index < 0} title={t.presenter.previous} icon="prev" />
+      <ToolBtn onClick={() => goToStep(editor, index - 1)} disabled={index < 0 && !prevPage} title={t.presenter.previous} icon="prev" />
       <div className="flex flex-1 items-center gap-1">
         {seq.steps.map((s, i) => (
           <button
@@ -249,7 +269,7 @@ export function ProgressBar({
       </span>
       <ToolBtn
         onClick={() => goToStep(editor, index + 1)}
-        disabled={index >= total - 1}
+        disabled={index >= total - 1 && !nextPage}
         title={t.presenter.next}
         icon="next"
       />
@@ -265,6 +285,11 @@ export function ProgressBar({
         <ToolBtn onClick={toggleFullscreen} title={t.presenter.fullscreen} icon="fullscreen" />
         {/* Actions moins fréquentes : recentrer, déverrouiller, projeter, télécommande. */}
         <MoreMenu
+          top={
+            fold.depth > 1 && (
+              <FoldLevels className="more-levels tree-dirs tree-levels" depth={fold.depth} level={fold.level} onPick={(l) => foldLevelLive(editor, l)} />
+            )
+          }
           items={[
             { label: t.presenter.recenter, icon: 'recenter', onClick: recenter },
             { label: t.help.menu, icon: 'help', onClick: () => shortcutsHelpOpenAtom.set(true) },
@@ -294,15 +319,18 @@ export function ProgressBar({
   )
 }
 
-/** Document à plusieurs pages : chaque page a sa séquence ; on passe de l'une à l'autre, au début de sa séquence. */
+/**
+ * Document à plusieurs pages : chaque page a sa séquence (ou s'affiche telle quelle) ; on passe de
+ * l'une à l'autre, au début de sa séquence. Avancer après la dernière étape mène aussi à la suivante.
+ */
 function PagePicker({ editor }: { editor: Editor }) {
   const t = useT()
   const pages = useValue(
     'presented pages',
     () => {
-      const withSteps = new Set<string>(pagesWithSteps(editor))
+      const shown = new Set<string>(presentedPages(editor))
       const current = editor.getCurrentPageId()
-      return editor.getPages().filter((p) => withSteps.has(p.id) || p.id === current).map((p) => ({ id: p.id, name: p.name }))
+      return editor.getPages().filter((p) => shown.has(p.id) || p.id === current).map((p) => ({ id: p.id, name: p.name }))
     },
     [editor]
   )
@@ -316,8 +344,10 @@ function PagePicker({ editor }: { editor: Editor }) {
       title={t.presenter.page}
       aria-label={t.presenter.page}
     >
-      {pages.map((p) => (
-        <option key={p.id} value={p.id}>{p.name}</option>
+      {pages.map((p, i) => (
+        <option key={p.id} value={p.id}>
+          {pages.length > 2 ? `${i + 1}. ${p.name}` : p.name}
+        </option>
       ))}
     </select>
   )
@@ -333,7 +363,8 @@ interface MoreItem {
 }
 
 /** Menu « ⋯ » de la barre de présentation. Échap le referme sans quitter la présentation (usePresentation). */
-function MoreMenu({ items }: { items: MoreItem[] }) {
+/** top : contenu libre en tête du menu (niveaux de repli des arbres). */
+function MoreMenu({ items, top }: { items: MoreItem[]; top?: ReactNode }) {
   const t = useT()
   const open = useValue(moreMenuOpenAtom)
   const setOpen = (value: boolean) => moreMenuOpenAtom.set(value)
@@ -374,6 +405,7 @@ function MoreMenu({ items }: { items: MoreItem[] }) {
       <ToolBtn onClick={() => setOpen(!open)} active={open || items.some((i) => i.active)} title={t.presenter.more} icon="more" />
       {open && (
         <div ref={menuRef} className="more-menu" role="menu" aria-label={t.presenter.more}>
+          {top}
           {items.map((item) => (
             <button
               key={item.label}

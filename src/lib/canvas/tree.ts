@@ -381,8 +381,9 @@ function writeLayout(editor: Editor, partials: TLShapePartial[], bindings: TLArr
   // Glissement : les nœuds vont de leur place à la nouvelle ; les flèches suivent (liées), leur
   // courbure et le reste s'appliquent d'emblée.
   const start = new Map(moving.map((p) => [p.id, editor.getShape(p.id)!]))
+  // Sans x ni y (et non x: undefined, que le document verrouillé de la présentation écrirait tel quel).
   put(
-    partials.map((p) => ({ ...p, x: undefined, y: undefined })).filter((p) => p.props || p.meta),
+    partials.filter((p) => p.props || p.meta).map(({ id, type, props, meta }) => ({ id, type, ...(props && { props }), ...(meta && { meta }) }) as TLShapePartial),
     true
   )
   let elapsed = 0
@@ -700,18 +701,87 @@ export function addLinkedPremise(editor: Editor, id: TLShapeId): TLShapeId | nul
   return addSibling(editor, id)
 }
 
+/**
+ * Replier une branche, ou la déplier tout entière : les sous-branches repliées s'ouvrent aussi,
+ * pour que la pastille « +n » montre bien n nœuds.
+ */
 export function toggleFold(editor: Editor, id: TLShapeId) {
   const shape = editor.getShape(id)
   if (!shape) return
   editor.markHistoryStoppingPoint('replier')
   const folded = !shape.meta.folded
-  editor.updateShape({ id, type: shape.type, meta: { ...shape.meta, folded } })
-  if (folded) {
-    const hidden = new Set(branchOf(editor, id))
-    editor.setSelectedShapes(editor.getSelectedShapeIds().filter((s) => !hidden.has(s)))
+  editor.run(() => {
+    if (folded) {
+      editor.updateShape({ id, type: shape.type, meta: { ...shape.meta, folded } })
+      const hidden = new Set(branchOf(editor, id))
+      editor.setSelectedShapes(editor.getSelectedShapeIds().filter((s) => !hidden.has(s)))
+    } else {
+      setFolded(editor, new Map([id, ...branchOf(editor, id)].map((n) => [n, false])))
+    }
+    // Les voisins se resserrent autour de la branche repliée, ou s'écartent pour la déplier.
+    relayout(editor, id, { animate: true })
+  })
+}
+
+/** Profondeur de chaque nœud d'un arbre (racine : 0). */
+export function treeDepths(editor: Editor, rootId: TLShapeId): Map<TLShapeId, number> {
+  const { children } = getTreeIndex(editor)
+  const depths = new Map<TLShapeId, number>([[rootId, 0]])
+  const queue = [rootId]
+  while (queue.length) {
+    const id = queue.shift()!
+    for (const c of children.get(id) ?? []) {
+      if (depths.has(c)) continue
+      depths.set(c, depths.get(id)! + 1)
+      queue.push(c)
+    }
   }
-  // Les voisins se resserrent autour de la branche repliée, ou s'écartent pour la déplier.
-  relayout(editor, id, { animate: true })
+  return depths
+}
+
+/**
+ * Repli voulu de chaque nœud à branches pour n'afficher que les `level` premiers niveaux sous
+ * la racine (1 : la racine et ses enfants) ; null : tout déplié.
+ */
+export function foldsForLevel(editor: Editor, rootId: TLShapeId, level: number | null): Map<TLShapeId, boolean> {
+  const { children } = getTreeIndex(editor)
+  const folds = new Map<TLShapeId, boolean>()
+  for (const [id, depth] of treeDepths(editor, rootId)) {
+    if (children.get(id)?.length) folds.set(id, level !== null && depth >= level)
+  }
+  return folds
+}
+
+/** Niveau de repli actuel d'un arbre (null : tout déplié), ou undefined s'il n'est pas uniforme. */
+export function foldLevelOf(editor: Editor, rootId: TLShapeId, isFoldedNode = (id: TLShapeId) => isFolded(editor, id)) {
+  const depths = treeDepths(editor, rootId)
+  const max = Math.max(0, ...depths.values())
+  for (const level of [null, ...Array.from({ length: max }, (_, i) => i)]) {
+    // Un nœud sous un nœud replié ne compte pas : il est caché de toute façon.
+    const folds = foldsForLevel(editor, rootId, level)
+    if ([...folds].every(([id, f]) => (level !== null && depths.get(id)! > level) || isFoldedNode(id) === f)) return level
+  }
+  return undefined
+}
+
+/** Replie un arbre à un niveau (null : déplie tout). */
+export function foldToLevel(editor: Editor, rootId: TLShapeId, level: number | null) {
+  editor.markHistoryStoppingPoint('replier au niveau')
+  editor.run(() => {
+    setFolded(editor, foldsForLevel(editor, rootId, level))
+    const depths = treeDepths(editor, rootId)
+    if (level !== null) editor.setSelectedShapes(editor.getSelectedShapeIds().filter((s) => (depths.get(s) ?? 0) <= level))
+    relayout(editor, rootId, { animate: true })
+  })
+}
+
+function setFolded(editor: Editor, folds: Map<TLShapeId, boolean>) {
+  const updates: TLShapePartial[] = []
+  for (const [id, folded] of folds) {
+    const shape = editor.getShape(id)
+    if (shape && !!shape.meta.folded !== folded) updates.push({ id, type: shape.type, meta: { ...shape.meta, folded } })
+  }
+  if (updates.length) editor.updateShapes(updates)
 }
 
 export function setDirection(editor: Editor, id: TLShapeId, dir: TreeDirection) {

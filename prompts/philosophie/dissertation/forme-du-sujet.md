@@ -5,7 +5,11 @@ tasks: [create, expand, enrich]
 placeholder: "Le sujet de dissertation, par exemple : « Peut-on renoncer à la vérité ? »"
 order: 2
 ---
-La demande de l'utilisateur est un sujet de dissertation de philosophie (niveau Terminale). Il s'agit d'analyser la **forme de la question** : identifier les éléments structurants de sa formulation, ceux qu'un élève ne doit pas négliger sous peine de hors-sujet, puis en dégager le sens de la question. C'est une analyse préalable, comme au brouillon : mobilise une réelle culture philosophique, mais **sans nom d'auteur ni de courant**. Va à l'essentiel ; évite toute remarque creuse ou triviale et toute répétition.
+La demande de l'utilisateur est un sujet de dissertation de philosophie (niveau Terminale). Il s'agit d'analyser la **forme de la question** : identifier les éléments structurants de sa formulation, ceux qu'un élève ne doit pas négliger sous peine de hors-sujet, puis en dégager le sens de la question. C'est une analyse préalable, comme au brouillon : mobilise une réelle culture philosophique, mais **sans nom d'auteur ni de courant**.
+
+**Cible l'essentiel.** Ne retiens que ce qui change la manière de comprendre ou de traiter le sujet : un ou deux points par aspect au plus, et aucun pour un aspect sans enjeu ici. Évite toute remarque creuse, triviale ou scolaire (« la question est fermée »), toute répétition. L'analyse pourra être approfondie ensuite, aspect par aspect.
+
+La liste ci-dessous dit où chercher, pas ce qu'il faut remplir.
 
 **Ce qu'il faut repérer :**
 - la **forme logique** de la question et ce qu'elle engage : question de possibilité (« peut-on »), de légitimité ou d'obligation (« faut-il », « doit-on »), de fait (« est-ce que »), d'essence ou de définition (« qu'est-ce que »), d'identité ou de réduction (« revient-il à », « n'est-il que ») ; les quantificateurs et restrictions (« tout », « seulement », « toujours »), la négation, le singulier ou le pluriel, l'article (« la » vérité, « une » vérité) ;
@@ -16,14 +20,15 @@ La demande de l'utilisateur est un sujet de dissertation de philosophie (niveau 
 
 **Forme du schéma** (carte mentale, `"kind": "mindmap"`, ouverte des deux côtés, `"direction": "both"`) :
 - **Racine** : le sujet, mot pour mot (type `question`).
-- **Têtes de branches**, une par aspect, chacune explicite (pas un simple intitulé) : « **Forme** : une question de droit (« faut-il »), non de fait », « **Présupposés** : … », « **Tensions** : … », « **Ambiguïtés** : … », « **Opinions et croyances** : … ». Omets un aspect quand le sujet n'offre rien de notable de ce côté.
+- **Têtes de branches**, une par aspect retenu (trois ou quatre en général), chacune explicite (pas un simple intitulé) : « **Forme** : une question de droit (« faut-il »), non de fait », « **Présupposés** : … », « **Tensions** : … », « **Ambiguïtés** : … », « **Opinions et croyances** : … ». Omets un aspect quand le sujet n'offre rien de notable de ce côté. Quand une tête dit déjà tout, elle n'a pas besoin d'enfant.
 - Sous chaque tête, les points repérés, chacun court et ciblé :
   - un présupposé : type `belief`, relation `presupposes` ;
   - une tension, un paradoxe, un risque de hors-sujet : type `problem`, relation `raises` ;
-  - une ambiguïté : type `distinction` dont le texte a la forme « sens A / sens B », éventuellement suivie des deux sens comme enfants (type `concept`, relation `defines`) ;
+  - une ambiguïté : type `distinction` dont le texte a la forme « sens A / sens B » ;
   - une opinion commune : type `statement` ; la croyance fondamentale qui la fonde : son enfant, type `belief`, relation `presupposes`.
-- **Sens de la question** : une dernière branche, la conclusion de l'analyse : une ou deux boîtes (type `question`) qui formulent aussi clairement que possible le problème que pose le sujet, en s'appuyant sur ce qui précède, de préférence comme une alternative (« … ou bien … ? »). Une note peut développer ce sens en un court paragraphe.
-- Relie par des liens (`link`) les points qui se répondent d'une branche à l'autre (une ambiguïté qui crée une tension, une croyance qui fonde un présupposé).
+- **Sens de la question** : une dernière branche, la conclusion de l'analyse : une boîte (type `question`) qui formule aussi clairement que possible le problème que pose le sujet, en s'appuyant sur ce qui précède, de préférence comme une alternative (« … ou bien … ? »).
+- Au plus deux liens (`link`) entre des points qui se répondent vraiment d'une branche à l'autre (une ambiguïté qui crée une tension, une croyance qui fonde un présupposé).
+- **Taille** : **dix à seize éléments en tout**, racine comprise. Pas de note.
 
 ## @create
 
@@ -31,4 +36,11 @@ Si une séquence est demandée : le sujet d'abord, puis chaque branche dans l'or
 
 ## @expand @enrich
 
-Approfondis l'analyse à partir de l'élément ou de l'aspect visé : des présupposés plus profonds, une tension moins évidente, un autre sens possible d'un terme, la croyance fondamentale qui se cache sous une opinion. Ne répète rien de ce que le schéma dit déjà.
+Approfondis l'analyse à partir de l'élément ou de l'aspect visé, en suivant la demande de l'utilisateur s'il en a une. Sinon, selon l'élément :
+- un **aspect** (tête de branche) : un ou deux points de plus, parmi les plus significatifs qui manquent ;
+- une **opinion** : la croyance fondamentale qui la fonde ;
+- un **présupposé** : ce qu'il présuppose à son tour, ou la tension qu'il crée ;
+- une **ambiguïté** : les deux sens (type `concept`, relation `defines`) et ce que chacun fait du sujet ;
+- le **sens de la question** : l'alternative précisée, avec pour chaque branche une raison en sa faveur.
+
+**Deux à cinq éléments en tout** : un approfondissement ciblé. Ne répète rien de ce que le schéma dit déjà.

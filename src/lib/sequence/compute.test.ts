@@ -135,6 +135,14 @@ describe('arbres : contrainte de parenté, fold / unfold', () => {
     expect(live(0, 'b', [['racine', false]]).visibility).toBe('hidden')
   })
 
+  it("un nœud sous une branche repliée que la séquence n'a pas révélée ne compte pas dans « +n »", () => {
+    // b1 (non géré) sous b, repliée et pas encore montrée à l'étape 0 : la déplier ne la montrerait pas.
+    const t = new Map([...tree, ['b1', 'b']])
+    const at0 = (id: string) => stateOf(computeStage(s, 0, { tree: t, folded: new Set(['b']) }), id)
+    expect(at0('b1')).toMatchObject({ visibility: 'hidden', foldHidden: false })
+    expect(stateOf(computeStage(s, 1, { tree: t, folded: new Set(['b']) }), 'b1')).toMatchObject({ visibility: 'hidden', foldHidden: true })
+  })
+
   it('une flèche gérée est cachée tant que ses extrémités le sont', () => {
     const g = seq(step({ type: 'show', targets: ['e'] }), step({ type: 'show', targets: ['x'] }))
     const deps = new Map([['e', ['x']]])

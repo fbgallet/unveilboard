@@ -32,6 +32,7 @@ export function ShortcutsHelp() {
         [['+', '−', '0'], h.textSize],
         [[h.wheel], h.textSizeWheel],
         [['L'], h.legend],
+        [['1', '…', '9'], h.foldLevel],
       ],
     },
     {

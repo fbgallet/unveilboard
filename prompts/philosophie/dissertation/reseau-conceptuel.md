@@ -9,6 +9,8 @@ La demande de l'utilisateur est un sujet de dissertation de philosophie (niveau 
 
 L'analyse doit fournir les points d'appui pour cerner le problème et trouver les pistes à creuser dans le développement, en évitant les hors-sujets.
 
+**Cible l'essentiel.** Mieux vaut quelques séries décisives, qui font apparaître le problème, que l'inventaire de tout ce qu'évoque chaque mot. Le réseau pourra être enrichi ensuite, terme par terme ou concept par concept : laisse de côté les pistes secondaires.
+
 **Séries de liens.** Pour chaque terme clé du sujet, déploie des séries de liens (chaînes d'associations d'idées) qui partent du terme et remontent vers des concepts forts ou classiques, pertinents pour traiter le sujet. Chaque série est une piste de réflexion. C'est à travers ces séries que les différents sens du terme, les distinctions et les oppositions apparaissent, pas comme des listes séparées.
 
 **Forme du schéma** (carte mentale, `"kind": "mindmap"`, ouverte des deux côtés, `"direction": "both"`) :
@@ -19,9 +21,9 @@ L'analyse doit fournir les points d'appui pour cerner le problème et trouver le
 - **Jamais de répétition** : un concept n'apparaît qu'une fois. S'il ouvre plusieurs pistes, celles-ci sont ses enfants. Quand une même idée rejoint une autre série (la « volonté » sous « la liberté » et sous « veut »), relie-les par un lien (`link`, relation `relates`) au lieu de la dupliquer : c'est ce qui fait du schéma un réseau.
 - **Boîtes courtes** : le concept seul (un mot, une expression), la distinction « A / B », sans définition ni explication : ici, cette consigne prime sur la règle générale d'une boîte explicite. C'est la piste, au bout de la série, qui explique. Une définition utile peut aller dans la note, brièvement.
 
-Commence par les éléments les plus évidents (sens courant, oppositions classiques) avant les pistes moins attendues. L'exploration part toujours des termes précis de la question, pas des notions du programme. Évite toute remarque creuse ou triviale.
+Pour chaque terme, retiens d'abord ce qui compte le plus pour le problème (le sens courant décisif, l'opposition ou la distinction classique qui fait débat). L'exploration part toujours des termes précis de la question, pas des notions du programme. Évite toute remarque creuse ou triviale.
 
-Exemple, pour « La liberté revient-elle à faire ce qu'on veut ? » (en notation compacte : → conduit à, ≠ s'oppose à, ↳ piste) :
+Exemple de forme (pas de taille : à la création, on en retiendrait moins), pour « La liberté revient-elle à faire ce qu'on veut ? » (en notation compacte : → conduit à, ≠ s'oppose à, ↳ piste) :
 
 ```
 « la liberté »
@@ -45,11 +47,16 @@ Exemple, pour « La liberté revient-elle à faire ce qu'on veut ? » (en notati
 
 ## @create
 
-Vise trois à six séries par terme clé, selon sa richesse, soit en tout une trentaine à une soixantaine d'éléments. Si une séquence est demandée, révèle d'abord le sujet, puis chaque terme avec ses séries, une série par étape, chaque piste avec sa série ; la narration aide la classe à voir le chemin d'un mot du sujet jusqu'au concept, sans répéter les boîtes. Dernière étape : vue d'ensemble, avec une narration qui dégage en deux ou trois phrases le problème que le réseau fait apparaître.
+**Taille** : une à deux séries par terme clé (trois au plus pour le terme central), chaque série de deux ou trois concepts avant sa piste, soit **quinze à vingt-cinq éléments en tout**. Les mots-outils du sujet (« revient-il à », « peut-on ») ne sont retenus comme termes que si leur analyse change le problème. Pas de note. Si une séquence est demandée, révèle d'abord le sujet, puis chaque terme avec ses séries, une série par étape, chaque piste avec sa série ; la narration aide la classe à voir le chemin d'un mot du sujet jusqu'au concept, sans répéter les boîtes. Dernière étape : vue d'ensemble, avec une narration qui dégage en deux ou trois phrases le problème que le réseau fait apparaître.
 
 ## @expand @enrich
 
-Prolonge le réseau à partir de l'élément ou des termes visés : de nouvelles séries (→, ≠, distinctions) qui ouvrent des pistes encore absentes, chacune terminée par sa piste (`question`, relation `raises`). Ne répète aucun concept déjà présent dans le schéma : relie-le par un `link` s'il le faut. Une poignée de séries fortes vaut mieux que beaucoup de faibles.
+Prolonge le réseau à partir de l'élément ou des termes visés, en suivant la demande de l'utilisateur s'il en a une. Sinon :
+- à partir d'un **terme du sujet** : une ou deux nouvelles séries (→, ≠, distinctions) qui ouvrent des pistes encore absentes ;
+- à partir d'un **concept** : prolonge sa série d'un ou deux concepts plus forts, ou ouvre à partir de lui une série parallèle (une opposition, une distinction) ;
+- à partir d'une **piste** : approfondis-la par une distinction ou un concept qui permet de mieux la poser.
+
+Chaque nouvelle série se termine par sa piste (`question`, relation `raises`). **Deux à six éléments en tout** : un développement ciblé, pas un nouvel inventaire. Ne répète aucun concept déjà présent dans le schéma : relie-le par un `link` s'il le faut.
 
 ## @review
 

@@ -64,6 +64,30 @@ export function readSequence(editor: Editor, pageId: TLPageId = editor.getCurren
   return seq
 }
 
+/** Séquence présentée d'une page : la sienne, ou une séquence vide (la page s'affiche telle quelle). */
+export function presentedSequence(editor: Editor, pageId: TLPageId = editor.getCurrentPageId()): Sequence {
+  return readSequence(editor, pageId) ?? { id: 'none', title: '', steps: [] }
+}
+
+/**
+ * Pages présentées, dans l'ordre du document : celles qui ont des étapes ou un contenu. On passe de
+ * l'une à l'autre en avançant après la dernière étape (ou en reculant avant la première).
+ */
+export function presentedPages(editor: Editor): TLPageId[] {
+  const withSteps = new Set(pagesWithSteps(editor))
+  return editor
+    .getPages()
+    .filter((p) => withSteps.has(p.id) || editor.getPageShapeIds(p.id).size > 0)
+    .map((p) => p.id)
+}
+
+/** Page présentée avant (−1) ou après (+1) la page courante, s'il y en a une. */
+export function adjacentPage(editor: Editor, delta: 1 | -1): TLPageId | null {
+  const pages = presentedPages(editor)
+  const at = pages.indexOf(editor.getCurrentPageId())
+  return at < 0 ? null : (pages[at + delta] ?? null)
+}
+
 /** Pages du document qui ont des étapes, dans l'ordre des pages. */
 export function pagesWithSteps(editor: Editor): TLPageId[] {
   const stored = readStored(editor)

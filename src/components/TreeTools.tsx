@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { atom, renderPlaintextFromRichText, useEditor, useValue, type Editor, type TLRichText, type TLShapeId } from 'tldraw'
+import { atom, renderPlaintextFromRichText, useEditor, useValue, type Box, type Editor, type TLRichText, type TLShapeId } from 'tldraw'
 import { readSequence, writeSequence } from '@/lib/canvas/adapter'
 import { addStep, appearanceIndex, showAlongWith } from '@/lib/sequence/edit'
 import {
@@ -16,6 +16,9 @@ import {
   branchOf,
   directionOf,
   edgesOf,
+  foldLevelOf,
+  foldToLevel,
+  treeDepths,
   nodeDirection,
   getTreeIndex,
   isThesisRoot,
@@ -36,7 +39,8 @@ import { PREMISE, offeredPresets, relationsFor, type Preset } from '@/lib/preset
 import { presetName, presetRole } from '@/lib/presets/labels'
 import { presetDefinition, presetGuideOpenAtom } from './PresetTools'
 import { TREE_DIRECTIONS, type TreeDirection } from '@/lib/tree/layout'
-import { editUnlockedAtom, foldBadgesAtom, modeAtom, setFoldOverride } from '@/lib/presentation/store'
+import { editUnlockedAtom, foldBadgesAtom, modeAtom, setFoldOverrides } from '@/lib/presentation/store'
+import { unfoldBranchLive } from './usePresentation'
 import { useT } from '@/i18n/client'
 import { swallowNextKeyUp } from '@/lib/keyboard'
 import { elementAiAtom } from './ElementAi'
@@ -156,6 +160,9 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
         junction: isLinked(editor, shape.id),
         dir: directionOf(editor, root),
         edges: edgesOf(editor, root),
+        root,
+        depth: Math.max(...treeDepths(editor, root).values()),
+        level: foldLevelOf(editor, root),
       }
     },
     [editor]
@@ -295,6 +302,10 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
           </button>
         ))}
       </span>
+      {/* Repli de tout l'arbre à un niveau */}
+      {info.depth > 1 && (
+        <FoldLevels depth={info.depth} level={info.level} onPick={(level) => foldToLevel(editor, info.root, level)} />
+      )}
       <span className="tree-hint">
         <kbd>Tab</kbd> {t.tree.child} · <kbd>{t.tree.enter}</kbd> {t.tree.sibling}
       </span>
@@ -303,9 +314,52 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
 }
 
 /**
- * Pastilles « +n » sur les nœuds repliés : cliquer pour déplier. Un nœud déplié survolé (ou
- * sélectionné, en édition) montre « − » pour replier sa branche. En présentation, le geste ne
- * touche pas au document : il s'ajoute à la séquence le temps de la séance.
+ * Niveaux de repli d'un arbre : 1 (la racine et ses enfants), 2… jusqu'à l'avant-dernier
+ * niveau (au plus 5), et « tout » pour tout déplier. Le niveau actuel est mis en avant.
+ */
+export function FoldLevels({
+  depth,
+  level,
+  onPick,
+  className = 'tree-dirs tree-levels',
+}: {
+  depth: number
+  level: number | null | undefined
+  onPick(level: number | null): void
+  className?: string
+}) {
+  const t = useT()
+  const levels = Array.from({ length: Math.min(depth - 1, 5) }, (_, i) => i + 1)
+  return (
+    <span className={className} role="group" aria-label={t.tree.levels}>
+      <span className="tree-levels-label" title={t.tree.levelsHint}>
+        {t.tree.levels}
+      </span>
+      {[...levels, null].map((l) => (
+        <button
+          key={l ?? 'all'}
+          className={`tree-dir ${level === l ? 'tree-dir-active' : ''}`}
+          onClick={() => onPick(l)}
+          title={l === null ? t.tree.unfoldAll : t.tree.foldToLevel(l)}
+          aria-pressed={level === l}
+        >
+          {l ?? t.tree.all}
+        </button>
+      ))}
+    </span>
+  )
+}
+
+/** Distance (px à l'écran) en deçà de laquelle le pointeur « approche » un nœud : sa pastille « − » apparaît. */
+const NEAR_PX = 32
+
+/**
+ * Pastilles « +n » sur les nœuds repliés : cliquer pour déplier toute la branche. Un nœud déplié
+ * dont le pointeur s'approche (ou sélectionné, en édition) montre « − » pour replier sa branche.
+ * La proximité se mesure d'après la position du pointeur, et non la forme survolée selon tldraw :
+ * elle tient avec le laser, pendant un mouvement de caméra, et sur la pastille elle-même, qui
+ * déborde du nœud. En présentation, le geste ne touche pas au document : il s'ajoute à la
+ * séquence le temps de la séance.
  * readOnly : fenêtre public du double affichage, qui suit le présentateur.
  */
 export function FoldBadges({ readOnly = false }: { readOnly?: boolean }) {
@@ -316,27 +370,42 @@ export function FoldBadges({ readOnly = false }: { readOnly?: boolean }) {
     () => {
       const presenting = modeAtom.get() === 'present'
       const { children } = getTreeIndex(editor)
-      const active = new Set<string>([...editor.getSelectedShapeIds(), editor.getHoveredShapeId() ?? ''])
       let folded: { id: string; n: number }[]
-      let unfolded: string[]
+      let open: string[]
       if (presenting) {
         const pres = foldBadgesAtom.get()
         folded = pres.folded
-        unfolded = readOnly ? [] : pres.open.filter((id) => active.has(id))
+        open = readOnly ? [] : pres.open
       } else {
         folded = [...children.keys()]
           .filter((id) => isFolded(editor, id) && !editor.isShapeHidden(id))
           .map((id) => ({ id, n: branchOf(editor, id).length }))
-        unfolded = [...children.keys()].filter((id) => active.has(id) && !isFolded(editor, id) && !editor.isShapeHidden(id))
+        open = [...children.keys()].filter((id) => !isFolded(editor, id) && !editor.isShapeHidden(id))
       }
-      const badge = (id: string, n: number, fold: boolean) => {
+      const place = (id: string) => {
         const b = editor.getShapePageBounds(id as TLShapeId)
-        if (!b) return []
+        if (!b) return null
         const dir = nodeDirection(editor, id as TLShapeId)
         const at = { right: { x: b.maxX, y: b.midY }, left: { x: b.minX, y: b.midY }, down: { x: b.midX, y: b.maxY }, up: { x: b.midX, y: b.minY } }[dir]
-        return [{ id: id as TLShapeId, n, fold, ...at }]
+        return { b, at }
       }
-      return [...folded.flatMap((f) => badge(f.id, f.n, false)), ...unfolded.flatMap((id) => badge(id, 0, true))]
+      // « − » : nœuds sélectionnés (en édition), ou dont le pointeur est proche (nœud ou pastille).
+      const selected = new Set<string>(presenting ? [] : editor.getSelectedShapeIds())
+      const pointerIn = editor.getInstanceState().isHoveringCanvas !== false
+      const p = editor.inputs.getCurrentPagePoint()
+      const near = NEAR_PX / editor.getZoomLevel()
+      const isNear = ({ b, at }: { b: Box; at: { x: number; y: number } }) =>
+        pointerIn && (b.clone().expandBy(near).containsPoint(p) || Math.hypot(p.x - at.x, p.y - at.y) < near)
+      return [
+        ...folded.flatMap((f) => {
+          const pl = place(f.id)
+          return pl ? [{ id: f.id as TLShapeId, n: f.n, fold: false, ...pl.at }] : []
+        }),
+        ...open.flatMap((id) => {
+          const pl = place(id)
+          return pl && (selected.has(id) || isNear(pl)) ? [{ id: id as TLShapeId, n: 0, fold: true, ...pl.at }] : []
+        }),
+      ]
     },
     [editor, readOnly]
   )
@@ -353,7 +422,11 @@ export function FoldBadges({ readOnly = false }: { readOnly?: boolean }) {
           disabled={readOnly}
           title={readOnly ? undefined : b.fold ? t.tree.collapseBranch : t.tree.expandBranch}
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => (presenting ? setFoldOverride(b.id, b.fold) : toggleFold(editor, b.id))}
+          onClick={() => {
+            if (!presenting) toggleFold(editor, b.id)
+            else if (b.fold) setFoldOverrides([[b.id, true]])
+            else unfoldBranchLive(editor, b.id)
+          }}
         >
           {b.fold ? '−' : `+${b.n}`}
         </button>

@@ -672,6 +672,25 @@ button.review-badge {
   color: var(--color-amber-700);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.1);
 }
+/* Niveaux de repli : « Niveaux 1 2 3 Tout » (barre d'arbre, menu ⋯ de la présentation) */
+.more-levels {
+  align-self: flex-start;
+  margin: 2px 2px 6px;
+  font-size: 12px;
+}
+.tree-levels {
+  align-items: center;
+}
+.tree-levels .tree-dir {
+  width: auto;
+  min-width: 24px;
+  padding: 0 6px;
+}
+.tree-levels-label {
+  padding: 0 6px 0 4px;
+  color: var(--color-stone-500);
+  cursor: help;
+}
 .tree-hint {
   padding: 0 8px;
   color: var(--color-stone-400);

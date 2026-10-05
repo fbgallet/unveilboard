@@ -284,6 +284,7 @@ export const en = {
     exit: 'Exit the presentation (Esc)',
     exitShort: 'Exit',
     end: 'End the presentation',
+    nextPage: (name: string) => `Next page: ${name} →`,
   },
 
   screen: {
@@ -379,8 +380,8 @@ export const en = {
     display: 'Display',
     tools: 'Tools',
     other: 'Other',
-    next: 'Next step',
-    previous: 'Previous step',
+    next: 'Next step (after the last one: next page)',
+    previous: 'Previous step (before the first one: previous page)',
     firstLast: 'First / last step',
     overview: 'Overview',
     recenter: 'Recenter on the step',
@@ -390,6 +391,7 @@ export const en = {
     textSize: 'Text size of the panel (0: default)',
     textSizeWheel: 'Text size, over the panel',
     legend: 'Legend',
+    foldLevel: 'Collapse the trees to this level (again: expand all)',
     laser: 'Laser pointer',
     mask: 'Masking layer (draw the area to keep)',
     note: 'Open an object’s note',
@@ -750,6 +752,11 @@ export const en = {
     sibling: 'sibling',
     collapseBranch: 'Collapse the branch',
     expandBranch: 'Expand the branch',
+    levels: 'Levels',
+    levelsHint: 'Collapse the whole tree to a level: 1 shows the root and its main branches',
+    foldToLevel: (n: number) => `Collapse to level ${n}`,
+    unfoldAll: 'Expand all',
+    all: 'All',
   },
 
   sync: {
@@ -1220,6 +1227,7 @@ export const en = {
     title: 'Ask the AI from this element',
     heading: (text: string) => (text ? `AI, from “${text}”` : 'AI, from this element'),
     placeholder: 'What should the AI add from this element? E.g.: two objections, each with an answer.',
+    placeholderMethod: 'Optional: the method is enough. You may add a precision (for instance: a single line, towards ethics).',
     instructionLabel: 'Your request',
     quick: {
       arguments: { label: 'Arguments', request: 'Propose arguments that support this element.' },

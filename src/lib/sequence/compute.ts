@@ -163,7 +163,8 @@ function applyTree(
       const ps = stage.get(p)
       const own = stage.get(id) ?? { visibility: 'visible' as const, highlighted: false }
       if (ps?.visibility === 'hidden' || folded.has(p)) {
-        const foldHidden = own.visibility !== 'hidden' && (folded.has(p) || !!ps?.foldHidden)
+        // Le parent doit lui-même pouvoir apparaître : visible, ou caché seulement par un repli.
+        const foldHidden = own.visibility !== 'hidden' && (!!ps?.foldHidden || (folded.has(p) && ps?.visibility !== 'hidden'))
         stage.set(id, { ...own, visibility: 'hidden', entering: undefined, foldHidden })
       } else if (own.visibility !== 'hidden' && !own.entering) {
         const inherited = !managed.has(id) && ps?.entering

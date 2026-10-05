@@ -160,7 +160,7 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
           setInstruction(e.target.value)
           reset()
         }}
-        placeholder={t.elementAi.placeholder}
+        placeholder={prompt.method ? t.elementAi.placeholderMethod : t.elementAi.placeholder}
         aria-label={t.elementAi.instructionLabel}
         autoFocus
       />
@@ -190,11 +190,11 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {ready ? (
-          <button className="btn-primary" disabled={!!run || !instruction.trim()} onClick={() => void ask()}>
+          <button className="btn-primary" disabled={!!run || (!instruction.trim() && !prompt.method)} onClick={() => void ask()}>
             {t.ai.ask}
           </button>
         ) : (
-          <button className="btn-primary" disabled={!instruction.trim()} onClick={() => void copy()}>
+          <button className="btn-primary" disabled={!instruction.trim() && !prompt.method} onClick={() => void copy()}>
             {t.assistant.copy}
           </button>
         )}
