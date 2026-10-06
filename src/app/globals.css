@@ -52,6 +52,12 @@ body {
   .panel-tab-active {
     @apply bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-900/5;
   }
+  .panel-rail-tab {
+    @apply flex w-full flex-col items-center gap-1.5 rounded-md py-2 text-xs font-medium text-zinc-500 hover:bg-zinc-200/70 hover:text-zinc-900;
+  }
+  .panel-rail-tab-active {
+    @apply bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-900/5;
+  }
   .panel-tab-badge {
     @apply font-serif font-bold text-amber-600;
   }
@@ -71,6 +77,50 @@ body {
   }
   .icon-btn-on {
     @apply bg-amber-100 text-amber-800 hover:bg-amber-200 hover:text-amber-900;
+  }
+  /* Chat avec l'IA (onglet du panneau d'édition) */
+  .chat-bubble {
+    @apply max-w-[92%] rounded-xl px-3 py-2 text-[13px] leading-relaxed;
+  }
+  .chat-bubble-user {
+    @apply self-end whitespace-pre-wrap bg-amber-100 text-amber-950;
+  }
+  .chat-bubble-ai {
+    @apply flex flex-col gap-2 self-start border border-zinc-200 bg-white text-zinc-800;
+  }
+  .chat-pending {
+    @apply animate-pulse text-zinc-400;
+  }
+  .chat-ref {
+    @apply rounded bg-amber-50 px-1 text-left text-amber-800 underline decoration-amber-300 underline-offset-2 hover:bg-amber-100;
+  }
+  .chat-changes {
+    @apply flex flex-col gap-0.5 rounded-lg border px-2.5 py-1.5 text-[12px];
+  }
+  .chat-changes-applied,
+  .chat-changes-suggested {
+    @apply border-emerald-200 bg-emerald-50 text-emerald-900;
+  }
+  .chat-changes-undone {
+    @apply border-zinc-200 bg-zinc-50 text-zinc-600;
+  }
+  .chat-changes-failed {
+    @apply border-red-200 bg-red-50 text-red-800;
+  }
+  .chat-actions {
+    @apply -mb-0.5 flex justify-end text-[11px] text-zinc-500;
+  }
+  .chat-action {
+    @apply rounded px-1.5 py-0.5 hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-40 disabled:hover:bg-transparent;
+  }
+  .chat-chip {
+    @apply rounded-full border border-zinc-200 px-2 py-0.5 text-zinc-500 hover:border-zinc-300 hover:text-zinc-800;
+  }
+  .chat-chip-on {
+    @apply border-amber-300 bg-amber-50 text-amber-800;
+  }
+  .chat-input {
+    @apply min-w-0 flex-1 resize-none rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] outline-none focus:border-amber-400;
   }
   .pbtn {
     @apply flex h-8 w-8 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200/70 hover:text-stone-900 disabled:opacity-30 disabled:hover:bg-transparent;

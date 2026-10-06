@@ -37,6 +37,8 @@ const baseComponents: Components = {
  * resolveSrc) et images intégrées (data URL), en plus des adresses admises par défaut.
  */
 function urlTransform(url: string, key: string) {
+  // Références à un élément du schéma (« el:… », messages du chat) : rendues par le panneau qui les comprend.
+  if (key === 'href' && /^el:[\w-]+$/.test(url)) return url
   if (key === 'src' && (url.startsWith('asset:') || /^data:image\/(png|jpe?g|gif|webp|svg\+xml);base64,/i.test(url))) return url
   return defaultUrlTransform(url)
 }

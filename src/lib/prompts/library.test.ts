@@ -108,6 +108,18 @@ describe('format des prompts', () => {
     expect(offersTask({ ...base, tasks: ['create'] }, 'expand')).toBe(false)
   })
 
+  it('chat : les méthodes déclarées pour lui, ou pour une modification du schéma (variante « edit » à défaut de la sienne)', () => {
+    const base = { id: 'a/b', collection: 'a', title: 'T', body: 'Commun', variants: {} }
+    expect(offersTask({ ...base, tasks: ['create', 'expand', 'enrich'] }, 'chat')).toBe(true)
+    expect(offersTask({ ...base, tasks: ['chat'] }, 'chat')).toBe(true)
+    expect(offersTask({ ...base, tasks: ['create', 'sequence'] }, 'chat')).toBe(false)
+    const input = { task: 'chat' as const, instruction: 'x', vocabulary: [], lang: 'fr', delivery: 'api' as const }
+    const prompt = buildPrompt({ ...input, method: methodOf({ ...base, variants: { edit: 'Variante edit', create: 'Variante create' } }) })
+    expect(prompt).toContain('Commun\n\nVariante edit')
+    expect(prompt).not.toContain('Variante create')
+    expect(buildPrompt({ ...input, method: methodOf({ ...base, variants: { chat: 'Variante chat', edit: 'Variante edit' } }) })).toContain('Commun\n\nVariante chat')
+  })
+
   it('texte source : « required » seulement avec un texte, « none » seulement sans ; sans contexte, pas de filtre', () => {
     const base = { id: 'a/b', collection: 'a', title: 'T', body: 'x', variants: {} }
     const explication = { ...base, source: 'required' as const }

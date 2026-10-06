@@ -21,7 +21,7 @@
 import { TASKS, type PromptMethod, type Task } from '../ai/prompts'
 
 /** Tâches pour lesquelles on peut choisir un prompt (celles qui ont une boîte de dialogue). */
-export const PROMPT_TASKS = ['create', 'enrich', 'expand', 'edit', 'sequence', 'review', 'plan'] as const satisfies readonly Task[]
+export const PROMPT_TASKS = ['create', 'enrich', 'expand', 'edit', 'sequence', 'review', 'plan', 'chat'] as const satisfies readonly Task[]
 export type PromptTask = (typeof PROMPT_TASKS)[number]
 
 export interface PromptTemplate {
@@ -211,8 +211,13 @@ export interface PromptContext {
 export function offersTask(template: PromptTemplate, task: PromptTask, context: PromptContext = {}): boolean {
   if (context.source !== undefined && template.source && (template.source === 'required') !== context.source) return false
   const tasks = template.tasks
-  return !tasks?.length || tasks.includes(task) || (task === 'plan' && tasks.includes('create'))
+  if (!tasks?.length || tasks.includes(task)) return true
+  // Le plan suit la création ; le chat, qui modifie le schéma ouvert, les méthodes des modifications.
+  return (task === 'plan' && tasks.includes('create')) || (task === 'chat' && CHAT_LIKE.some((t) => tasks.includes(t)))
 }
+
+/** Tâches dont les méthodes valent aussi pour le chat (sans « chat » déclaré). */
+const CHAT_LIKE: Task[] = ['enrich', 'edit', 'expand']
 
 /** Ce qui est envoyé avec la demande : la partie commune et les variantes. */
 export function methodOf(template: PromptTemplate): PromptMethod {

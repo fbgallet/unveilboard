@@ -13,8 +13,8 @@ import { atom } from 'tldraw'
 import { extractJson } from '../map/read'
 import { REASONING_EFFORTS, chat, readChatStream, type ChatResult, type ReasoningEffort } from './chat'
 import { AiError, errorFromResponse, toAiError, type AiErrorKind } from './errors'
-import { buildPrompt, type PromptInput } from './prompts'
-import { chatMessages, runWithRepair, type AiRun, type Repair } from './run'
+import type { PromptInput } from './prompts'
+import { promptMessages, runWithRepair, type AiRun, type Repair } from './run'
 import { DEFAULT_MODEL, TRANSCRIPTION_MODEL } from './models'
 import { OPENROUTER_PDF_PLUGIN, readTranscription, transcriptionMessages } from './transcribe'
 import { normalizeSize, type DiagramSize } from '../map/size'
@@ -217,7 +217,7 @@ async function sendOnce(settings: AiSettings, input: PromptInput, opts: CallOpti
       if (!result.text.trim()) throw new AiError('empty')
       return result
     }
-    const messages = chatMessages(buildPrompt({ ...input, delivery: 'api' }), repair)
+    const messages = promptMessages(input, repair)
     if (settings.kind === 'chatgpt') return await chatGptChat({ model: settings.chatgptModel, messages, reasoning: settings.reasoning, signal: opts.signal }, opts.onText)
     return await chat({ ...endpoint(settings), messages, reasoning: settings.reasoning, signal: opts.signal }, opts.onText)
   } catch (e) {

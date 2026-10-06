@@ -12,14 +12,14 @@ import { FOCUS_OF_KIND, REMARK_KINDS, REVIEW_FOCUS, type ReviewFocus } from '../
 import { APP_LANGS, AUTO_LANG, baseLang, languageName } from './language'
 import { SIZE_LIMITS, sizeText, type DiagramSize } from '../map/size'
 
-export const PROMPT_VERSION = 12
+export const PROMPT_VERSION = 13
 
-export const TASKS = ['create', 'enrich', 'sequence', 'review', 'edit', 'expand', 'plan', 'develop', 'finish', 'style'] as const
+export const TASKS = ['create', 'enrich', 'sequence', 'review', 'edit', 'expand', 'plan', 'develop', 'finish', 'style', 'chat'] as const
 export type Task = (typeof TASKS)[number]
 /**
  * Tâches de la boîte « Consigne pour une IA » : « expand » part d'un élément (barre de l'arbre),
  * « review » a son panneau (« Relecture ») ; « plan », « develop » et « finish » sont les étapes
- * d'une création en plusieurs temps (src/lib/ai/staged.ts).
+ * d'une création en plusieurs temps (src/lib/ai/staged.ts) ; « chat » est la conversation de l'onglet Chat.
  */
 export const ASSISTANT_TASKS = ['create', 'enrich', 'sequence', 'edit', 'style'] as const satisfies readonly Task[]
 export type AssistantTask = (typeof ASSISTANT_TASKS)[number]
@@ -33,6 +33,15 @@ export interface PromptMethod {
   title: string
   body: string
   variants?: Partial<Record<Task, string>>
+}
+
+/**
+ * Un message de la conversation (tâche « chat ») : ceux de l'utilisateur tels quels, ceux du modèle
+ * réécrits en JSON compact (sa réponse, et le résumé des modifications avec ce qu'elles sont devenues).
+ */
+export interface ChatTurn {
+  role: 'user' | 'assistant'
+  content: string
 }
 
 /** Une entrée du vocabulaire proposé (préréglages de l'utilisateur, dans sa langue). */
@@ -81,6 +90,8 @@ export interface PromptInput {
   planRemarks?: string
   /** « develop » : précision de l'utilisateur pour cette section, à cette passe. */
   sectionRequest?: string
+  /** « chat » : les messages précédents (le dernier message de l'utilisateur est `instruction`). */
+  history?: ChatTurn[]
   /** Méthode de la bibliothèque de prompts, à suivre pour cette tâche (et les étapes qui en découlent). */
   method?: PromptMethod
   vocabulary: VocabularyLine[]
@@ -91,6 +102,9 @@ export interface PromptInput {
   /** Libellé du menu « Coller du JSON… » dans la langue de l'interface (pour un agent qui la pilote). */
   pasteMenu?: string
 }
+
+/** Messages précédents envoyés au modèle, au plus (les plus anciens sont laissés de côté). */
+export const MAX_CHAT_HISTORY = 24
 
 /** Contrôle d'une demande reçue par le serveur (route /api/ai) : tailles plafonnées. */
 export const PromptInputSchema = z.object({
@@ -117,6 +131,10 @@ export const PromptInputSchema = z.object({
   plan: PlanSchema.optional(),
   planRemarks: z.string().max(10_000).optional(),
   sectionRequest: z.string().max(10_000).optional(),
+  history: z
+    .array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().max(40_000) }))
+    .max(MAX_CHAT_HISTORY)
+    .optional(),
   method: z
     .object({
       title: z.string().max(200),
@@ -153,7 +171,9 @@ Answer again with the whole corrected JSON, in one \`\`\`json code block, and no
 
 
 export function buildPrompt(input: PromptInput): string {
-  const output = input.task === 'create' ? 'map' : input.task === 'review' ? 'review' : input.task === 'plan' ? 'plan' : 'patch'
+  const output = input.task === 'create' ? 'map' : input.task === 'review' ? 'review' : input.task === 'plan' ? 'plan' : input.task === 'chat' ? 'chat' : 'patch'
+  // Conversation : la demande est le dernier message, pas une partie de la consigne.
+  const instruction = input.task === 'chat' ? '' : input.instruction.trim()
   const parts = [
     `<!-- Unveilboard prompt v${PROMPT_VERSION}, task: ${input.task} -->`,
     INTRO,
@@ -171,7 +191,7 @@ export function buildPrompt(input: PromptInput): string {
                 ? FINISH_LINKS_TEXT
           : TASK_TEXT[input.task].replace('{focus}', input.focus ?? ''),
     methodText(input.method, input.task),
-    input.instruction.trim() ? `## The user's request\n\n${input.instruction.trim()}` : '',
+    instruction ? `## The user's request\n\n${instruction}` : '',
     sourceWorkText(input),
     sourceFor(input),
     input.task === 'sequence' && input.order?.length
@@ -186,9 +206,9 @@ export function buildPrompt(input: PromptInput): string {
       : '',
     vocabularyText(input.vocabulary),
     MAP_FORMAT_TEXT,
-    output === 'patch' ? PATCH_FORMAT_TEXT : output === 'review' ? reviewFormatText(input.reviewFocus ?? REVIEW_FOCUS) : output === 'plan' ? PLAN_FORMAT_TEXT : '',
+    output === 'patch' || output === 'chat' ? PATCH_FORMAT_TEXT : output === 'review' ? reviewFormatText(input.reviewFocus ?? REVIEW_FOCUS) : output === 'plan' ? PLAN_FORMAT_TEXT : '',
     input.task === 'plan' || input.task === 'develop' || input.task === 'style' ? '' : SEQUENCE_TEXT,
-    rules(input.lang, input.notes !== false),
+    rules(input.lang, input.notes !== false, input.task === 'chat'),
     (input.task === 'develop' || input.task === 'finish') && input.plan ? `## The plan
 
 \`\`\`json
@@ -206,12 +226,13 @@ const INTRO = `# Unveilboard
 
 You are helping a teacher with Unveilboard, an app that shows diagrams step by step (argument maps, mind maps, classifications, processes, comparisons…, often for teaching philosophy). A diagram is made of **elements** (boxes) of a given **type**, arranged in **trees**: each child is connected to its parent by a **relation** (supports, objects to…). In an argument map, the relation gives the child its **function** (Justification, Objection…). A **sequence** of steps reveals the diagram progressively, with a narration for the audience.`
 
-/** Étapes d'une création en plusieurs temps : sans variante propre, elles suivent celle de la création. */
+/** Étapes d'une création en plusieurs temps : sans variante propre, elles suivent celle de la création (le chat, celle de « edit »). */
 const STAGE_TASKS: Task[] = ['plan', 'develop', 'finish']
 
 /** La variante d'une méthode pour une tâche (celle de la création pour ses étapes), sinon rien. */
 export function methodVariant(method: PromptMethod, task: Task): string {
-  return (method.variants?.[task] ?? (STAGE_TASKS.includes(task) ? method.variants?.create : undefined) ?? '').trim()
+  const fallback = STAGE_TASKS.includes(task) ? method.variants?.create : task === 'chat' ? method.variants?.edit : undefined
+  return (method.variants?.[task] ?? fallback ?? '').trim()
 }
 
 /** La méthode choisie par l'utilisateur : elle oriente le contenu, pas les formats ni les règles. */
@@ -294,6 +315,15 @@ The diagram below was built in several passes: a plan (given after the rules), t
 - **Sequence** (\`{ "op": "sequence", "mode": "replace", "intro"?, "steps" }\`): the presentation of the whole diagram, following the plan: the root first, then each section in turn, revealing its elements progressively (group those that go together), and an overview at the end. Each step has a short title and a narration the teacher can read or say, which adds to the boxes without repeating them.
 
 Use only \`link\` and \`sequence\` operations: do not change the elements.`,
+  chat: `## Your task: talk with the user about the diagram
+
+The user is working on the diagram below and talks with you in a chat beside it. Answer their latest message.
+
+- When they ask a question (explain an element, assess the reasoning, suggest ideas, check a point), answer it, without changing anything.
+- When they ask for a change (add, rewrite, move, remove, restyle, write or adjust the sequence or the notes), make exactly that change, with the changes format below, and say briefly in \`reply\` what you did. The app applies your changes at once (the user can undo them), so never change what they did not ask for. When the request is ambiguous and a wrong change would be costly, ask a short question instead.
+- The diagram below is its **current** state: the user may have changed it, or undone your changes, since the earlier messages. Always work from it, not from what earlier messages say.
+- Earlier answers of yours appear as JSON, with \`changes\` summarising the changes you made and their \`status\` (\`applied\`, \`undone\` by the user, \`suggested\`: added as suggestions the user accepts or rejects, \`failed\`).
+- \`reply\` is short and conversational, in the content language: a few sentences, or a short list. Markdown is allowed.`,
   style: `## Your task: improve the look of the diagram
 
 Every box of the diagram below may look the same (it was often imported from a list). Give it a clear, meaningful appearance, following the user's request if any, **without changing its content**.
@@ -554,6 +584,19 @@ Do not rewrite the whole diagram: answer with changes, applied in order.
 
 Refer to existing elements by their \`id\` in the current diagram.`
 
+const CHAT_DELIVERY_TEXT = `## Your answer
+
+Answer with a single JSON object in one \`\`\`json code block, and nothing else after it:
+
+\`\`\`
+{ "reply": "…", "patch"?: { "format": "unveilboard/patch", "version": 1, "summary": "…", "operations": [ … ] } }
+\`\`\`
+
+- \`reply\`: your message to the user (Markdown), always present. Write it first.
+- \`patch\`: only when you change the diagram, in the changes format above. Leave it out otherwise.
+
+It must be valid JSON (double quotes, no comments, no trailing commas; line breaks in strings written \`\\n\`).`
+
 function reviewFormatText(focus: readonly ReviewFocus[]) {
   const on = new Set(focus.length ? focus : REVIEW_FOCUS)
   const kinds = REMARK_KINDS.filter((k) => FOCUS_OF_KIND[k] === null || on.has(FOCUS_OF_KIND[k]!))
@@ -617,7 +660,7 @@ ${translate('If that language is neither English nor French')}`
   }`
 }
 
-function rules(lang: string, notes: boolean) {
+function rules(lang: string, notes: boolean, chat = false) {
   return `## Rules
 
 ${writingRules(notes)}
@@ -625,10 +668,15 @@ ${languageRules(lang)}
 - Be faithful: never invent a quotation, a source or a reference. A \`quote\` element must be an exact quotation with its \`source\`; when you are not sure of the exact words, write a \`statement\` without \`source\`. Mark your own reconstructions with \`"origin": "reconstruction"\`.
 - Use the vocabulary above (ids, not names). It was designed for arguments and theories: when the material calls for other kinds of elements or relations (a step, an event, a period, a cause, a character, a work; “leads to”, “precedes”, “is a kind of”, “is part of”, “causes”, “influences”…), declare them in \`vocabulary\` rather than forcing a type or relation that does not fit: \`{ "id", "kind": "type" | "relation", "name" (in the content language), "description", "direction"?, "childType"?, "style"? }\`. A relation reads “child RELATION parent” unless \`"direction": "toChild"\` (“parent RELATION child”: “leads to”, “is divided into”). \`style\` (optional): for a type, \`{ "geo": "rectangle" | "oval" | "ellipse" | "diamond" | "hexagon" | "octagon" | "cloud" | "rhombus" | "triangle" | "pentagon" | "trapezoid" | "star", "color", "fill": "none" | "semi" | "solid" | "pattern" | "fill", "dash": "draw" | "solid" | "dashed" | "dotted", "size"?, "font"? }\` (\`fill\`: \`semi\` pale, \`solid\` light, \`fill\` full colour); for a relation, \`{ "color", "dash" }\`; colors: \`black\`, \`grey\`, \`violet\`, \`light-violet\`, \`blue\`, \`light-blue\`, \`yellow\`, \`orange\`, \`green\`, \`light-green\`, \`red\`, \`light-red\`. Keep such additions few and consistent.
 - Nothing may rely on colors or positions: positions are computed by the app, and colors only reinforce what types, relations and the tree already say.
-- Never write an element's \`id\` in text meant for the user (message, summary, reason, rationale, narration): the user does not see ids. Name the element by its text, briefly quoted.`
+- Never write an element's \`id\` in text meant for the user (message, summary, reason, rationale, narration): the user does not see ids. Name the element by its text, briefly quoted.${
+    chat
+      ? '\n- In `reply` only, you may make an element clickable with a Markdown link whose target is `el:` followed by its id: `[its text, briefly quoted](el:e12)`. The user sees the text, and clicking it shows the element on the diagram. Use this for elements that already exist or that your changes add.'
+      : ''
+  }`
 }
 
-function deliveryText(output: 'map' | 'patch' | 'review' | 'plan', delivery: PromptInput['delivery'], pasteMenu: string) {
+function deliveryText(output: 'map' | 'patch' | 'review' | 'plan' | 'chat', delivery: PromptInput['delivery'], pasteMenu: string) {
+  if (output === 'chat') return CHAT_DELIVERY_TEXT
   const what = {
     plan: 'the plan (`"format": "unveilboard/plan"`)',
     map: 'the diagram (`"format": "unveilboard/map"`)',

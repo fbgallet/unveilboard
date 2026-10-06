@@ -145,8 +145,8 @@ export function closeNote(id: string) {
   if (activeNoteAtom.get() === id) activeNoteAtom.set(null)
 }
 
-/** Onglet du panneau de droite en mode édition : la séquence, ou l'élément sélectionné (nature, note…). */
-export type PanelTab = 'sequence' | 'element'
+/** Onglet du panneau de droite en mode édition : la séquence, l'élément sélectionné (nature, note…), ou le chat avec l'IA. */
+export type PanelTab = 'sequence' | 'element' | 'chat'
 export const panelTabAtom = atom<PanelTab>('panelTab', 'sequence')
 
 /** Taille du texte de l'onglet Élément (%, mémorisée sur cet appareil), comme celle de la narration. */

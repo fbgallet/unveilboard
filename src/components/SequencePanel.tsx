@@ -13,6 +13,7 @@ import { NatureFields, ProvenanceField, ReasoningField } from './PresetTools'
 import { MarkdownEditor } from './MarkdownEditor'
 import { QUICK, elementAiAtom, elementAiRequestAtom } from './ElementAi'
 import { openAssistant } from './MapJsonDialog'
+import { ChatPane } from './ChatPane'
 import { Markdownish } from './Markdownish'
 import {
   addStep,
@@ -44,6 +45,7 @@ import {
   elementScaleAtom,
   noteEditingAtom,
   panelTabAtom,
+  type PanelTab,
   quickSequenceAtom,
   sequencePanelOpenAtom,
   sequencePanelWidthAtom,
@@ -67,6 +69,13 @@ function toggleStepBadges() {
   storeValue('stepBadgesVisible', visible)
 }
 
+const PANEL_TABS = ['sequence', 'element', 'chat'] as const satisfies readonly PanelTab[]
+const TAB_ICONS = { sequence: 'steps', element: 'element', chat: 'chat' } as const
+
+function tabLabel(t: ReturnType<typeof useT>, id: PanelTab) {
+  return id === 'sequence' ? t.panel.sequence : id === 'element' ? t.panel.element : t.panel.chat
+}
+
 function setPanelOpen(open: boolean) {
   sequencePanelOpenAtom.set(open)
   storeValue('sequencePanelOpen', open)
@@ -76,22 +85,41 @@ export function SequencePanel({ editor }: { editor: Editor }) {
   const t = useT()
   const open = useValue(sequencePanelOpenAtom)
   const width = useValue(sequencePanelWidthAtom)
+  const tab = useValue(panelTabAtom)
   if (!open) {
-    // Replié : le logo reste un chemin vers la liste des schémas.
+    // Replié : le logo reste un chemin vers la liste des schémas ; chaque onglet rouvre le panneau sur lui.
     return (
       <div className="flex h-full w-9 shrink-0 flex-col items-center border-l border-zinc-200 bg-zinc-50">
         <Link href="/" className="group pt-2.5 pb-1" title={t.nav.home} aria-label={t.nav.home}>
           <LogoMark className="h-5 w-5" />
         </Link>
         <button
-          className="flex w-full flex-1 flex-col items-center gap-3 pt-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+          className="w-full py-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
           onClick={() => setPanelOpen(true)}
           title={t.panel.expand}
           aria-label={t.panel.expand}
         >
           <span aria-hidden="true">«</span>
-          <span className="text-xs font-medium [writing-mode:vertical-rl]">{t.panel.sequence}</span>
         </button>
+        <nav className="flex w-full flex-col items-center gap-1 px-1" aria-label={t.panel.tabs}>
+          {PANEL_TABS.map((id) => (
+            <button
+              key={id}
+              className={`panel-rail-tab ${tab === id ? 'panel-rail-tab-active' : ''}`}
+              onClick={() => {
+                panelTabAtom.set(id)
+                setPanelOpen(true)
+              }}
+              aria-current={tab === id}
+              title={`${tabLabel(t, id)} · ${t.panel.expand}`}
+            >
+              <Icon name={TAB_ICONS[id]} />
+              <span className="[writing-mode:vertical-rl]">{tabLabel(t, id)}</span>
+            </button>
+          ))}
+        </nav>
+        {/* Le reste de la bande rouvre aussi le panneau. */}
+        <button className="w-full flex-1 hover:bg-zinc-100" onClick={() => setPanelOpen(true)} tabIndex={-1} aria-hidden="true" />
       </div>
     )
   }
@@ -209,7 +237,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
           placeholder={t.common.untitled}
         />
         <nav className="panel-tabs" role="tablist" aria-label={t.panel.tabs}>
-          {(['sequence', 'element'] as const).map((id) => (
+          {PANEL_TABS.map((id) => (
             <button
               key={id}
               role="tab"
@@ -217,8 +245,8 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
               className={`panel-tab ${tab === id ? 'panel-tab-active' : ''}`}
               onClick={() => panelTabAtom.set(id)}
             >
-              <Icon name={id === 'sequence' ? 'steps' : 'element'} />
-              {id === 'sequence' ? t.panel.sequence : t.panel.element}
+              <Icon name={TAB_ICONS[id]} />
+              {tabLabel(t, id)}
               {id === 'element' && canNote && selection.length === 1 && (
                 <span className="panel-tab-badge" title={t.panel.hasNote}>
                   ¶
@@ -228,7 +256,9 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
           ))}
         </nav>
       </header>
-      {tab === 'element' ? (
+      {tab === 'chat' ? (
+        <ChatPane editor={editor} />
+      ) : tab === 'element' ? (
         <ElementPane editor={editor} selection={selection} usage={selection.length === 1 && uses.has(selection[0]) ? selectionUsage() : ''} images={images} />
       ) : (
       <>
@@ -596,6 +626,7 @@ const ICONS = {
   ),
   pencil: <path d="M10.5 3 13 5.5 6 12.5H3.5V10L10.5 3Z" strokeLinejoin="round" />,
   check: <path d="m3.5 8.5 3 3 6-7" strokeLinejoin="round" />,
+  chat: <path d="M3 3.5h10v7H7l-3 2.5v-2.5H3Z" strokeLinejoin="round" />,
   sparkle: <path d="M8 2.5 9.3 6.7 13.5 8 9.3 9.3 8 13.5 6.7 9.3 2.5 8 6.7 6.7Z" strokeLinejoin="round" />,
   spot: (
     <>

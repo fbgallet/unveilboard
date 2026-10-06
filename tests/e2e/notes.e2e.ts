@@ -20,7 +20,7 @@ const noteOf = (page: Page, id: string) =>
 test('note en édition : onglet Élément, marque ¶, menu contextuel', async ({ page }) => {
   await openTruthExample(page)
   const panel = page.locator('aside').last()
-  const tabs = panel.getByRole('tablist', { name: 'Panel: sequence or element' })
+  const tabs = panel.getByRole('tablist', { name: 'Panel: sequence, element or chat' })
 
   // Onglet Élément sans sélection : une consigne.
   await page.evaluate(() => void (window as unknown as Win).editor.selectNone())
@@ -67,6 +67,13 @@ test('note en édition : onglet Élément, marque ¶, menu contextuel', async ({
   await expect(tabs.getByRole('tab', { name: /Element/ })).toHaveAttribute('aria-selected', 'true')
   await expect(panel.locator('strong', { hasText: 'développement' })).toBeVisible()
   expect(await page.evaluate(() => (window as unknown as Win).editor.getSelectedShapeIds())).toEqual([id])
+
+  // Panneau replié : ses trois onglets, l'actif mis en évidence ; chacun rouvre le panneau sur lui.
+  await panel.getByRole('button', { name: 'Collapse the panel' }).click()
+  const rail = page.getByRole('navigation', { name: 'Panel: sequence, element or chat' })
+  await expect(rail.getByRole('button', { name: /^Element/ })).toHaveAttribute('aria-current', 'true')
+  await rail.getByRole('button', { name: /^Chat/ }).click()
+  await expect(page.getByRole('tab', { name: 'Chat' })).toHaveAttribute('aria-selected', 'true')
 
   // Menu contextuel d'un autre objet sans note : « Add a note » ouvre directement la saisie.
   await tabs.getByRole('tab', { name: 'Sequence' }).click()

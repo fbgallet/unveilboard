@@ -40,7 +40,7 @@ Sent only when creating a diagram, and in each pass of a multi-pass creation (`p
 Sent when developing an element or enriching the diagram.
 ```
 
-- `tasks`: where the prompt is offered: `create`, `enrich`, `expand` (develop the selected element), `edit`, `sequence`, `review`, `plan`. Omitted: all tasks. Offering `create` also offers the prompt for the plan of a multi-pass creation.
+- `tasks`: where the prompt is offered: `create`, `enrich`, `expand` (develop the selected element), `edit`, `sequence`, `review`, `plan`, `chat`. Omitted: all tasks. Offering `create` also offers the prompt for the plan of a multi-pass creation; offering `enrich`, `edit` or `expand` also offers it in the chat (which then uses the `@chat` variant, or else the `@edit` one).
 - `source`: `required` for a prompt that works on the page's source text (a text to explain): offered only when the request uses a source text (“Create a diagram from a text”, or “Use the source text of this page” checked); `none` for a prompt that works without one (an essay question): offered only then. Omitted: both.
 - The user's text (the subject, the notions…) is sent as "the user's request": refer to it as such. A source text is sent as "the source text", and the app already asks for verbatim excerpts.
 - Write the method in the language of its users; the app tells the model which language the content must be written in.

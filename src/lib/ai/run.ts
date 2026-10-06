@@ -4,7 +4,7 @@
 
 import { formatIssue, type MapIssue } from '../map/check'
 import type { ChatMessage, ChatResult, ChatUsage } from './chat'
-import { repairMessage } from './prompts'
+import { MAX_CHAT_HISTORY, buildPrompt, repairMessage, type PromptInput } from './prompts'
 
 export interface Repair {
   /** Réponse précédente du modèle. */
@@ -46,6 +46,21 @@ export async function runWithRepair<R extends { ok: boolean; issues: MapIssue[] 
 function addUsage(a: ChatUsage = {}, b: ChatUsage = {}): ChatUsage {
   const sum = (x?: number, y?: number) => (x === undefined && y === undefined ? undefined : (x ?? 0) + (y ?? 0))
   return { promptTokens: sum(a.promptTokens, b.promptTokens), completionTokens: sum(a.completionTokens, b.completionTokens), cost: sum(a.cost, b.cost) }
+}
+
+/**
+ * Messages d'une demande à partir de sa description. Conversation (« chat ») : la consigne en message
+ * système (reconstruite à chaque tour : le schéma tel qu'il est), les messages précédents, puis le
+ * nouveau ; sinon, la consigne seule. Et, pour une correction, la réponse et les problèmes.
+ */
+export function promptMessages(input: PromptInput, repair?: Repair): ChatMessage[] {
+  const prompt = buildPrompt({ ...input, delivery: 'api' })
+  if (input.task !== 'chat') return chatMessages(prompt, repair)
+  return [
+    { role: 'system', content: prompt },
+    ...(input.history ?? []).slice(-MAX_CHAT_HISTORY),
+    ...chatMessages(input.instruction, repair),
+  ]
 }
 
 /** Messages d'une demande : la consigne, puis, pour une correction, la réponse et les problèmes. */

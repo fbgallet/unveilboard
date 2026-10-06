@@ -55,6 +55,7 @@ import { readPageSource } from '@/lib/canvas/source'
 import { AiLauncher } from './AiLauncher'
 import { PasteListDialog, registerListPaste } from './PasteList'
 import { loadReview, reviewOpenAtom } from '@/lib/canvas/review'
+import { loadChat } from '@/lib/canvas/chat'
 
 const overlayUtils = [LaserOverlayUtil]
 const shapeUtils = [SpotlightShapeUtil]
@@ -167,6 +168,8 @@ export default function Studio({
     const stopApi = installPageApi(editor, (url) => routerRef.current.push(url))
     // Relecture critique gardée pour ce schéma (sur cet appareil).
     loadReview(docId)
+    // Conversation de l'onglet Chat gardée pour ce schéma (sur cet appareil).
+    loadChat(docId)
     void loadPresetSettings(settingsStore(storage))
     void loadPromptLibrary(settingsStore(storage))
     return () => {

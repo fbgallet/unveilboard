@@ -2,13 +2,15 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { REASONING_EFFORTS, REASONING_HEADROOM, openChatStream } from '@/lib/ai/chat'
 import { toAiError, type AiErrorKind } from '@/lib/ai/errors'
-import { buildPrompt, PromptInputSchema } from '@/lib/ai/prompts'
-import { chatMessages } from '@/lib/ai/run'
+import { PromptInputSchema } from '@/lib/ai/prompts'
+import { promptMessages } from '@/lib/ai/run'
 import { allowAiRequest, serverAiAvailable, serverAiConfig, serverModels } from '@/lib/server/ai'
 
 // IA de l'instance, par tâche : le serveur reçoit la demande (tâche, consigne, schéma, vocabulaire),
 // construit lui-même la consigne et relaie le flux du fournisseur. Ce n'est pas un relais de
 // conversation générique : on ne peut pas s'en servir pour autre chose que les tâches de l'app.
+// La conversation de l'onglet Chat (« chat ») garde la consigne de l'app en message système, et
+// ses messages précédents sont plafonnés (MAX_CHAT_HISTORY, taille de chacun).
 
 // Une génération de schéma peut prendre plus d'une minute.
 export const maxDuration = 300
@@ -43,13 +45,12 @@ export async function POST(request: Request) {
 
   const model = body.model ?? config.model
   if (!serverModels(config).includes(model)) return fail('model', 400, `Model not allowed on this instance: ${model}`)
-  const prompt = buildPrompt({ ...body.input, delivery: 'api' })
   try {
     const upstream = await openChatStream({
       baseUrl: config.baseUrl,
       apiKey: config.apiKey,
       model,
-      messages: chatMessages(prompt, body.repair),
+      messages: promptMessages(body.input, body.repair),
       jsonMode: config.jsonMode,
       reasoning: body.reasoning,
       maxTokens: config.maxTokens + REASONING_HEADROOM[body.reasoning ?? 'default'],
