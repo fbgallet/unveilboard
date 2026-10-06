@@ -22,7 +22,7 @@ test('fichier lié : enregistrement automatique, modification ailleurs, réouver
   })
   await openExample(page)
   const docPath = new URL(page.url()).pathname
-  const title = page.locator('aside header input').first()
+  const title = page.getByRole('textbox', { name: 'Diagram title' })
 
   // Ctrl + S sans fichier lié : « Enregistrer sous », puis le fichier est lié.
   await page.keyboard.press('Control+s')

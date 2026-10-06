@@ -14,6 +14,7 @@ import { applyType, attachToParent, contentLocale, createElementBox, createLink,
 import type { Locale } from '@/i18n/config'
 import { applyPresetTo, setReasoning } from './presets'
 import { relationLabels, rememberRelationLabels } from './relationLabels'
+import { applyOwnStyle, resetOwnStyle } from './elementStyle'
 import {
   getTreeIndex,
   linkToParent,
@@ -87,6 +88,7 @@ function applyOperation(
         const { near, side } = newChildPlacement(editor, parentId)
         const id = createElementBox(editor, op, near, side ? { treeSide: side } : {})
         const edge = attachToParent(editor, parentId, id, op, presetOf, lang)
+        applyOwnStyle(editor, id, op.style)
         unfold(editor, parentId)
         shapes.set(op.id, { kind: 'element', node: id, edge })
         touched.add(id)
@@ -97,6 +99,7 @@ function applyOperation(
         const dir = op.tree?.direction
         const id = createElementBox(editor, op, at, dir && dir !== 'right' ? { treeDir: dir } : {})
         applyType(editor, id, presetOf(op.type, 'shape'))
+        applyOwnStyle(editor, id, op.style)
         if (op.tree?.kind === 'argument') setArgumentTree(editor, id, true)
         shapes.set(op.id, { kind: 'element', node: id })
       }
@@ -196,6 +199,7 @@ function applyUpdate(
   setMeta('origin', op.origin)
   setMeta('excerpt', op.excerpt)
   if (op.folded !== undefined) meta.folded = op.folded
+  if (op.task !== undefined) meta.task = op.task
   if (op.type === null) meta.preset = null
   editor.updateShape({
     id,
@@ -230,6 +234,10 @@ function applyUpdate(
   } else if (edge && op.reasoning !== undefined) {
     setReasoning(editor, edge, op.reasoning, { lang })
   }
+
+  // Aspect propre, après le type (qui donne le sien) ; null : celui du type.
+  if (op.style === null) resetOwnStyle(editor, id)
+  else applyOwnStyle(editor, id, op.style)
 
   // Réglages d'arbre, sur une racine.
   if (op.tree === null) {

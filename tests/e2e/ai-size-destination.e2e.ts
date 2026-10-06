@@ -83,8 +83,8 @@ test('taille réglée, rappelée à la création, corrigée par l’IA ; schéma
   const dialog = page.getByRole('dialog', { name: 'Work with an AI' })
   await dialog.getByRole('radio', { name: 'Create a diagram' }).click()
   await expect(dialog.getByText('Size: 3 to 4 elements, at most 1 level.')).toBeVisible()
-  // Modifiable pour cette création.
-  await dialog.getByRole('button', { name: 'Change' }).click()
+  // Modifiable pour cette création (le premier « Change » : celui de la taille ; le second, la langue).
+  await dialog.getByRole('button', { name: 'Change' }).first().click()
   await dialog.getByRole('spinbutton', { name: 'Minimum number of levels' }).fill('1')
   await expect(dialog.getByText('Size: 3 to 4 elements, 1 level.')).toBeVisible()
   await dialog.getByRole('textbox', { name: 'Your request' }).fill('Freedom')
@@ -111,8 +111,8 @@ test('schéma collé, ajouté sur cette page à côté : la séquence s’allong
 
   await page.getByTestId('main-menu.button').click()
   await page.getByTestId('main-menu-sub.schema-file-menu-button').click()
-  await page.getByText('Paste JSON (diagram or changes)…').click()
-  const dialog = page.getByRole('dialog', { name: 'Paste JSON' })
+  await page.getByText('Import a list, Markdown or JSON…').click()
+  const dialog = page.getByRole('dialog', { name: 'Import' })
   await dialog.getByRole('textbox').fill(JSON.stringify(mindMap('Justice', 2)))
   await dialog.getByRole('radio', { name: 'on this page, beside' }).check()
   await dialog.getByRole('button', { name: 'Add to this page' }).click()
@@ -134,7 +134,7 @@ test('schéma collé, ajouté sur cette page à côté : la séquence s’allong
   // La destination choisie est retenue.
   await page.getByTestId('main-menu.button').click()
   await page.getByTestId('main-menu-sub.schema-file-menu-button').click()
-  await page.getByText('Paste JSON (diagram or changes)…').click()
+  await page.getByText('Import a list, Markdown or JSON…').click()
   await dialog.getByRole('textbox').fill(JSON.stringify(mindMap('Justice', 2)))
   await expect(dialog.getByRole('radio', { name: 'on this page, beside' })).toBeChecked()
 })

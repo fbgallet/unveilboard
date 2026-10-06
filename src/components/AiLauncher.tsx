@@ -15,7 +15,7 @@ import { mapImportOpenAtom, openAssistant } from './MapJsonDialog'
 import { sourceDialogOpenAtom } from './SourceDialog'
 import { promptLibraryOpenAtom } from '@/lib/prompts/library'
 
-type IconName = 'branch' | 'wand' | 'steps' | 'review' | 'document' | 'braces' | 'gear' | 'plan' | 'library'
+type IconName = 'branch' | 'wand' | 'steps' | 'review' | 'document' | 'braces' | 'gear' | 'plan' | 'library' | 'palette'
 
 interface Item {
   id: string
@@ -42,6 +42,15 @@ const ICONS: Record<IconName, React.ReactNode> = {
     <>
       <path d="M4 20 15 9" />
       <path d="M15 4v2m0 6v2m-5-5h2m6 0h2m-8.5-3.5 1.4 1.4m5.2 5.2 1.4 1.4m0-8-1.4 1.4" />
+    </>
+  ),
+  // Palette : mettre en forme.
+  palette: (
+    <>
+      <path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.8 1.6-1.6 0-1.3-1.2-1.7-1.2-2.9 0-1 .8-1.6 1.8-1.6H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3Z" />
+      <circle cx="7.5" cy="11" r="1.2" />
+      <circle cx="10" cy="7" r="1.2" />
+      <circle cx="15" cy="7.5" r="1.2" />
     </>
   ),
   // Étapes numérotées.
@@ -144,6 +153,7 @@ export function AiLauncher() {
       },
       { id: 'assistant', icon: 'wand', label: t.launcher.assistant, action: () => openAssistant() },
       { id: 'sequence', icon: 'steps', label: t.launcher.sequence, action: () => openAssistant('sequence') },
+      { id: 'style', icon: 'palette', label: t.styleAi.menu, action: () => openAssistant('style') },
       {
         id: 'review',
         icon: 'review',

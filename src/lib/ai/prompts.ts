@@ -12,16 +12,16 @@ import { FOCUS_OF_KIND, REMARK_KINDS, REVIEW_FOCUS, type ReviewFocus } from '../
 import { APP_LANGS, AUTO_LANG, baseLang, languageName } from './language'
 import { SIZE_LIMITS, sizeText, type DiagramSize } from '../map/size'
 
-export const PROMPT_VERSION = 11
+export const PROMPT_VERSION = 12
 
-export const TASKS = ['create', 'enrich', 'sequence', 'review', 'edit', 'expand', 'plan', 'develop', 'finish'] as const
+export const TASKS = ['create', 'enrich', 'sequence', 'review', 'edit', 'expand', 'plan', 'develop', 'finish', 'style'] as const
 export type Task = (typeof TASKS)[number]
 /**
  * Tâches de la boîte « Consigne pour une IA » : « expand » part d'un élément (barre de l'arbre),
  * « review » a son panneau (« Relecture ») ; « plan », « develop » et « finish » sont les étapes
  * d'une création en plusieurs temps (src/lib/ai/staged.ts).
  */
-export const ASSISTANT_TASKS = ['create', 'enrich', 'sequence', 'edit'] as const satisfies readonly Task[]
+export const ASSISTANT_TASKS = ['create', 'enrich', 'sequence', 'edit', 'style'] as const satisfies readonly Task[]
 export type AssistantTask = (typeof ASSISTANT_TASKS)[number]
 
 /**
@@ -187,7 +187,7 @@ export function buildPrompt(input: PromptInput): string {
     vocabularyText(input.vocabulary),
     MAP_FORMAT_TEXT,
     output === 'patch' ? PATCH_FORMAT_TEXT : output === 'review' ? reviewFormatText(input.reviewFocus ?? REVIEW_FOCUS) : output === 'plan' ? PLAN_FORMAT_TEXT : '',
-    input.task === 'plan' || input.task === 'develop' ? '' : SEQUENCE_TEXT,
+    input.task === 'plan' || input.task === 'develop' || input.task === 'style' ? '' : SEQUENCE_TEXT,
     rules(input.lang, input.notes !== false),
     (input.task === 'develop' || input.task === 'finish') && input.plan ? `## The plan
 
@@ -197,7 +197,7 @@ ${JSON.stringify(input.plan, null, 1)}
     input.map
       ? `## The current diagram${input.partial ? ' (extract)\n\nOnly part of the diagram is shown: the element, its ancestors up to the root, and its branch.' : ''}\n\n\`\`\`json\n${JSON.stringify(input.map, null, 1)}\n\`\`\``
       : '',
-    deliveryText(output, input.delivery, input.pasteMenu ?? 'Paste JSON (diagram or changes)…'),
+    deliveryText(output, input.delivery, input.pasteMenu ?? 'Import a list, Markdown or JSON…'),
   ]
   return parts.filter(Boolean).join('\n\n') + '\n'
 }
@@ -294,6 +294,17 @@ The diagram below was built in several passes: a plan (given after the rules), t
 - **Sequence** (\`{ "op": "sequence", "mode": "replace", "intro"?, "steps" }\`): the presentation of the whole diagram, following the plan: the root first, then each section in turn, revealing its elements progressively (group those that go together), and an overview at the end. Each step has a short title and a narration the teacher can read or say, which adds to the boxes without repeating them.
 
 Use only \`link\` and \`sequence\` operations: do not change the elements.`,
+  style: `## Your task: improve the look of the diagram
+
+Every box of the diagram below may look the same (it was often imported from a list). Give it a clear, meaningful appearance, following the user's request if any, **without changing its content**.
+
+- Use only \`update\` operations, with \`type\` and \`style\` (and \`relation\` only if the user asks for it). Do not change texts, notes, checkboxes, the tree or the sequence; do not add, move or remove anything.
+- **Types first.** Give an element the type that says what it is (question, concept, example, statement…) when one really fits: its shape and colour follow. When the material calls for other kinds (a task, a step, a domain, a person, a period…), declare them in \`vocabulary\` with a \`style\`, and use them consistently: the same kind of element always looks the same.
+- **Then \`style\`**, for the visual hierarchy, on top of the type: the root larger (\`"size": "l"\` or \`"xl"\`), main branches more visible than leaves; in a mind map, one colour per main branch, kept by its descendants (a lighter fill deeper down), so that each branch reads as a family. Give only the keys that change; \`null\` returns to the look of the type.
+- In an argument map (\`"tree": { "kind": "argument" }\`), the colour of a connected element tells its function and is set by the app: change its type (its shape), not its colour.
+- Restraint: a few colours (three to six), readable together, each with a meaning; no change without a reason.
+- When elements are selected (see below), change only those (a single selected root stands for its whole tree).
+- \`summary\`: in two or three sentences, the logic of the new look (what each shape or colour means), for the user.`,
 }
 
 /** Finition sans séquence : les liens seulement. */
@@ -511,13 +522,15 @@ const MAP_FORMAT_TEXT = `## The diagram format (JSON)
   "elements": [ Element… ], "links": [ Link… ], "sequence": { "steps": [ Step… ] } }
 \`\`\`
 
-- **Element**: \`{ "id", "text", "type"?, "parent"?, "relation"?, "reasoning"?, "source"?, "modality"?, "note"?, "tree"?, "origin"?, "excerpt"? }\`
+- **Element**: \`{ "id", "text", "type"?, "parent"?, "relation"?, "reasoning"?, "source"?, "modality"?, "note"?, "task"?, "style"?, "tree"?, "origin"?, "excerpt"? }\`
   - \`id\`: short and unique, without spaces (e.g. \`thesis\`, \`obj1\`). Parents come before their children; siblings are in display order.
   - \`parent\` + \`relation\`: the tree. An element without parent is a root (or a standalone box). Without \`relation\`, a plain branch (mind map).
   - \`type\`: omitted, the relation's default child type applies.
   - **Linked premises**: when premises only support (or object to) a conclusion **together**, none being enough alone, do not attach them separately: add a \`"type": "linked"\` element with an empty \`text\`, child of the conclusion with the relation (\`supports\`, \`objects\`…), then each premise as its child with \`"relation": "premise"\`. An objection to the inference itself (the premises may be true, yet not lead to the conclusion) is a child of the \`linked\` element. Independent reasons stay separate children.
   - \`source\`: author, work, theory or position the element comes from.
   - \`note\`: a longer development in Markdown (a full quotation, an explanation), shown beside the diagram on demand.
+  - \`task\`: a checkbox on the box, \`"todo"\` or \`"done"\` (for a plan, a to-do list); omitted: none.
+  - \`style\`: the look of this box, over the one its type gives it (only the keys that change): \`{ "geo"?, "color"?, "fill"?, "dash"?, "size"?: "s" | "m" | "l" | "xl", "font"?: "draw" | "sans" | "serif" | "mono" }\` (values as for a type's style, below). Prefer types; leave it out unless asked to work on the look.
   - \`tree\` (on a root only): \`{ "kind": "argument" | "mindmap", "direction"?: "right" | "left" | "down" | "up" | "both" }\`.
   - \`origin\`: \`"text"\` (stated in a source text) or \`"reconstruction"\` (your analysis: an implicit assumption, an unstated link). \`excerpt\`: the passage of the source it comes from, copied **verbatim**.
 - **Link** (arrow outside the trees, between two elements): \`{ "id", "from", "to", "relation"?, "label"? }\`, reads “from RELATION to”.
@@ -533,7 +546,7 @@ Do not rewrite the whole diagram: answer with changes, applied in order.
 
 - \`summary\`: what you changed and why, in a few sentences, for the user (in the content language).
 - \`{ "op": "add", "id", "text", "parent"?, "relation"?, "type"?, "rationale"?, … }\`: a new element (any Element field); \`id\` must be new. \`parent\` is an existing element or one added earlier. \`rationale\`: why you propose it (one sentence).
-- \`{ "op": "update", "id", "text"?, "type"?, "relation"?, "reasoning"?, "source"?, "modality"?, "note"?, "tree"? }\`: change fields; \`null\` removes one.
+- \`{ "op": "update", "id", "text"?, "type"?, "relation"?, "reasoning"?, "source"?, "modality"?, "note"?, "task"?, "style"?, "tree"? }\`: change fields; \`null\` removes one (\`style\` only changes the keys given).
 - \`{ "op": "move", "id", "parent", "relation"? }\`: attach an element (with its branch) to another parent.
 - \`{ "op": "remove", "id" }\`: remove an element with its whole branch, or a link.
 - \`{ "op": "link", "id", "from", "to", "relation"?, "rationale"? }\`: a new cross-link.
@@ -610,8 +623,8 @@ function rules(lang: string, notes: boolean) {
 ${writingRules(notes)}
 ${languageRules(lang)}
 - Be faithful: never invent a quotation, a source or a reference. A \`quote\` element must be an exact quotation with its \`source\`; when you are not sure of the exact words, write a \`statement\` without \`source\`. Mark your own reconstructions with \`"origin": "reconstruction"\`.
-- Use the vocabulary above (ids, not names). It was designed for arguments and theories: when the material calls for other kinds of elements or relations (a step, an event, a period, a cause, a character, a work; “leads to”, “precedes”, “is a kind of”, “is part of”, “causes”, “influences”…), declare them in \`vocabulary\` rather than forcing a type or relation that does not fit: \`{ "id", "kind": "type" | "relation", "name" (in the content language), "description", "direction"?, "childType"?, "style"? }\`. A relation reads “child RELATION parent” unless \`"direction": "toChild"\` (“parent RELATION child”: “leads to”, “is divided into”). \`style\` (optional): for a type, \`{ "geo": "rectangle" | "oval" | "ellipse" | "diamond" | "hexagon" | "cloud" | "rhombus", "color", "fill": "semi" | "solid" | "none", "dash": "draw" | "solid" | "dashed" | "dotted" }\`; for a relation, \`{ "color", "dash" }\`; colors: \`black\`, \`grey\`, \`violet\`, \`light-violet\`, \`blue\`, \`light-blue\`, \`yellow\`, \`orange\`, \`green\`, \`light-green\`, \`red\`, \`light-red\`. Keep such additions few and consistent.
-- Nothing may rely on colors or positions: they are computed by the app.
+- Use the vocabulary above (ids, not names). It was designed for arguments and theories: when the material calls for other kinds of elements or relations (a step, an event, a period, a cause, a character, a work; “leads to”, “precedes”, “is a kind of”, “is part of”, “causes”, “influences”…), declare them in \`vocabulary\` rather than forcing a type or relation that does not fit: \`{ "id", "kind": "type" | "relation", "name" (in the content language), "description", "direction"?, "childType"?, "style"? }\`. A relation reads “child RELATION parent” unless \`"direction": "toChild"\` (“parent RELATION child”: “leads to”, “is divided into”). \`style\` (optional): for a type, \`{ "geo": "rectangle" | "oval" | "ellipse" | "diamond" | "hexagon" | "octagon" | "cloud" | "rhombus" | "triangle" | "pentagon" | "trapezoid" | "star", "color", "fill": "none" | "semi" | "solid" | "pattern" | "fill", "dash": "draw" | "solid" | "dashed" | "dotted", "size"?, "font"? }\` (\`fill\`: \`semi\` pale, \`solid\` light, \`fill\` full colour); for a relation, \`{ "color", "dash" }\`; colors: \`black\`, \`grey\`, \`violet\`, \`light-violet\`, \`blue\`, \`light-blue\`, \`yellow\`, \`orange\`, \`green\`, \`light-green\`, \`red\`, \`light-red\`. Keep such additions few and consistent.
+- Nothing may rely on colors or positions: positions are computed by the app, and colors only reinforce what types, relations and the tree already say.
 - Never write an element's \`id\` in text meant for the user (message, summary, reason, rationale, narration): the user does not see ids. Name the element by its text, briefly quoted.`
 }
 

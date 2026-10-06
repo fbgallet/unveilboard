@@ -53,6 +53,7 @@ import { PlanPanel } from './PlanPanel'
 import { SourcePanel, sourcePresentOpenAtom } from './SourcePanel'
 import { readPageSource } from '@/lib/canvas/source'
 import { AiLauncher } from './AiLauncher'
+import { PasteListDialog, registerListPaste } from './PasteList'
 import { loadReview, reviewOpenAtom } from '@/lib/canvas/review'
 
 const overlayUtils = [LaserOverlayUtil]
@@ -160,6 +161,8 @@ export default function Studio({
     const stopFile = startFileSync(editor, docId)
     const stopTree = registerTreeSideEffects(editor)
     const stopPresets = registerPresetSideEffects(editor)
+    // Une liste collée devient une carte mentale (ou des branches de la boîte sur laquelle on la colle).
+    const stopPaste = registerListPaste(editor)
     // window.unveilboard : lire et modifier le schéma, pour un agent qui pilote le navigateur.
     const stopApi = installPageApi(editor, (url) => routerRef.current.push(url))
     // Relecture critique gardée pour ce schéma (sur cet appareil).
@@ -171,6 +174,7 @@ export default function Studio({
       stopFile()
       stopTree()
       stopPresets()
+      stopPaste()
       stopApi()
       modeAtom.set('edit')
       editUnlockedAtom.set(false)
@@ -244,6 +248,7 @@ export default function Studio({
         {editor && mode === 'edit' && <ElementAiPanel editor={editor} />}
         {editor && mode === 'edit' && <ReviewPanel editor={editor} />}
         {editor && mode === 'edit' && <PlanPanel editor={editor} />}
+        {editor && mode === 'edit' && <PasteListDialog editor={editor} />}
         {editor && <SyncBanner />}
         {editor && <FileBanner />}
         {editor && <PresetManager editor={editor} />}

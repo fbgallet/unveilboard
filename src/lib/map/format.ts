@@ -29,6 +29,32 @@ const Ref = z
 
 const VocabularyId = z.string().min(1).max(64).regex(/^\S+$/)
 
+/** Case à cocher d'un élément. */
+export const TASK_STATES = ['todo', 'done'] as const
+export type TaskState = (typeof TASK_STATES)[number]
+
+/** Aspect propre d'une boîte (valeurs de tldraw), au-delà de celui que lui donne son type. */
+export const STYLE_GEOS = ['rectangle', 'oval', 'ellipse', 'diamond', 'hexagon', 'octagon', 'cloud', 'rhombus', 'triangle', 'pentagon', 'trapezoid', 'star'] as const
+export const STYLE_COLORS = ['black', 'grey', 'light-violet', 'violet', 'blue', 'light-blue', 'yellow', 'orange', 'green', 'light-green', 'light-red', 'red', 'white'] as const
+export const STYLE_FILLS = ['none', 'semi', 'solid', 'pattern', 'fill'] as const
+export const STYLE_DASHES = ['draw', 'solid', 'dashed', 'dotted'] as const
+export const STYLE_SIZES = ['s', 'm', 'l', 'xl'] as const
+export const STYLE_FONTS = ['draw', 'sans', 'serif', 'mono'] as const
+
+export const ElementStyleSchema = z
+  .object({
+    geo: z.enum(STYLE_GEOS).optional(),
+    color: z.enum(STYLE_COLORS).optional(),
+    fill: z.enum(STYLE_FILLS).optional().describe('none: outline only; semi: pale fill; solid: light fill; fill: full color.'),
+    dash: z.enum(STYLE_DASHES).optional().describe('Outline: draw (hand-drawn), solid, dashed, dotted.'),
+    size: z.enum(STYLE_SIZES).optional().describe('Outline and text size.'),
+    font: z.enum(STYLE_FONTS).optional(),
+  })
+  .describe(
+    'Appearance of this box, overriding the one its type gives it (only the keys given). Prefer types; use it for visual hierarchy (a larger root, one color per main branch of a mind map).'
+  )
+export type ElementStyle = z.infer<typeof ElementStyleSchema>
+
 export const ElementSchema = z
   .object({
     id: Ref,
@@ -57,6 +83,11 @@ export const ElementSchema = z
       .describe('Statements and assumptions: descriptive (how things are) or prescriptive (how things ought to be).'),
     note: z.string().max(20000).optional().describe('Longer development (Markdown), shown beside the diagram on demand.'),
     folded: z.boolean().optional().describe('Branch folded at the start of the presentation.'),
+    task: z
+      .enum(TASK_STATES)
+      .optional()
+      .describe('A checkbox on the box, which the user can tick: todo (unchecked) or done (checked). Omitted: no checkbox.'),
+    style: ElementStyleSchema.optional(),
     origin: z
       .enum(['text', 'reconstruction'])
       .optional()

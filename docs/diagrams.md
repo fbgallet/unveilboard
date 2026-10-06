@@ -12,6 +12,7 @@ Select a box: <kbd>Tab</kbd> adds a child (and starts a tree), <kbd>Enter</kbd> 
 - Direction: to the right, left, down, up, or on both sides (balanced mind map: a new child of the root goes to the less loaded side, and a branch dragged to the other side of the root stays there).
 - Collapsing a branch hides it while editing. The collapsed state of the document is the starting state of the presentation; the "Collapse / Expand branch" actions change it during the sequence. Collapsing moves nothing: the branch keeps its place.
 - Deleting a node deletes its branch (undoable).
+- **Checkboxes**: right click on boxes › “Add a checkbox”. A click on the box ticks it (the text is struck through), while editing and while presenting; not in a shared link or on the projection screen.
 - **Argument map** ("Argument map" button): the selected box becomes the thesis under discussion ("Thesis" label). <kbd>Tab</kbd> offers what to add to it (Justification · supports, Objection · objects to…; keys 1 to 9 then a, b…, 0 for none). The branch takes the style and direction of the relation (toward the parent by default: "the premise supports the thesis"; toward the child for implies, presupposes, raises), and the new node the associated type (Example for "illustrates", Assumption for "presupposes"…). <kbd>Enter</kbd> adds a sibling with the same relation.
 - In an argument tree, **the shape tells the type, the color tells the function**: a connected node takes the color of its relation (stroke and light fill) and its label shows its function only (Justification, Objection, Refutation, Answer, Explanation, Implication, Presupposition, Example, Definition, Problem, Distinction). Green is reserved for support.
 
@@ -30,6 +31,7 @@ Named styles, at the top of the style panel: **element types** for shapes (State
 ## Files and formats
 
 - **Files**: save and open `.tldr` files. The sequence is stored inside the tldraw document, so a `.tldr` file keeps it. In Chrome and Edge, a diagram opened from a file, or saved to one, stays linked to it: every change is written back automatically (<kbd>Ctrl/⌘</kbd>+<kbd>S</kbd> saves at once), so you can work directly on a file in a synced folder (Google Drive, Dropbox, iCloud Drive, OneDrive). A file changed elsewhere is reloaded when you come back to the tab, and never overwritten without asking; reopening a linked file reopens its diagram instead of duplicating it.
+- **Lists**: a list pasted on the canvas (bulleted, numbered or indented, copied from Roam, Logseq, Obsidian, Workflowy…) becomes a mind map, its checkboxes included; pasted on a box (selected, or while typing in it), it can become its branches, or stay text. ☰ › File › “Import a list, Markdown or JSON…” also takes Markdown with headings and `.md`, `.txt` or `.opml` files. “Copy as a list (Markdown)” does the reverse, for the whole page or the selection.
 - **JSON format**: export a diagram as JSON (types, relations, trees, sequence, all named), or copy it for an AI; import a JSON diagram written by hand, by an AI or by another tool, laid out automatically. See [The JSON diagram format](map-format.md).
 
 ## Examples

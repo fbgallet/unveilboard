@@ -10,6 +10,7 @@ import { formatIssue } from '../map/check'
 import type { UnveilMap } from '../map/format'
 import { stashPendingMap, type PendingMap } from '../map/pending'
 import { readJson, type ReadResult } from '../map/read'
+import { mapAsBranch } from '../map/patch'
 import type { ReviewFocus } from '../map/review'
 import { documentStore } from '../storage'
 import { storageModeAtom } from '../sync/documentSync'
@@ -133,7 +134,30 @@ export async function createDocumentFromMap(map: UnveilMap, opts: Omit<PendingMa
  * Où va un schéma créé (par l'IA, ou collé) : un nouveau document, une nouvelle page du document
  * ouvert, ou la page ouverte, à droite de ce qui s'y trouve.
  */
-export type MapDestination = 'document' | 'page' | 'here'
+export type MapDestination = 'document' | 'page' | 'here' | 'under'
+
+/** Boîte sous laquelle un schéma peut s'ajouter : la seule sélectionnée. */
+export function branchTarget(editor: Editor): TLShapeId | null {
+  const shape = editor.getOnlySelectedShape()
+  return shape?.type === 'geo' && !shape.meta.suggestion ? shape.id : null
+}
+
+/**
+ * Ajoute un schéma sous une boîte du schéma ouvert : ses têtes deviennent des enfants de la boîte
+ * (sans sa séquence), avec les mêmes contrôles qu'une modification. Un seul Ctrl+Z annule tout.
+ * Renvoie les problèmes rencontrés (vide : ajouté).
+ */
+export function addMapUnder(editor: Editor, map: UnveilMap, parentId: TLShapeId): string[] {
+  const { map: current, shapes } = exportMap(editor)
+  const parent = [...shapes].find(([, s]) => s.node === parentId)?.[0]
+  if (!parent) return ['The selected box is not an element of the diagram']
+  const patch = mapAsBranch(map, parent, new Set(shapes.keys()))
+  const result = readJson(patch, knownVocabulary(editor), current)
+  if (!result.ok || result.kind !== 'patch') return result.issues.filter((i) => i.level === 'error').map(formatIssue)
+  applyPatch(editor, result.patch)
+  editor.select(parentId)
+  return []
+}
 
 /** Écart entre ce que la page contient déjà et le schéma ajouté à côté. */
 const BESIDE_GAP = 300
@@ -147,7 +171,7 @@ const BESIDE_GAP = 300
 export function addMapToDocument(
   editor: Editor,
   map: UnveilMap,
-  destination: Exclude<MapDestination, 'document'>,
+  destination: 'page' | 'here',
   opts: Omit<PendingMap, 'map' | 'plan'> = {}
 ) {
   const mark = editor.markHistoryStoppingPoint('schéma ajouté')
@@ -177,6 +201,22 @@ export function addMapToDocument(
 
   const bounds = [...shapes.values()].map((s) => editor.getShapePageBounds(s.node as TLShapeId)).filter((b) => !!b)
   if (bounds.length) editor.zoomToBounds(Box.Common(bounds), { inset: 64, animation: { duration: 400 } })
+}
+
+/**
+ * Pose un schéma sur la page ouverte, à partir d'un point (collage d'une liste) ; sa séquence
+ * éventuelle s'ajoute à celle de la page. Un seul Ctrl+Z annule tout. Les boîtes créées sont sélectionnées.
+ */
+export function addMapAt(editor: Editor, map: UnveilMap, at: { x: number; y: number }) {
+  const mark = editor.markHistoryStoppingPoint('liste collée')
+  const { shapes, sequence } = importMap(editor, map, { at })
+  if (sequence.steps.length) {
+    const before = readSequence(editor)
+    writeSequence(editor, before ? { ...before, steps: [...before.steps, ...sequence.steps] } : sequence, { undoable: true })
+  }
+  editor.setEditingShape(null)
+  editor.select(...[...shapes.values()].filter((s) => s.kind === 'element').map((s) => s.node as TLShapeId))
+  editor.squashToMark(mark)
 }
 
 // ---------- API de la page, pour les agents qui pilotent le navigateur ----------

@@ -9,7 +9,7 @@ import { z } from 'zod'
 import { MODALITIES, REASONINGS } from '../presets/presets'
 import { TREE_DIRECTIONS } from '../tree/layout'
 import { checkMap, type KnownVocabulary, type MapIssue } from './check'
-import { ElementSchema, LinkSchema, StepSchema, VocabularySchema, type MapElement, type UnveilMap } from './format'
+import { ElementSchema, ElementStyleSchema, LinkSchema, StepSchema, TASK_STATES, VocabularySchema, type MapElement, type UnveilMap } from './format'
 
 export const PATCH_FORMAT = 'unveilboard/patch'
 export const PATCH_VERSION = 1
@@ -35,6 +35,8 @@ const UpdateOp = z
     modality: z.enum(MODALITIES).nullable().optional(),
     note: z.string().max(20000).nullable().optional(),
     folded: z.boolean().optional(),
+    task: z.enum(TASK_STATES).nullable().optional(),
+    style: ElementStyleSchema.nullable().optional().describe('null: back to the appearance given by the type.'),
     origin: z.enum(['text', 'reconstruction']).nullable().optional(),
     excerpt: z.string().max(4000).nullable().optional(),
     tree: z
@@ -133,6 +135,8 @@ export function applyPatchToMap(map: UnveilMap, patch: MapPatch, missing: (op: n
         for (const [key, value] of Object.entries(omit(op, ['op', 'id']))) {
           if (value === undefined) continue
           if (value === null) delete record[key]
+          // L'aspect se complète : seules les clés données changent.
+          else if (key === 'style') record.style = { ...e.style, ...(value as MapElement['style']) }
           else record[key] = value
         }
         break
@@ -226,4 +230,47 @@ function withoutTargets(sequence: NonNullable<UnveilMap['sequence']>, gone: Set<
         .filter((a) => a.targets.length),
     })),
   }
+}
+
+/**
+ * Un schéma entier en modifications qui l'ajoutent sous un élément du schéma ouvert : ses racines
+ * deviennent des enfants de `parent`, ses liens sont repris, sa séquence laissée de côté. Les
+ * identifiants déjà pris (`taken`) sont renommés.
+ */
+export function mapAsBranch(map: UnveilMap, parent: string, taken: Set<string>): MapPatch {
+  const rename = new Map<string, string>()
+  const used = new Set(taken)
+  for (const item of [...map.elements, ...(map.links ?? [])]) {
+    let id = item.id
+    for (let n = 2; used.has(id); n++) id = `${item.id}_${n}`
+    used.add(id)
+    rename.set(item.id, id)
+  }
+  const ids = new Set(map.elements.map((e) => e.id))
+  const operations: PatchOperation[] = map.elements.map((e) => {
+    const root = !e.parent || !ids.has(e.parent)
+    return { op: 'add', ...omit(e, ['function', 'tree', 'side']), id: rename.get(e.id)!, parent: root ? parent : rename.get(e.parent!)! }
+  })
+  for (const l of map.links ?? []) {
+    if (rename.has(l.from) && rename.has(l.to)) operations.push({ op: 'link', ...l, id: rename.get(l.id)!, from: rename.get(l.from)!, to: rename.get(l.to)! })
+  }
+  return { format: PATCH_FORMAT, version: PATCH_VERSION, ...(map.vocabulary?.length && { vocabulary: map.vocabulary }), operations }
+}
+
+/** Champs qu'une mise en forme peut changer. */
+const STYLE_FIELDS = new Set(['op', 'id', 'type', 'style', 'relation', 'reasoning'])
+
+/** Mise en forme : seulement des « update » de l'aspect (type, style, relation) ; le reste est refusé. */
+export function styleOnlyIssues(patch: MapPatch): MapIssue[] {
+  const issues: MapIssue[] = []
+  patch.operations.forEach((op, i) => {
+    if (op.op !== 'update') {
+      issues.push({ level: 'error', code: 'operation_not_allowed', path: `operations[${i}].op`, detail: 'only update (type, style, relation)' })
+      return
+    }
+    for (const key of Object.keys(op)) {
+      if (!STYLE_FIELDS.has(key)) issues.push({ level: 'error', code: 'operation_not_allowed', path: `operations[${i}].${key}`, detail: 'only type, style and relation may change' })
+    }
+  })
+  return issues
 }

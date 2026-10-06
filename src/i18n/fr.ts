@@ -143,7 +143,23 @@ export const fr: Messages = {
 
   panel: {
     note: 'Note de l’objet',
-    notePlaceholder: 'Développement affiché dans le panneau de narration, au double-clic sur l’objet ou avec « Afficher la note »',
+    notePlaceholder: 'Développement de l’objet, lisible dans ce panneau (clic sur ¶) et pendant la présentation (double-clic, ou « Afficher la note » à une étape)',
+    showNote: 'Afficher la note',
+    addNote: 'Ajouter une note',
+    noteEdit: 'Modifier la note',
+    noteDone: 'Terminer la saisie',
+    noteLocate: 'Situer sur le canevas',
+    tabs: 'Panneau : séquence ou élément',
+    element: 'Élément',
+    hasNote: 'Cet élément a une note',
+    elementHint: 'Sélectionnez un élément sur le canevas pour voir et modifier sa note, sa nature ou sa provenance. Les marques ¶ signalent les éléments qui ont une note.',
+    elementMany: (n) => `${plural(n, 'objet sélectionné', 'objets sélectionnés')} : sélectionnez-en un seul pour voir sa note.`,
+    elementUntitled: 'Élément sans texte',
+    elementAi: 'IA',
+    titleLabel: 'Titre du schéma',
+    titleHint: 'Titre du schéma, commun à toutes ses pages : son nom dans « Mes schémas » et celui du fichier .tldr enregistré',
+    elementAiFree: 'Autre demande…',
+    textReset: 'Taille du texte par défaut',
     expand: 'Déplier le panneau des étapes',
     sequence: 'Séquence',
     back: 'Mes schémas',
@@ -911,11 +927,17 @@ export const fr: Messages = {
     menuExport: 'Exporter en JSON…',
     menuCopy: 'Copier en JSON (pour une IA)',
     copied: 'Schéma copié en JSON',
-    menuImport: 'Coller du JSON (schéma ou modifications)…',
-    title: 'Coller du JSON',
+    menuImport: 'Importer une liste, du Markdown ou du JSON…',
+    title: 'Importer',
     intro:
-      'Collez du JSON au format d’Unveilboard (un export, ou la réponse d’une IA), ou choisissez un fichier .json : un schéma entier s’ouvre comme nouveau schéma, mis en page automatiquement ; des modifications s’appliquent à ce schéma (Ctrl/⌘ + Z les annule).',
+      'Collez une liste (à puces, numérotée ou indentée, copiée de Roam, Logseq, Obsidian, Workflowy…), du Markdown à titres, ou du JSON au format d’Unveilboard (un export, ou la réponse d’une IA) ; ou choisissez un fichier .md, .txt, .opml ou .json. Une liste devient une carte mentale, une boîte par ligne ; un schéma entier s’ouvre mis en page automatiquement ; des modifications s’appliquent à ce schéma (Ctrl/⌘ + Z les annule).',
     pasteLabel: 'JSON à coller',
+    importLabel: 'Liste, Markdown ou JSON à importer',
+    outlinePlaceholder: '- Idée principale\n    - Une branche\n        - [ ] Une tâche\n    - Une autre branche',
+    outlineValid: (elements, levels) => `Liste lue : ${plural(elements, 'élément', 'éléments')} sur ${plural(levels, 'niveau', 'niveaux')}.`,
+    outlineJoin: (n) => `Réunir les ${n} têtes de liste sous une racine`,
+    outlineRootLabel: 'Texte de la racine',
+    outlineSeparate: 'Un arbre par tête de liste, côte à côte.',
     apply: 'Appliquer à ce schéma',
     patchValid: (what) => `Modifications valides : ${what}.`,
     counts: {
@@ -936,6 +958,8 @@ export const fr: Messages = {
     destinationLabel: 'Le placer :',
     destinations: { document: 'dans un nouveau schéma', page: 'sur une nouvelle page de celui-ci', here: 'sur cette page, à côté', emptyPage: 'sur cette page' } as Record<string, string>,
     hereHasOtherText: 'Cette page garde déjà un autre texte source : choisissez une nouvelle page.',
+    underElement: (text) => `sous « ${text} »`,
+    noTarget: 'Sélectionnez la boîte sous laquelle l’ajouter.',
     creating: 'Ouverture…',
     valid: (elements, steps) => `Valide : ${plural(elements, 'élément', 'éléments')}, ${plural(steps, 'étape', 'étapes')}.`,
     errors: 'Erreurs',
@@ -964,6 +988,7 @@ export const fr: Messages = {
       operation_not_allowed: 'Cette opération n’est pas permise à cette étape',
       outside_section: 'Cet élément sort de la section en cours de développement',
       size_elements: 'Nombre d’éléments hors des bornes fixées dans les réglages de l’IA',
+      empty_outline: 'Aucun élément de liste ni titre trouvé',
       size_levels: 'Nombre de niveaux hors des bornes fixées dans les réglages de l’IA',
     },
   },
@@ -984,6 +1009,7 @@ export const fr: Messages = {
       sequence: 'Écrire la séquence',
       review: 'Relire et corriger',
       edit: 'Autre modification',
+      style: 'Améliorer l’aspect',
     },
     taskHints: {
       create: 'L’IA construit un nouveau schéma (carte d’argument ou carte mentale) avec sa séquence, à partir d’un sujet ou d’un texte.',
@@ -991,6 +1017,7 @@ export const fr: Messages = {
       sequence: 'L’IA écrit la présentation pas à pas de ce schéma, avec une narration pour chaque étape.',
       review: 'L’IA signale incohérences, lacunes et confusions, et propose des corrections.',
       edit: 'L’IA modifie ce schéma comme vous le demandez.',
+      style: 'L’IA choisit des types, des formes et des couleurs adaptés aux éléments (la sélection, ou tout le schéma), sans toucher à leur contenu. Vous pourrez l’annuler.',
     },
     placeholders: {
       create: 'Le sujet, ou le texte à analyser (collez-le ici)…',
@@ -998,6 +1025,7 @@ export const fr: Messages = {
       sequence: 'Facultatif. Par exemple : la problématique d’abord, les présupposés à la fin.',
       review: 'Facultatif : ce qui vous importe (cohérence, lacunes, types…).',
       edit: 'Ce que vous voulez changer.',
+      style: 'Facultatif. Par exemple : une couleur par branche principale, les tâches en boîtes arrondies, les questions bien visibles.',
     },
     fromSource: 'Pour analyser un texte ou un fichier (PDF, photo), extraits vérifiés : « Créer un schéma depuis un texte ».',
     instructionLabel: 'Votre demande',
@@ -1246,6 +1274,34 @@ export const fr: Messages = {
       planRequired:
         'ChatGPT a refusé qu’Unveilboard utilise le forfait de ce compte. Il faut un forfait payant (Go, Plus, Pro…) pour l’utiliser dans une application ; avec un forfait gratuit, ChatGPT propose de changer d’offre pendant la connexion.',
     },
+  },
+
+  tasks: {
+    check: 'Cocher',
+    uncheck: 'Décocher',
+    add: 'Ajouter une case à cocher',
+    remove: 'Retirer la case à cocher',
+  },
+
+  listExport: {
+    menu: 'Copier en liste (Markdown)',
+    copySelection: 'Copier en liste (Markdown)',
+    copied: 'Copié en liste : collez-la dans Roam, Logseq, Obsidian ou un document',
+  },
+
+  pasteList: {
+    title: 'Coller une liste',
+    intro: (n) => `Cette liste compte ${plural(n, 'élément', 'éléments')}.`,
+    asBranches: 'L’ajouter en branches de cette boîte',
+    asText: 'La coller comme texte dans la boîte',
+    asNewMap: 'En faire une nouvelle carte mentale à côté',
+  },
+
+  styleAi: {
+    menu: 'Améliorer l’aspect avec l’IA…',
+    applied: 'Nouvel aspect appliqué.',
+    undo: 'Annuler la mise en forme',
+    keep: 'Le garder',
   },
 
   suggestions: {

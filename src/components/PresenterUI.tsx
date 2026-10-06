@@ -1,8 +1,8 @@
 'use client'
 
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
-import { renderPlaintextFromRichText, useEditor, useValue, type Editor, type TLPageId, type TLRichText, type TLShape, type TLShapeId } from 'tldraw'
-import { noteOf, panelNoteIds, plannedNoteIds, resolveTextImage } from '@/lib/canvas/notes'
+import { useEditor, useValue, type Editor, type TLPageId, type TLShapeId } from 'tldraw'
+import { noteOf, panelNoteIds, plannedNoteIds, resolveTextImage, shapeLabel } from '@/lib/canvas/notes'
 import { presetById, swatchColor } from '@/lib/canvas/presets'
 import { presetName } from '@/lib/presets/labels'
 import { adjacentPage, presentedPages, presentedSequence, readSequence } from '@/lib/canvas/adapter'
@@ -25,6 +25,8 @@ import {
   legendVisibleAtom,
   activeNoteAtom,
   closeNote,
+  modeAtom,
+  openElementTab,
   narrationScaleDefaultAtom,
   shapeClassesAtom,
   toggleOpenedNote,
@@ -674,24 +676,25 @@ function Icon({ name }: { name: IconName }) {
 }
 
 /** Rendu minimal : paragraphes, > citations, **gras**, *italique*. */
-/** Texte d'une forme (première ligne), pour titrer sa note. */
-function shapeLabel(editor: Editor, shape: TLShape) {
-  const richText = (shape.props as { richText?: TLRichText }).richText
-  return richText ? (renderPlaintextFromRichText(editor, richText).split('\n').find((l) => l.trim()) ?? '') : ''
-}
-
-/** Marques sur les objets visibles qui ont une note (présentation) : un clic l'affiche. */
+/**
+ * Marques sur les objets visibles qui ont une note : un clic l'affiche dans le panneau de droite
+ * (onglet de la narration en présentation, onglet Élément en édition).
+ */
 export function NoteMarkers() {
   const t = useT()
   const editor = useEditor()
+  const edit = useValue('edit mode', () => modeAtom.get() === 'edit', [])
   const markers = useValue(
     'note markers',
     () => {
       const classes = shapeClassesAtom.get()
-      if (!classes) return []
+      const editing = modeAtom.get() === 'edit'
+      // Édition : pas de marque sur la sélection, dont elle masquerait la poignée d'angle.
+      const selected = editing ? editor.getSelectedShapeIds() : []
       return editor.getCurrentPageShapes().flatMap((shape) => {
         if (!noteOf(shape)) return []
-        if ((classes.byId.get(shape.id) ?? classes.fallback).className.includes('pres-hidden')) return []
+        if (editing ? editor.isShapeHidden(shape) || selected.includes(shape.id) : !classes) return []
+        if (classes && (classes.byId.get(shape.id) ?? classes.fallback).className.includes('pres-hidden')) return []
         const b = editor.getShapePageBounds(shape.id)
         return b ? [{ id: shape.id, x: b.maxX, y: b.minY }] : []
       })
@@ -705,11 +708,16 @@ export function NoteMarkers() {
       {markers.map((m) => (
         <button
           key={m.id}
-          className={`note-marker ${opened.includes(m.id) ? 'note-marker-open' : ''}`}
+          className={`note-marker ${!edit && opened.includes(m.id) ? 'note-marker-open' : ''}`}
           style={{ left: m.x, top: m.y, transform: `translate(-50%, -50%) scale(${1 / zoom})` }}
-          title={t.presenter.showNote}
+          title={edit ? t.panel.showNote : t.presenter.showNote}
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => toggleOpenedNote(m.id)}
+          onClick={() => {
+            if (!edit) return toggleOpenedNote(m.id)
+            // Édition : la note se lit dans l'onglet Élément, avec l'objet sélectionné.
+            editor.select(m.id)
+            openElementTab()
+          }}
         >
           ¶
         </button>

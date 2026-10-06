@@ -6,7 +6,7 @@ import { atom, useValue, type Editor } from 'tldraw'
 import { clientLocale, m, useT } from '@/i18n/client'
 import { ASSISTANT_TASKS, buildPrompt, type Task } from '@/lib/ai/prompts'
 import { readSequence } from '@/lib/canvas/adapter'
-import { addMapToDocument, createDocumentFromMap, editorPromptInput, readPasted, selectedRefs } from '@/lib/canvas/assistant'
+import { addMapToDocument, addMapUnder, branchTarget, createDocumentFromMap, editorPromptInput, readPasted, selectedRefs } from '@/lib/canvas/assistant'
 import { aiSettingsAtom, askAi, isAiReady, modelName, serverAiAtom } from '@/lib/ai/client'
 import { toAiError } from '@/lib/ai/errors'
 import type { AiRun } from '@/lib/ai/run'
@@ -31,6 +31,8 @@ import { ContentLangNote } from './ContentLanguage'
 import { resolveContentLang } from '@/lib/ai/language'
 import { MapDestinationPicker, useMapDestination } from './MapDestination'
 import { normalizeSize, sizeIssues, type DiagramSize } from '@/lib/map/size'
+import { looksLikeJson, outlineDepth, outlineToMap, parseOutline } from '@/lib/map/outline'
+import { styleOnlyIssues } from '@/lib/map/patch'
 
 export const mapImportOpenAtom = atom<boolean>('mapImportOpen', false)
 export const assistantOpenAtom = atom<boolean>('assistantOpen', false)
@@ -77,7 +79,10 @@ function Dialog({ title, onClose, wide, children }: { title: string; onClose(): 
   )
 }
 
-/** Coller du JSON : un schéma entier (ouvert comme nouveau schéma) ou des modifications du schéma ouvert. */
+/**
+ * Importer : du JSON (un schéma entier, ouvert comme nouveau schéma, ou des modifications du schéma
+ * ouvert), ou un plan (liste, Markdown, copie d'un outliner, OPML), converti en carte mentale.
+ */
 export function MapImportDialog({ editor }: { editor: Editor }) {
   const open = useValue(mapImportOpenAtom)
   if (!open) return null
@@ -96,7 +101,7 @@ function MapImportView({ editor }: { editor: Editor }) {
           {t.mapJson.formatLink}
         </a>
       </p>
-      <JsonPastePanel editor={editor} onDone={close} text={text} setText={setText} />
+      <JsonPastePanel editor={editor} onDone={close} text={text} setText={setText} outline />
     </Dialog>
   )
 }
@@ -109,6 +114,8 @@ function JsonPastePanel({
   setText,
   source,
   size,
+  outline: acceptOutline,
+  styleOnly,
 }: {
   editor: Editor
   onDone(): void
@@ -118,25 +125,47 @@ function JsonPastePanel({
   source?: { text: string; label?: string }
   /** Taille demandée à l'IA : un schéma qui en sort est signalé. */
   size?: DiagramSize
+  /** Accepte aussi un plan (ce qui n'est pas du JSON). */
+  outline?: boolean
+  /** Mise en forme : seulement l'aspect change ; une fois appliquée, elle peut être annulée d'un bouton. */
+  styleOnly?: boolean
 }) {
   const t = useT()
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
-  const [destination, setDestination] = useMapDestination(editor)
+  // Sous la boîte sélectionnée : pas pour un schéma tiré d'un texte (qui garde ce texte avec sa page).
+  const [destination, setDestination] = useMapDestination(editor, { under: !source })
+  // Plan : titre tiré du nom du fichier choisi, têtes de liste réunies (ou non) sous une racine.
+  const [fileTitle, setFileTitle] = useState<string | undefined>()
+  const [join, setJoin] = useState(true)
+  const [rootText, setRootText] = useState<string | null>(null)
+  const outline = useMemo(() => (acceptOutline && text.trim() && !looksLikeJson(text) ? parseOutline(text) : null), [acceptOutline, text])
+  const title = outline?.title ?? fileTitle
   const result = useMemo(() => {
-    const read = text.trim() ? readPasted(editor, text) : null
+    if (outline && !outline.roots.length) return { kind: 'map' as const, ok: false as const, issues: [{ level: 'error' as const, code: 'empty_outline' as const, path: '' }] }
+    const input = outline ? outlineToMap(outline, { title, ...(join && { joinUnder: rootText ?? title ?? t.common.untitled }) }) : text
+    const read = text.trim() ? readPasted(editor, input) : null
+    if (styleOnly && read?.ok && read.kind === 'patch') {
+      const refused = styleOnlyIssues(read.patch)
+      if (refused.length) return { kind: 'patch' as const, ok: false as const, issues: [...refused, ...read.issues] }
+    }
     return read?.ok && read.kind === 'map' && size ? { ...read, issues: [...read.issues, ...sizeIssues(read.map, size, false)] } : read
-  }, [text, editor, size])
+  }, [text, editor, size, outline, title, join, rootText, t, styleOnly])
+  /** Mise en forme appliquée, qu'on peut encore annuler. */
+  const [applied, setApplied] = useState(false)
 
   async function pickFile(file: File | undefined) {
-    if (file) setText(await file.text())
+    if (!file) return
+    setFileTitle(file.name.replace(/\.(md|markdown|txt|opml|json)$/i, '').trim() || undefined)
+    setText(await file.text())
   }
 
   async function run() {
     if (!result?.ok) return
     if (result.kind === 'patch') {
       applyPatch(editor, result.patch)
+      if (styleOnly) return setApplied(true)
       // Page tirée d'un texte : les extraits sont cherchés dans le texte (sinon « à vérifier »).
       const pageSource = readPageSource(editor)
       if (pageSource) reverifyExcerpts(editor, pageSource.text)
@@ -151,6 +180,15 @@ function JsonPastePanel({
     try {
       // Créé à partir du texte de la page : le nouveau schéma le garde, extraits vérifiés.
       const opts = source ? { source, unverified: checkExcerpts(result.map, source.text, false).unverified } : {}
+      if (destination === 'under') {
+        const target = branchTarget(editor)
+        const problems = target ? addMapUnder(editor, result.map, target) : [t.mapJson.noTarget]
+        if (problems.length) {
+          setFailure(problems.join(' '))
+          return setBusy(false)
+        }
+        return onDone()
+      }
       if (destination !== 'document') {
         addMapToDocument(editor, result.map, destination, opts)
         if (source) openSourcePanel()
@@ -172,6 +210,29 @@ function JsonPastePanel({
       {issue.detail && <span className="text-zinc-500"> ({issue.detail})</span>}
     </li>
   )
+  // Mise en forme appliquée : la garder, ou l'annuler (un seul pas d'historique, celui des modifications).
+  if (applied) {
+    return (
+      <section className="grid gap-2">
+        <p className="text-xs font-medium text-emerald-700">{t.styleAi.applied}</p>
+        <footer className="flex justify-end gap-2">
+          <button
+            className="btn"
+            onClick={() => {
+              editor.undo()
+              setApplied(false)
+            }}
+          >
+            {t.styleAi.undo}
+          </button>
+          <button className="btn-primary" onClick={onDone}>
+            {t.styleAi.keep}
+          </button>
+        </footer>
+      </section>
+    )
+  }
+
   const errors = result?.issues.filter((i) => i.level === 'error') ?? []
   const warnings = result?.issues.filter((i) => i.level === 'warning') ?? []
 
@@ -181,17 +242,43 @@ function JsonPastePanel({
         className="map-json-input"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder={t.mapJson.placeholder}
-        aria-label={t.mapJson.pasteLabel}
+        placeholder={acceptOutline ? t.mapJson.outlinePlaceholder : t.mapJson.placeholder}
+        aria-label={acceptOutline ? t.mapJson.importLabel : t.mapJson.pasteLabel}
         spellCheck={false}
         rows={10}
       />
       <label className="btn-xs self-start justify-self-start">
         {t.mapJson.chooseFile}
-        <input type="file" accept=".json,application/json" className="sr-only" onChange={(e) => void pickFile(e.target.files?.[0])} />
+        <input
+          type="file"
+          accept={acceptOutline ? '.json,.md,.markdown,.txt,.opml,application/json,text/markdown,text/plain,text/x-opml' : '.json,application/json'}
+          className="sr-only"
+          onChange={(e) => void pickFile(e.target.files?.[0])}
+        />
       </label>
       {result?.ok && result.kind === 'map' && (
-        <p className="text-xs text-emerald-700">{t.mapJson.valid(result.map.elements.length, result.map.sequence?.steps.length ?? 0)}</p>
+        <p className="text-xs text-emerald-700">
+          {outline
+            ? t.mapJson.outlineValid(result.map.elements.length, outlineDepth(outline.roots) + (join && outline.roots.length > 1 ? 1 : 0))
+            : t.mapJson.valid(result.map.elements.length, result.map.sequence?.steps.length ?? 0)}
+        </p>
+      )}
+      {outline && outline.roots.length > 1 && (
+        <div className="grid gap-1 text-xs">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={join} onChange={(e) => setJoin(e.target.checked)} />
+            {t.mapJson.outlineJoin(outline.roots.length)}
+          </label>
+          {join && (
+            <input
+              className="map-json-root ml-5"
+              value={rootText ?? title ?? t.common.untitled}
+              onChange={(e) => setRootText(e.target.value)}
+              aria-label={t.mapJson.outlineRootLabel}
+            />
+          )}
+          {!join && <span className="pl-5 text-zinc-500">{t.mapJson.outlineSeparate}</span>}
+        </div>
       )}
       {result?.ok && result.kind === 'patch' && <PatchSummary patch={result.patch} />}
       {result?.ok && result.kind === 'review' && <p className="text-xs text-emerald-700">{t.review.valid(result.remarks.length)}</p>}
@@ -208,7 +295,7 @@ function JsonPastePanel({
         </section>
       )}
       {failure && <p className="text-xs text-red-700">{failure}</p>}
-      {result?.ok && result.kind === 'map' && <MapDestinationPicker editor={editor} value={destination} onChange={setDestination} />}
+      {result?.ok && result.kind === 'map' && <MapDestinationPicker editor={editor} value={destination} onChange={setDestination} under={!source} />}
       <footer className="flex justify-end gap-2">
         <button className="btn" onClick={onDone}>
           {t.common.cancel}
@@ -308,6 +395,11 @@ function AssistantView({ editor }: { editor: Editor }) {
    */
   const check = (text: string, attempt: number) => {
     const result = readPasted(editor, text)
+    // Mise en forme : une réponse qui touche au contenu est renvoyée à l'IA pour correction.
+    if (task === 'style' && result.ok && result.kind === 'patch') {
+      const refused = styleOnlyIssues(result.patch)
+      return refused.length ? { kind: 'patch' as const, ok: false as const, issues: [...refused, ...result.issues] } : result
+    }
     if (!(task === 'create' && result.ok && result.kind === 'map')) return result
     const extra = [
       ...sizeIssues(result.map, created.size, attempt === 1),
@@ -414,7 +506,7 @@ function AssistantView({ editor }: { editor: Editor }) {
           aria-label={t.assistant.instructionLabel}
           rows={task === 'create' ? 6 : 3}
         />
-        {task !== 'sequence' && (
+        {task !== 'sequence' && task !== 'style' && (
           <label className="flex items-center gap-2 text-xs" title={t.ai.notesHint}>
             <input
               type="checkbox"
@@ -522,6 +614,7 @@ function AssistantView({ editor }: { editor: Editor }) {
           setText={setAnswer}
           source={withSource && task === 'create' ? pageSource! : undefined}
           size={created.size}
+          styleOnly={task === 'style'}
         />
       </section>
     </Dialog>

@@ -168,6 +168,96 @@
                 "description": "Branch folded at the start of the presentation.",
                 "type": "boolean"
               },
+              "task": {
+                "description": "A checkbox on the box, which the user can tick: todo (unchecked) or done (checked). Omitted: no checkbox.",
+                "type": "string",
+                "enum": [
+                  "todo",
+                  "done"
+                ]
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "geo": {
+                    "type": "string",
+                    "enum": [
+                      "rectangle",
+                      "oval",
+                      "ellipse",
+                      "diamond",
+                      "hexagon",
+                      "octagon",
+                      "cloud",
+                      "rhombus",
+                      "triangle",
+                      "pentagon",
+                      "trapezoid",
+                      "star"
+                    ]
+                  },
+                  "color": {
+                    "type": "string",
+                    "enum": [
+                      "black",
+                      "grey",
+                      "light-violet",
+                      "violet",
+                      "blue",
+                      "light-blue",
+                      "yellow",
+                      "orange",
+                      "green",
+                      "light-green",
+                      "light-red",
+                      "red",
+                      "white"
+                    ]
+                  },
+                  "fill": {
+                    "description": "none: outline only; semi: pale fill; solid: light fill; fill: full color.",
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "semi",
+                      "solid",
+                      "pattern",
+                      "fill"
+                    ]
+                  },
+                  "dash": {
+                    "description": "Outline: draw (hand-drawn), solid, dashed, dotted.",
+                    "type": "string",
+                    "enum": [
+                      "draw",
+                      "solid",
+                      "dashed",
+                      "dotted"
+                    ]
+                  },
+                  "size": {
+                    "description": "Outline and text size.",
+                    "type": "string",
+                    "enum": [
+                      "s",
+                      "m",
+                      "l",
+                      "xl"
+                    ]
+                  },
+                  "font": {
+                    "type": "string",
+                    "enum": [
+                      "draw",
+                      "sans",
+                      "serif",
+                      "mono"
+                    ]
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Appearance of this box, overriding the one its type gives it (only the keys given). Prefer types; use it for visual hierarchy (a larger root, one color per main branch of a mind map)."
+              },
               "origin": {
                 "description": "Generated from a source: stated in the text, or reconstructed by the analysis (an implicit assumption, a link left unsaid).",
                 "type": "string",
@@ -329,6 +419,110 @@
               },
               "folded": {
                 "type": "boolean"
+              },
+              "task": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "todo",
+                      "done"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "style": {
+                "description": "null: back to the appearance given by the type.",
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "geo": {
+                        "type": "string",
+                        "enum": [
+                          "rectangle",
+                          "oval",
+                          "ellipse",
+                          "diamond",
+                          "hexagon",
+                          "octagon",
+                          "cloud",
+                          "rhombus",
+                          "triangle",
+                          "pentagon",
+                          "trapezoid",
+                          "star"
+                        ]
+                      },
+                      "color": {
+                        "type": "string",
+                        "enum": [
+                          "black",
+                          "grey",
+                          "light-violet",
+                          "violet",
+                          "blue",
+                          "light-blue",
+                          "yellow",
+                          "orange",
+                          "green",
+                          "light-green",
+                          "light-red",
+                          "red",
+                          "white"
+                        ]
+                      },
+                      "fill": {
+                        "description": "none: outline only; semi: pale fill; solid: light fill; fill: full color.",
+                        "type": "string",
+                        "enum": [
+                          "none",
+                          "semi",
+                          "solid",
+                          "pattern",
+                          "fill"
+                        ]
+                      },
+                      "dash": {
+                        "description": "Outline: draw (hand-drawn), solid, dashed, dotted.",
+                        "type": "string",
+                        "enum": [
+                          "draw",
+                          "solid",
+                          "dashed",
+                          "dotted"
+                        ]
+                      },
+                      "size": {
+                        "description": "Outline and text size.",
+                        "type": "string",
+                        "enum": [
+                          "s",
+                          "m",
+                          "l",
+                          "xl"
+                        ]
+                      },
+                      "font": {
+                        "type": "string",
+                        "enum": [
+                          "draw",
+                          "sans",
+                          "serif",
+                          "mono"
+                        ]
+                      }
+                    },
+                    "additionalProperties": false,
+                    "description": "Appearance of this box, overriding the one its type gives it (only the keys given). Prefer types; use it for visual hierarchy (a larger root, one color per main branch of a mind map)."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "origin": {
                 "anyOf": [

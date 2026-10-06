@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import Link from 'next/link'
 import { LogoMark } from './Logo'
 import { shareDialogOpenAtom } from './ShareDialog'
@@ -8,9 +8,12 @@ import { Box, createShapeId, useValue, type Editor, type TLShapeId } from 'tldra
 import { readSequence, writeSequence } from '@/lib/canvas/adapter'
 import { SPOTLIGHT_TYPE } from '@/lib/canvas/spotlight'
 import { getTreeIndex } from '@/lib/canvas/tree'
-import { noteOf, resolveTextImage, setNote, storeTextImage } from '@/lib/canvas/notes'
+import { noteOf, resolveTextImage, setNote, shapeLabel, storeTextImage } from '@/lib/canvas/notes'
 import { NatureFields, ProvenanceField, ReasoningField } from './PresetTools'
 import { MarkdownEditor } from './MarkdownEditor'
+import { QUICK, elementAiAtom, elementAiRequestAtom } from './ElementAi'
+import { openAssistant } from './MapJsonDialog'
+import { Markdownish } from './Markdownish'
 import {
   addStep,
   addTargets,
@@ -35,7 +38,12 @@ import {
 } from '@/lib/sequence/types'
 import {
   SEQUENCE_PANEL_WIDTH,
+  NARRATION_SCALE,
   activeStepIdAtom,
+  changeElementScale,
+  elementScaleAtom,
+  noteEditingAtom,
+  panelTabAtom,
   quickSequenceAtom,
   sequencePanelOpenAtom,
   sequencePanelWidthAtom,
@@ -104,6 +112,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
     () => ({ storeImage: (file: File) => storeTextImage(editor, file), resolveSrc: resolveTextImage(editor) }),
     [editor]
   )
+  const tab = useValue(panelTabAtom)
   const canNote = useValue('can note', () => selection.some((id) => !!noteOf(editor.getShape(id))), [editor, selection])
   const appears = appearances(seq)
   const uses = stepUses(seq)
@@ -164,7 +173,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
       style={{ width }}
     >
       <ResizeHandle width={sequencePanelWidthAtom} limits={SEQUENCE_PANEL_WIDTH} storageKey="sequencePanelWidth" />
-      <header className="flex flex-col gap-2 border-b border-zinc-200 p-3">
+      <header className="flex flex-col gap-2.5 border-b border-zinc-200 p-3">
         <div className="flex items-center justify-between">
           <Link href="/" className="group flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-900" title={t.nav.home}>
             <LogoMark className="h-5 w-5" />
@@ -190,12 +199,41 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
             </button>
           </div>
         </div>
+        {/* Titre du document (toutes ses pages) : nom du schéma dans la liste et du fichier .tldr. */}
         <input
-          className="rounded bg-transparent px-1 text-base font-semibold outline-none focus:bg-white"
+          className="-mt-0.5 rounded bg-transparent px-1 text-base font-semibold outline-none hover:bg-zinc-100 focus:bg-white"
           value={seq.title}
           onChange={(e) => save({ ...seq, title: e.target.value })}
+          aria-label={t.panel.titleLabel}
+          title={t.panel.titleHint}
+          placeholder={t.common.untitled}
         />
-        {pageName !== null && <p className="-mt-1 px-1 text-[11px] text-zinc-400">{t.panel.pageSteps(pageName)}</p>}
+        <nav className="panel-tabs" role="tablist" aria-label={t.panel.tabs}>
+          {(['sequence', 'element'] as const).map((id) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={tab === id}
+              className={`panel-tab ${tab === id ? 'panel-tab-active' : ''}`}
+              onClick={() => panelTabAtom.set(id)}
+            >
+              <Icon name={id === 'sequence' ? 'steps' : 'element'} />
+              {id === 'sequence' ? t.panel.sequence : t.panel.element}
+              {id === 'element' && canNote && selection.length === 1 && (
+                <span className="panel-tab-badge" title={t.panel.hasNote}>
+                  ¶
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+      </header>
+      {tab === 'element' ? (
+        <ElementPane editor={editor} selection={selection} usage={selection.length === 1 && uses.has(selection[0]) ? selectionUsage() : ''} images={images} />
+      ) : (
+      <>
+      <div className="flex flex-col gap-2 border-b border-zinc-200 px-3 py-3">
+        {pageName !== null && <p className="px-1 text-[11px] text-zinc-400">{t.panel.pageSteps(pageName)}</p>}
         <div className="flex gap-2">
           <button className="btn-primary flex-1" onClick={() => enterPresentation(-1)} disabled={!seq.steps.length}>
             {t.panel.present}
@@ -209,8 +247,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
             {t.panel.presentFromStep}
           </button>
         </div>
-      </header>
-
+      </div>
       <div className="flex flex-col gap-1.5 border-b border-zinc-200 px-3 py-2">
         <div className="flex items-center gap-0.5">
           <button
@@ -250,10 +287,6 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
           </button>
         </div>
         <p className="px-1 text-[11px] text-zinc-400">{selectionHint}</p>
-        {selection.length === 1 && <NatureFields editor={editor} id={selection[0]} />}
-        {selection.length === 1 && <ProvenanceField editor={editor} id={selection[0]} />}
-        {selection.length === 1 && <ReasoningField editor={editor} id={selection[0]} />}
-        {selection.length === 1 && <NoteEditor editor={editor} id={selection[0]} images={images} />}
       </div>
 
       <ol
@@ -309,6 +342,8 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
         <kbd>C</kbd> {k.recenter} · <kbd>K</kbd> {k.laser} · <kbd>M</kbd> {k.mask} · <kbd>N</kbd> {k.narration} · <kbd>+</kbd>/<kbd>−</kbd> {k.textSize} · <kbd>L</kbd> {k.legend} ·{' '}
         <kbd>F</kbd> {k.fullscreen} · <kbd>{k.esc}</kbd> {k.exit}
       </footer>
+      </>
+      )}
     </aside>
   )
 }
@@ -551,6 +586,17 @@ function IconBtn({
 
 const ICONS = {
   plus: <path d="M8 3.5v9M3.5 8h9" />,
+  steps: <path d="M3 4h10M3 8h10M3 12h6" />,
+  element: <rect x="2.5" y="4" width="11" height="8" rx="2" />,
+  locate: (
+    <>
+      <circle cx="8" cy="8" r="4.5" />
+      <path d="M8 1.5v2.5M8 12v2.5M1.5 8H4M12 8h2.5" />
+    </>
+  ),
+  pencil: <path d="M10.5 3 13 5.5 6 12.5H3.5V10L10.5 3Z" strokeLinejoin="round" />,
+  check: <path d="m3.5 8.5 3 3 6-7" strokeLinejoin="round" />,
+  sparkle: <path d="M8 2.5 9.3 6.7 13.5 8 9.3 9.3 8 13.5 6.7 9.3 2.5 8 6.7 6.7Z" strokeLinejoin="round" />,
   spot: (
     <>
       <rect x="2.5" y="2.5" width="11" height="11" rx="2" strokeDasharray="2 2" />
@@ -569,26 +615,197 @@ function Icon({ name }: { name: keyof typeof ICONS }) {
   )
 }
 
-/** Note de l'objet sélectionné : affichée dans le panneau de narration pendant la présentation. */
 interface TextImages {
   storeImage(file: File): Promise<string>
   resolveSrc(src: string): string | undefined
 }
 
-function NoteEditor({ editor, id, images }: { editor: Editor; id: TLShapeId; images: TextImages }) {
+/**
+ * Onglet Élément : ce qui appartient à l'objet sélectionné, indépendamment de la séquence
+ * (nature, provenance, raisonnement d'une relation, note).
+ */
+function ElementPane(p: { editor: Editor; selection: TLShapeId[]; usage: string; images: TextImages }) {
   const t = useT()
-  const note = useValue('note', () => noteOf(editor.getShape(id)), [editor, id])
+  const id = p.selection.length === 1 ? p.selection[0] : null
+  const pane = useRef<HTMLDivElement>(null)
+  useCtrlWheel(pane, changeElementScale, id)
+  const title = useValue('element title', () => (id ? shapeLabel(p.editor, p.editor.getShape(id)!) : ''), [p.editor, id])
+  // L'IA part d'une boîte (pas d'une flèche, d'un dessin ou d'une image).
+  const isBox = useValue('element is box', () => !!id && p.editor.getShape(id)?.type === 'geo', [p.editor, id])
+  if (!id) {
+    return (
+      <p className="p-4 text-[12px] leading-relaxed text-zinc-500">
+        {p.selection.length ? t.panel.elementMany(p.selection.length) : t.panel.elementHint}
+      </p>
+    )
+  }
   return (
-    <div className="mt-1 flex flex-col gap-1 px-1 text-[11px] text-zinc-500">
-      {t.panel.note}
-      <MarkdownEditor
-        value={note}
-        onChange={(text) => setNote(editor, id, text)}
-        placeholder={t.panel.notePlaceholder}
-        rows={note ? 5 : 2}
-        title={t.panel.note}
-        {...images}
-      />
+    <div ref={pane} className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
+      <div className="flex items-center gap-1 px-1">
+        <h2 className="min-w-0 flex-1 truncate font-medium text-zinc-900" title={title}>
+          {title || t.panel.elementUntitled}
+        </h2>
+        <button
+          className="icon-btn"
+          onClick={() => p.editor.zoomToSelection({ animation: { duration: 300 } })}
+          title={t.panel.noteLocate}
+          aria-label={t.panel.noteLocate}
+        >
+          <Icon name="locate" />
+        </button>
+        {isBox && <ElementAiMenu id={id} />}
+      </div>
+      {p.usage && <p className="px-1 text-[11px] text-zinc-400">{p.usage}</p>}
+      <NatureFields editor={p.editor} id={id} />
+      <ProvenanceField editor={p.editor} id={id} />
+      <ReasoningField editor={p.editor} id={id} />
+      <NoteSection key={id} editor={p.editor} id={id} images={p.images} />
+    </div>
+  )
+}
+
+/**
+ * Note de l'objet : lecture (comme en présentation), ou saisie. Elle appartient à l'objet,
+ * pas à la séquence : en présentation, elle s'ouvre au double-clic ou à une étape « Afficher la note ».
+ */
+function NoteSection(p: { editor: Editor; id: TLShapeId; images: TextImages }) {
+  const t = useT()
+  const note = useValue('note', () => noteOf(p.editor.getShape(p.id)), [p.editor, p.id])
+  // Saisie : ouverte ici, ou demandée par le menu contextuel (« Ajouter une note »).
+  const requested = useValue(noteEditingAtom) === p.id
+  const scale = useValue(elementScaleAtom)
+  const [open, setOpen] = useState(false)
+  const editing = open || requested
+  const setEditing = (on: boolean) => {
+    setOpen(on)
+    if (!on) noteEditingAtom.set(null)
+  }
+  return (
+    <section
+      className="element-note mt-2 flex flex-col gap-2 border-t border-zinc-200 px-1 pt-3"
+      style={{ '--element-scale': scale / 100 } as CSSProperties}
+    >
+      <div className="flex items-center gap-0.5">
+        <h3 className="flex-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">¶ {t.panel.note}</h3>
+        {/* Taille du texte (aussi : Ctrl + molette au-dessus de l'onglet), comme pour la narration */}
+        {scale !== NARRATION_SCALE.default && (
+          <button className="btn-ghost tabular-nums" onClick={() => changeElementScale(null)} title={t.panel.textReset}>
+            {scale} %
+          </button>
+        )}
+        <button className="btn-ghost" onClick={() => changeElementScale(-1)} title={t.presenter.textSmaller}>
+          A−
+        </button>
+        <button className="btn-ghost" onClick={() => changeElementScale(1)} title={t.presenter.textLarger}>
+          A+
+        </button>
+        {(note || editing) && (
+          <button
+            className={`icon-btn ${editing ? 'icon-btn-on' : ''}`}
+            onClick={() => setEditing(!editing)}
+            aria-pressed={editing}
+            title={editing ? t.panel.noteDone : t.panel.noteEdit}
+            aria-label={editing ? t.panel.noteDone : t.panel.noteEdit}
+          >
+            <Icon name={editing ? 'check' : 'pencil'} />
+          </button>
+        )}
+      </div>
+      {editing ? (
+        <MarkdownEditor
+          value={note}
+          onChange={(text) => setNote(p.editor, p.id, text)}
+          placeholder={t.panel.notePlaceholder}
+          rows={10}
+          title={t.panel.note}
+          label={t.panel.note}
+          {...p.images}
+        />
+      ) : note ? (
+        <div className="space-y-[0.75em] leading-relaxed text-zinc-700" style={{ fontSize: `${(14 * scale) / 100}px` }}>
+          <Markdownish text={note} resolveSrc={p.images.resolveSrc} />
+        </div>
+      ) : (
+        <button className="btn self-start text-xs" onClick={() => setEditing(true)} title={t.panel.notePlaceholder}>
+          {t.panel.addNote}
+        </button>
+      )}
+    </section>
+  )
+}
+
+/** Ctrl + molette (ou pincement sur un trackpad) au-dessus d'un élément : taille du texte. */
+function useCtrlWheel(ref: RefObject<HTMLElement | null>, change: (delta: number) => void, dep: unknown) {
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let acc = 0
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return
+      e.preventDefault()
+      acc += e.deltaY
+      if (Math.abs(acc) < 40) return
+      change(acc > 0 ? -1 : 1)
+      acc = 0
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [ref, change, dep])
+}
+
+/** Menu ✦ de l'onglet Élément : demandes toutes faites à l'IA à partir de l'objet, ou demande libre. */
+function ElementAiMenu({ id }: { id: TLShapeId }) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const root = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => {
+      if (!root.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('pointerdown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  const ask = (request = '') => {
+    setOpen(false)
+    // Le panneau de l'IA lit la demande préremplie à son ouverture : on le rouvre au besoin.
+    elementAiRequestAtom.set(request)
+    elementAiAtom.set(null)
+    setTimeout(() => elementAiAtom.set(id))
+  }
+  return (
+    <div ref={root} className="relative shrink-0">
+      <button className={`btn-ghost ${open ? 'btn-ghost-on' : ''}`} onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu" title={t.elementAi.buttonHint}>
+        <Icon name="sparkle" />
+        {t.panel.elementAi}
+      </button>
+      {open && (
+        <div className="panel-menu" role="menu">
+          {QUICK.map((k) => (
+            <button key={k} role="menuitem" onClick={() => ask(t.elementAi.quick[k].request)}>
+              {t.elementAi.quick[k].label}
+            </button>
+          ))}
+          <hr />
+          <button role="menuitem" onClick={() => ask()}>
+            {t.panel.elementAiFree}
+          </button>
+          <button
+            role="menuitem"
+            onClick={() => {
+              setOpen(false)
+              openAssistant('style')
+            }}
+          >
+            {t.styleAi.menu}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

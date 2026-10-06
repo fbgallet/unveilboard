@@ -103,6 +103,8 @@ test('depuis un texte collé : extraits corrigés par l’IA, citation introuvab
       const { editor } = window as unknown as Win
       editor.select(editor.getCurrentPageShapes().find((s) => s.meta.ref === r)!.id)
     }, ref)
+  // La provenance se lit dans l'onglet Élément du panneau.
+  await page.getByRole('tab', { name: 'Element' }).click()
   await select('t')
   await expect(page.locator('.provenance')).toContainText('From the text')
   await expect(page.locator('.provenance blockquote')).toHaveText('Dire la vérité n’est donc un devoir qu’envers ceux qui ont droit à la vérité.')

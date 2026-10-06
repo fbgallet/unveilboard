@@ -22,7 +22,7 @@ export const elementAiAtom = atom<TLShapeId | null>('elementAi', null)
 export const elementAiRequestAtom = atom<string>('elementAiRequest', '')
 
 /** Demandes toutes faites : la clé d'une phrase de t.elementAi.quick. */
-const QUICK = ['arguments', 'objections', 'answers', 'examples', 'assumptions', 'distinctions', 'definitions', 'consequences'] as const
+export const QUICK = ['arguments', 'objections', 'answers', 'examples', 'assumptions', 'distinctions', 'definitions', 'consequences'] as const
 
 /** Réponse de l'IA acceptable ici : des modifications (pas un schéma entier). */
 function patchOnly(result: ReadResult): ReadResult {

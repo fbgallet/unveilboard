@@ -7,7 +7,7 @@ Unveilboard sait décrire un schéma dans un format JSON simple, indépendant de
 Ce format sert à :
 
 - **exporter** un schéma (menu ☰ › Fichier › « Exporter en JSON… », ou « Copier en JSON » pour le coller dans une conversation avec une IA) ;
-- **importer** un schéma écrit à la main, par une IA ou par un autre outil (menu ☰ › Fichier › « Coller du JSON… ») : il s'ouvre comme nouveau schéma, mis en page automatiquement ;
+- **importer** un schéma écrit à la main, par une IA ou par un autre outil (menu ☰ › Fichier › « Importer une liste, du Markdown ou du JSON… ») : il s'ouvre comme nouveau schéma, mis en page automatiquement. La même fenêtre accepte une simple liste (à puces, numérotée ou indentée, copiée de Roam, Logseq, Obsidian, Workflowy…), du Markdown à titres ou un fichier OPML : chaque ligne devient une boîte d'une carte mentale, les paragraphes deviennent des notes, `[[page]]` devient `page`, les composants `{{…}}` et références `((…))` sont retirés, les cases à cocher (`[ ]`, `[x]`, `TODO`, `DONE`) deviennent des cases cliquables (`task`). Plusieurs têtes de liste peuvent être réunies sous une racine, et le tout peut s'ajouter sous la boîte sélectionnée. Une liste collée sur le canevas devient directement une carte mentale ; collée sur une boîte, elle peut en devenir les branches. Dans l'autre sens, « Copier en liste (Markdown) » (menu Fichier, ou clic droit sur une sélection) écrit les arbres en liste indentée ;
 - **modifier** le schéma ouvert par des modifications au format voisin « unveilboard/patch » (voir plus bas) ;
 - faire lire, créer et modifier les schémas par une IA (menu ☰ › IA › « Créer ou modifier le schéma avec l’IA… »).
 
@@ -72,6 +72,8 @@ Les identifiants (`id`) sont courts et libres (sans espace), uniques dans tout l
 | `modality` | Énoncés et présupposés : `descriptive` ou `prescriptive` (normatif). |
 | `note` | Développement en Markdown, affiché à côté du schéma pendant la présentation. |
 | `folded` | Branche repliée au début de la présentation. |
+| `task` | Une case à cocher sur la boîte, cochée d'un clic (en édition ou en présentation) : `todo` ou `done`. |
+| `style` | L'aspect propre de la boîte, par-dessus celui que lui donne son type (seulement ce qui en diffère) : `geo`, `color`, `fill`, `dash`, `size` (`s`, `m`, `l`, `xl`), `font` (valeurs de tldraw). Écrit à l'export quand une boîte diffère de son type ; l'IA s'en sert pour améliorer l'aspect d'un schéma. |
 | `tree` | Sur une racine : `{ "kind": "argument" \| "mindmap", "direction": "right" \| "left" \| "down" \| "up" \| "both" }` (direction par défaut : `right`). Une carte d'argument donne leur fonction et leur couleur aux éléments reliés. |
 | `side` | Arbre `both` : côté (`left`, `right`) d'un enfant de la racine. |
 | `origin`, `excerpt` | Schéma tiré d'un texte : l'élément y est `text` (énoncé) ou `reconstruction` (reconstruit par l'analyse, comme un présupposé implicite) ; `excerpt` cite le passage mot pour mot. |
@@ -110,7 +112,7 @@ Une action vise des identifiants (`targets`). **Un élément désigne sa boîte 
 
 ## Ce que le format ne contient pas
 
-Les positions, tailles et couleurs : la mise en page des arbres est automatique, et la couleur découle du type et de la fonction. Seule la page courante est exportée. Les formes autres que les boîtes et les flèches (`others`) ne sont pas recréées à l'import.
+Les positions et dimensions : la mise en page des arbres est automatique. La couleur découle du type et de la fonction, sauf le `style` propre d'une boîte. Seule la page courante est exportée. Les formes autres que les boîtes et les flèches (`others`) ne sont pas recréées à l'import.
 
 ## Contrôle à l'import
 
@@ -142,7 +144,7 @@ Pour modifier un schéma existant, une IA (ou un outil) n'a pas à le réécrire
 | `op` | Effet |
 |---|---|
 | `add` | Ajoute un élément (tous les champs d'un élément ; `id` nouveau). Son `parent` est un élément existant ou ajouté plus haut. `rationale` : pourquoi l'IA le propose (une phrase), affiché pour une suggestion. |
-| `update` | Change des champs d'un élément (`text`, `type`, `relation`, `reasoning`, `source`, `modality`, `note`, `folded`, `origin`, `excerpt`, `tree`) ; `null` retire un champ. |
+| `update` | Change des champs d'un élément (`text`, `type`, `relation`, `reasoning`, `source`, `modality`, `note`, `folded`, `task`, `style`, `origin`, `excerpt`, `tree`) ; `null` retire un champ (`style` : seules les clés données changent ; `null` rend l'aspect du type). |
 | `move` | Rattache un élément, avec sa branche, à un autre parent (`relation` facultative : sinon, il garde la sienne). |
 | `remove` | Supprime un élément avec toute sa branche (et les liens qui les touchent), ou un lien. Les étapes ne le visent plus. |
 | `link` | Ajoute un lien transversal. |

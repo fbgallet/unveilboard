@@ -7,7 +7,7 @@ Unveilboard can describe a diagram in a simple JSON format, independent of tldra
 The format is used to:
 
 - **export** a diagram (☰ menu › File › “Export as JSON…”, or “Copy as JSON” to paste it into a conversation with an AI);
-- **import** a diagram written by hand, by an AI or by another tool (☰ menu › File › “Paste JSON…”): it opens as a new diagram, laid out automatically;
+- **import** a diagram written by hand, by an AI or by another tool (☰ menu › File › “Import a list, Markdown or JSON…”): it opens as a new diagram, laid out automatically. The same window takes a plain list (bulleted, numbered or indented, copied from Roam, Logseq, Obsidian, Workflowy…), Markdown with headings or an OPML file: each line becomes a box of a mind map, paragraphs become notes, `[[page]]` becomes `page`, `{{…}}` components and `((…))` references are removed, checkboxes (`[ ]`, `[x]`, `TODO`, `DONE`) become clickable checkboxes (`task`). Several top-level items can be gathered under one root, and the whole can be added under the selected box. A list pasted on the canvas becomes a mind map directly; pasted on a box, it can become its branches. The other way, “Copy as a list (Markdown)” (File menu, or right click on a selection) writes the trees as an indented list;
 - **change** the open diagram with changes in the sibling “unveilboard/patch” format (see below);
 - let an AI read, create and change diagrams (☰ menu › AI › “Create or change the diagram with AI…”).
 
@@ -72,6 +72,8 @@ Identifiers (`id`) are short and free (no spaces), unique in the whole diagram: 
 | `modality` | Statements and assumptions: `descriptive` or `prescriptive`. |
 | `note` | Markdown development, shown beside the diagram while presenting. |
 | `folded` | Branch folded at the start of the presentation. |
+| `task` | A checkbox on the box, ticked with a click (while editing or presenting): `todo` or `done`. |
+| `style` | The look of this box, over the one its type gives it (only the keys that differ): `geo`, `color`, `fill`, `dash`, `size` (`s`, `m`, `l`, `xl`), `font` (tldraw values). Written on export when a box differs from its type; the AI uses it to improve the look of a diagram. |
 | `tree` | On a root: `{ "kind": "argument" \| "mindmap", "direction": "right" \| "left" \| "down" \| "up" \| "both" }` (default direction: `right`). An argument map gives connected elements their function and color. |
 | `side` | `both` trees: side (`left`, `right`) of a child of the root. |
 | `origin`, `excerpt` | Diagram drawn from a text: the element is stated in it (`text`) or reconstructed by the analysis (`reconstruction`, e.g. an implicit assumption); `excerpt` quotes the passage verbatim. |
@@ -110,7 +112,7 @@ An action targets identifiers (`targets`). **An element stands for its box and t
 
 ## What the format leaves out
 
-Positions, sizes and colors: tree layout is automatic, and color follows from type and function. Only the current page is exported. Shapes other than boxes and arrows (`others`) are not recreated on import.
+Positions and sizes: tree layout is automatic. Color follows from type and function, except a box's own `style`. Only the current page is exported. Shapes other than boxes and arrows (`others`) are not recreated on import.
 
 ## Checks on import
 
@@ -142,7 +144,7 @@ To change an existing diagram, an AI (or a tool) does not rewrite it: it sends c
 | `op` | Effect |
 |---|---|
 | `add` | Adds an element (any element field; a new `id`). Its `parent` is an existing element or one added earlier. `rationale`: why the AI proposes it (one sentence), shown for a suggestion. |
-| `update` | Changes fields of an element (`text`, `type`, `relation`, `reasoning`, `source`, `modality`, `note`, `folded`, `origin`, `excerpt`, `tree`); `null` removes a field. |
+| `update` | Changes fields of an element (`text`, `type`, `relation`, `reasoning`, `source`, `modality`, `note`, `folded`, `task`, `style`, `origin`, `excerpt`, `tree`); `null` removes a field (`style`: only the keys given change; `null` returns to the look of the type). |
 | `move` | Attaches an element, with its branch, to another parent (optional `relation`: otherwise it keeps its own). |
 | `remove` | Removes an element with its whole branch (and the links touching them), or a link. Steps no longer target it. |
 | `link` | Adds a cross-link. |

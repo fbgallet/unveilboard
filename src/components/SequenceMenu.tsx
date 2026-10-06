@@ -15,6 +15,7 @@ import { addStep, addTargets, removeTargets } from '@/lib/sequence/edit'
 import { emptySequence, type Sequence, type Step, type StepActionType } from '@/lib/sequence/types'
 import { activeStepIdAtom, modeAtom } from '@/lib/presentation/store'
 import { useT } from '@/i18n/client'
+import { ElementMenu } from './ElementMenu'
 
 /** Actions proposées pour l'étape active (les autres restent dans le panneau des étapes). */
 const ACTIVE_STEP_ACTIONS: StepActionType[] = ['show', 'highlight', 'focus', 'dim', 'undim', 'hide']
@@ -24,6 +25,7 @@ export function ContextMenu(props: TLUiContextMenuProps) {
   return (
     <DefaultContextMenu {...props}>
       <SequenceMenu />
+      <ElementMenu />
       <DefaultContextMenuContent />
     </DefaultContextMenu>
   )

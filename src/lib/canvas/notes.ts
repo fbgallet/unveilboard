@@ -82,6 +82,12 @@ function imageSize(src: string) {
   })
 }
 
+/** Texte d'une forme (première ligne), pour titrer sa note. */
+export function shapeLabel(editor: Editor, shape: TLShape) {
+  const richText = (shape.props as { richText?: TLRichText }).richText
+  return richText ? (renderPlaintextFromRichText(editor, richText).split('\n').find((l) => l.trim()) ?? '') : ''
+}
+
 /** Première ligne de la note, pour un titre ou une info-bulle. */
 export function noteTitle(note: string) {
   return note.split('\n').find((l) => l.trim())?.replace(/^[#>*\s]+/, '').trim() ?? ''

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { defaultPresets } from '../presets/presets'
 import { MapSchema } from './format'
-import { previewPatch, type MapPatch } from './patch'
+import { mapAsBranch, previewPatch, styleOnlyIssues, type MapPatch } from './patch'
 import { extractJson, readJson } from './read'
 import truthFr from '../examples/truth.fr.json'
 
@@ -86,5 +86,45 @@ describe('extrait autour d’un élément', () => {
     const part = extractAround(map, 'objection')
     expect(part.elements.map((e) => e.id)).toEqual(['question', 'thesis', 'objection', 'distinction', 'answer'])
     expect(part.sequence).toBeUndefined()
+  })
+})
+
+describe('un schéma ajouté sous un élément', () => {
+  it('racines rattachées, identifiants pris renommés, réglages d’arbre retirés', () => {
+    const patch = mapAsBranch(
+      {
+        format: 'unveilboard/map',
+        version: 1,
+        elements: [
+          { id: 'n1', text: 'A', tree: { kind: 'mindmap' }, task: 'todo' },
+          { id: 'n2', text: 'B', parent: 'n1' },
+          { id: 'x', text: 'C' },
+        ],
+        links: [{ id: 'l1', from: 'n2', to: 'x' }],
+      },
+      'target',
+      new Set(['n1', 'target'])
+    )
+    expect(patch.operations).toEqual([
+      { op: 'add', id: 'n1_2', text: 'A', task: 'todo', parent: 'target' },
+      { op: 'add', id: 'n2', text: 'B', parent: 'n1_2' },
+      { op: 'add', id: 'x', text: 'C', parent: 'target' },
+      { op: 'link', id: 'l1', from: 'n2', to: 'x' },
+    ])
+  })
+})
+
+describe('mise en forme', () => {
+  it('seulement le type, le style et la relation', () => {
+    const patch: MapPatch = {
+      format: 'unveilboard/patch',
+      version: 1,
+      operations: [
+        { op: 'update', id: 'a', type: 'question', style: { size: 'xl' } },
+        { op: 'update', id: 'b', text: 'Autre texte' },
+        { op: 'remove', id: 'c' },
+      ],
+    }
+    expect(styleOnlyIssues(patch).map((i) => i.path)).toEqual(['operations[1].text', 'operations[2].op'])
   })
 })

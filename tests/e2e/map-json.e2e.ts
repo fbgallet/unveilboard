@@ -53,8 +53,8 @@ test('exporter en JSON, puis réimporter comme nouveau schéma', async ({ page }
   // Import : le JSON exporté, collé dans la boîte de dialogue, ouvre un nouveau schéma identique.
   await page.getByTestId('main-menu.button').click()
   await page.getByTestId('main-menu-sub.schema-file-menu-button').click()
-  await page.getByText('Paste JSON (diagram or changes)…').click()
-  const dialog = page.getByRole('dialog', { name: 'Paste JSON' })
+  await page.getByText('Import a list, Markdown or JSON…').click()
+  const dialog = page.getByRole('dialog', { name: 'Import' })
   await dialog.getByRole('textbox').fill(json)
   await expect(dialog.getByText('Valid: 8 elements, 9 steps.')).toBeVisible()
   await page.screenshot({ path: 'test-results/map-json-import-dialog.png' })
@@ -77,8 +77,8 @@ test('import : erreurs signalées, bouton désactivé', async ({ page }) => {
   await openTruthExample(page)
   await page.getByTestId('main-menu.button').click()
   await page.getByTestId('main-menu-sub.schema-file-menu-button').click()
-  await page.getByText('Paste JSON (diagram or changes)…').click()
-  const dialog = page.getByRole('dialog', { name: 'Paste JSON' })
+  await page.getByText('Import a list, Markdown or JSON…').click()
+  const dialog = page.getByRole('dialog', { name: 'Import' })
   await dialog.getByRole('textbox').fill(
     JSON.stringify({
       format: 'unveilboard/map',
@@ -128,8 +128,8 @@ test.describe('en français', () => {
     }
     await page.getByTestId('main-menu.button').click()
     await page.getByTestId('main-menu-sub.schema-file-menu-button').click()
-    await page.getByText('Coller du JSON (schéma ou modifications)…').click()
-    const dialog = page.getByRole('dialog', { name: 'Coller du JSON' })
+    await page.getByText('Importer une liste, du Markdown ou du JSON…').click()
+    const dialog = page.getByRole('dialog', { name: 'Importer' })
     await dialog.getByRole('textbox').fill(JSON.stringify(map))
     await expect(dialog.getByText('Valide : 9 éléments, 4 étapes.')).toBeVisible()
     const before = page.url()

@@ -161,10 +161,11 @@ test('accès permanent à l’IA : une icône, un menu (relecture, à partir de 
     'Develop the selected element…',
     'Create or change the diagram…',
     'Write the presentation sequence…',
+    'Improve the look with AI…',
     'Critical review…',
     'Structure with a plan…',
     'New diagram from a text…',
-    'Paste JSON (diagram or changes)…',
+    'Import a list, Markdown or JSON…',
     'Prompt library…',
     'AI settings…',
   ])

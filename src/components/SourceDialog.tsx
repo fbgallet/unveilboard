@@ -196,7 +196,7 @@ function SourceView({ editor }: { editor: Editor }) {
         unverified: checked.excerpts?.unverified,
         ...(keepText && { source: { text, ...(label.trim() && { label: label.trim() }) } }),
       }
-      const where = destination === 'here' && hereBlocked ? 'page' : destination
+      const where = destination === 'here' && hereBlocked ? 'page' : destination === 'under' ? 'document' : destination
       if (where !== 'document') {
         addMapToDocument(editor, checked.map, where, opts)
         if (keepText) openSourcePanel()

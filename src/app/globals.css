@@ -42,6 +42,36 @@ body {
   .btn-ghost-on {
     @apply bg-amber-100 text-amber-800 hover:bg-amber-200 hover:text-amber-900;
   }
+  /* Onglets du panneau d'édition (séquence, élément) : contrôle segmenté */
+  .panel-tabs {
+    @apply flex gap-0.5 rounded-lg bg-zinc-200/70 p-0.5;
+  }
+  .panel-tab {
+    @apply flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-zinc-500 transition hover:text-zinc-900;
+  }
+  .panel-tab-active {
+    @apply bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-900/5;
+  }
+  .panel-tab-badge {
+    @apply font-serif font-bold text-amber-600;
+  }
+  /* Menu déroulant du panneau d'édition (actions de l'IA sur l'élément) */
+  .panel-menu {
+    @apply absolute top-full right-0 z-20 mt-1 flex w-56 flex-col rounded-lg border border-zinc-200 bg-white p-1 text-xs shadow-lg;
+  }
+  .panel-menu > button {
+    @apply rounded-md px-2.5 py-1.5 text-left text-zinc-700 hover:bg-amber-50 hover:text-zinc-900;
+  }
+  .panel-menu > hr {
+    @apply my-1 border-zinc-200;
+  }
+  /* Bouton icône du panneau d'édition (situer, modifier) */
+  .icon-btn {
+    @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-500 transition hover:bg-zinc-200/70 hover:text-zinc-900;
+  }
+  .icon-btn-on {
+    @apply bg-amber-100 text-amber-800 hover:bg-amber-200 hover:text-amber-900;
+  }
   .pbtn {
     @apply flex h-8 w-8 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200/70 hover:text-stone-900 disabled:opacity-30 disabled:hover:bg-transparent;
   }
@@ -243,6 +273,44 @@ body {
 }
 .fold-badge:disabled {
   cursor: default;
+}
+
+/* ---------- Cases à cocher des boîtes ---------- */
+
+.task-box {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid var(--color-stone-500);
+  border-radius: 5px;
+  background: var(--color-white);
+  color: var(--color-white);
+  pointer-events: all;
+  cursor: pointer;
+}
+.task-box:hover:not(:disabled) {
+  border-color: var(--color-emerald-600);
+}
+.task-box-done {
+  border-color: var(--color-emerald-600);
+  background: var(--color-emerald-600);
+}
+.task-box:disabled {
+  cursor: default;
+}
+.task-box svg {
+  width: 16px;
+  height: 16px;
+}
+.tl-shape.task-done .tl-rich-text {
+  text-decoration: line-through;
+  opacity: 0.55;
 }
 
 /* ---------- Suggestions de l'IA en attente ---------- */
@@ -1491,6 +1559,15 @@ svg.preset-swatch {
   font-size: 12px;
   resize: vertical;
 }
+.map-json-root {
+  max-width: 360px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-zinc-200);
+  border-radius: 6px;
+  background: var(--color-white);
+  color: var(--color-zinc-800);
+  font-size: 13px;
+}
 .assistant-dialog {
   width: min(720px, calc(100% - 32px));
 }
@@ -2202,6 +2279,9 @@ button.tag-chip:hover,
   font: 12px/1.5 var(--font-geist-mono, ui-monospace), monospace;
   color: var(--color-zinc-800);
   outline: none;
+}
+.element-note .md-textarea {
+  font-size: calc(12px * var(--element-scale, 1));
 }
 .md-textarea:focus {
   border-color: var(--color-amber-400);

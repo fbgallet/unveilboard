@@ -145,6 +145,31 @@ export function closeNote(id: string) {
   if (activeNoteAtom.get() === id) activeNoteAtom.set(null)
 }
 
+/** Onglet du panneau de droite en mode édition : la séquence, ou l'élément sélectionné (nature, note…). */
+export type PanelTab = 'sequence' | 'element'
+export const panelTabAtom = atom<PanelTab>('panelTab', 'sequence')
+
+/** Taille du texte de l'onglet Élément (%, mémorisée sur cet appareil), comme celle de la narration. */
+export const elementScaleAtom = atom<number>('elementScale', clampNarrationScale(Number(readStoredValue('elementScale')) || NARRATION_SCALE.default))
+
+/** delta : crans de NARRATION_SCALE.step ; null : taille par défaut. */
+export function changeElementScale(delta: number | null) {
+  const scale = delta === null ? NARRATION_SCALE.default : clampNarrationScale(elementScaleAtom.get() + delta * NARRATION_SCALE.step)
+  elementScaleAtom.set(scale)
+  storeValue('elementScale', scale)
+}
+
+/** Note à ouvrir directement en saisie dans l'onglet Élément (nouvelle note), plutôt qu'en lecture. */
+export const noteEditingAtom = atom<string | null>('noteEditing', null)
+
+/** Affiche l'onglet Élément (panneau déplié au besoin) ; editNoteOf : y ouvrir la note de cet objet en saisie. */
+export function openElementTab(editNoteOf?: string) {
+  panelTabAtom.set('element')
+  noteEditingAtom.set(editNoteOf ?? null)
+  sequencePanelOpenAtom.set(true)
+  storeValue('sequencePanelOpen', true)
+}
+
 /** Étape sélectionnée dans le panneau d'édition. */
 export const activeStepIdAtom = atom<string | null>('activeStepId', null)
 

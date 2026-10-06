@@ -36,6 +36,7 @@ export type IssueCode =
   | 'outside_section'
   | 'size_elements'
   | 'size_levels'
+  | 'empty_outline'
 
 export interface MapIssue {
   level: 'error' | 'warning'
@@ -213,6 +214,7 @@ const MESSAGES: Record<IssueCode, string> = {
   outside_section: 'Added elements must descend from the section being developed (its head, or an element added before in these changes)',
   size_elements: 'The number of elements is outside the bounds set by the user: add or remove elements (group, merge or develop) to fit them',
   size_levels: 'The depth of the diagram (levels below the root) is outside the bounds set by the user: restructure the tree to fit them',
+  empty_outline: 'No list item or heading found in the text',
 }
 
 /** Problème en une ligne, en anglais (pour une IA, ou les journaux). */

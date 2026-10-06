@@ -26,6 +26,7 @@ import { promptLibraryOpenAtom } from '@/lib/prompts/library'
 import { sourceDialogOpenAtom } from './SourceDialog'
 import { reviewOpenAtom } from '@/lib/canvas/review'
 import { assistantOpenAtom, downloadMapJson, mapImportOpenAtom, mapJsonText } from './MapJsonDialog'
+import { markdownListOf } from '@/lib/canvas/listExport'
 import { useT } from '@/i18n/client'
 
 /**
@@ -57,6 +58,15 @@ export function MainMenu() {
     try {
       await navigator.clipboard.writeText(mapJsonText(editor))
       addToast({ title: t.mapJson.copied, severity: 'success' })
+    } catch (e) {
+      fail(e)
+    }
+  }
+
+  async function copyList() {
+    try {
+      await navigator.clipboard.writeText(markdownListOf(editor))
+      addToast({ title: t.listExport.copied, severity: 'success' })
     } catch (e) {
       fail(e)
     }
@@ -98,6 +108,7 @@ export function MainMenu() {
           <TldrawUiMenuGroup id="schema-json">
             <TldrawUiMenuItem id="export-json" label={t.mapJson.menuExport} readonlyOk onSelect={() => downloadMapJson(editor)} />
             <TldrawUiMenuItem id="copy-json" label={t.mapJson.menuCopy} readonlyOk onSelect={() => void copyJson()} />
+            <TldrawUiMenuItem id="copy-list" label={t.listExport.menu} readonlyOk onSelect={() => void copyList()} />
             <TldrawUiMenuItem id="import-json" label={t.mapJson.menuImport} onSelect={() => void mapImportOpenAtom.set(true)} />
           </TldrawUiMenuGroup>
         </TldrawUiMenuSubmenu>

@@ -144,7 +144,23 @@ export const en = {
 
   panel: {
     note: 'Object note',
-    notePlaceholder: 'Longer text shown in the narration panel, on double-click or with “Show the note”',
+    notePlaceholder: 'Longer text about the object, readable in this panel (click ¶) and while presenting (double-click, or “Show the note” at a step)',
+    showNote: 'Show the note',
+    addNote: 'Add a note',
+    noteEdit: 'Edit the note',
+    noteDone: 'Done editing',
+    noteLocate: 'Show on the canvas',
+    tabs: 'Panel: sequence or element',
+    element: 'Element',
+    hasNote: 'This element has a note',
+    elementHint: 'Select an element on the canvas to see and edit its note, nature or source. ¶ marks show which elements have a note.',
+    elementMany: (n: number) => `${plural(n, 'object', 'objects')} selected: select just one to see its note.`,
+    elementUntitled: 'Element without text',
+    elementAi: 'AI',
+    titleLabel: 'Diagram title',
+    titleHint: 'Diagram title, shared by all its pages: its name in “My diagrams” and of the saved .tldr file',
+    elementAiFree: 'Other request…',
+    textReset: 'Default text size',
     expand: 'Expand the steps panel',
     sequence: 'Sequence',
     back: 'My diagrams',
@@ -915,11 +931,18 @@ export const en = {
     menuExport: 'Export as JSON…',
     menuCopy: 'Copy as JSON (for an AI)',
     copied: 'Diagram copied as JSON',
-    menuImport: 'Paste JSON (diagram or changes)…',
-    title: 'Paste JSON',
+    menuImport: 'Import a list, Markdown or JSON…',
+    title: 'Import',
     intro:
-      'Paste JSON in Unveilboard’s format (an export, or the answer of an AI), or choose a .json file: a whole diagram opens as a new diagram, laid out automatically; changes apply to this diagram (Ctrl/⌘ + Z undoes them).',
+      'Paste a list (bulleted, numbered or indented, copied from Roam, Logseq, Obsidian, Workflowy…), Markdown with headings, or JSON in Unveilboard’s format (an export, or the answer of an AI); or choose a .md, .txt, .opml or .json file. A list becomes a mind map, one box per line; a whole diagram opens laid out automatically; changes apply to this diagram (Ctrl/⌘ + Z undoes them).',
     pasteLabel: 'JSON to paste',
+    importLabel: 'List, Markdown or JSON to import',
+    outlinePlaceholder: '- Main idea\n    - A branch\n        - [ ] A task\n    - Another branch',
+    outlineValid: (elements: number, levels: number) =>
+      `List read: ${elements} element${elements === 1 ? '' : 's'} on ${levels} level${levels === 1 ? '' : 's'}.`,
+    outlineJoin: (n: number) => `Gather the ${n} top-level items under one root`,
+    outlineRootLabel: 'Text of the root',
+    outlineSeparate: 'One tree per top-level item, side by side.',
     apply: 'Apply to this diagram',
     patchValid: (what: string) => `Valid changes: ${what}.`,
     counts: {
@@ -940,6 +963,8 @@ export const en = {
     destinationLabel: 'Put it:',
     destinations: { document: 'in a new diagram', page: 'on a new page of this one', here: 'on this page, beside', emptyPage: 'on this page' } as Record<string, string>,
     hereHasOtherText: 'This page already keeps another source text: choose a new page.',
+    underElement: (text: string) => `under “${text}”`,
+    noTarget: 'Select the box to add it under.',
     creating: 'Opening…',
     valid: (elements: number, steps: number) =>
       `Valid: ${elements} element${elements === 1 ? '' : 's'}, ${steps} step${steps === 1 ? '' : 's'}.`,
@@ -970,6 +995,7 @@ export const en = {
       outside_section: 'This element is outside the section being developed',
       size_elements: 'Number of elements outside the bounds set in the AI settings',
       size_levels: 'Number of levels outside the bounds set in the AI settings',
+      empty_outline: 'No list item or heading found',
     } as Record<string, string>,
   },
 
@@ -990,6 +1016,7 @@ export const en = {
       sequence: 'Write the sequence',
       review: 'Review and correct',
       edit: 'Other change',
+      style: 'Improve the look',
     } as Record<string, string>,
     taskHints: {
       create: 'The AI builds a new diagram (argument map or mind map) with its sequence, from a subject or a text.',
@@ -997,6 +1024,7 @@ export const en = {
       sequence: 'The AI writes the step-by-step presentation of this diagram, with a narration for each step.',
       review: 'The AI points out inconsistencies, gaps and confusions, and proposes corrections.',
       edit: 'The AI changes this diagram as you ask.',
+      style: 'The AI chooses types, shapes and colors that fit the elements (the selection, or the whole diagram), without changing their content. You can undo it.',
     } as Record<string, string>,
     placeholders: {
       create: 'The subject, or the text to analyse (paste it here)…',
@@ -1004,6 +1032,7 @@ export const en = {
       sequence: 'Optional. E.g.: the problem first, keep the assumptions for the end.',
       review: 'Optional: what matters to you (consistency, gaps, types…).',
       edit: 'What you want to change.',
+      style: 'Optional. E.g.: one color per main branch, tasks as rounded boxes, the questions stand out.',
     } as Record<string, string>,
     fromSource: 'To analyse a text or a file (PDF, photo), with its excerpts checked: “Create a diagram from a text”.',
     instructionLabel: 'Your request',
@@ -1259,6 +1288,34 @@ export const en = {
   },
 
   /** Suggestions de l'IA en attente (formes estompées). */
+  tasks: {
+    check: 'Check',
+    uncheck: 'Uncheck',
+    add: 'Add a checkbox',
+    remove: 'Remove the checkbox',
+  },
+
+  listExport: {
+    menu: 'Copy as a list (Markdown)',
+    copySelection: 'Copy as a list (Markdown)',
+    copied: 'Copied as a list: paste it into Roam, Logseq, Obsidian or a document',
+  },
+
+  pasteList: {
+    title: 'Paste a list',
+    intro: (n: number) => `This list has ${n} element${n === 1 ? '' : 's'}.`,
+    asBranches: 'Add it as branches of this box',
+    asText: 'Paste it as text in the box',
+    asNewMap: 'Make it a new mind map beside it',
+  },
+
+  styleAi: {
+    menu: 'Improve the look with AI…',
+    applied: 'New look applied.',
+    undo: 'Undo the new look',
+    keep: 'Keep it',
+  },
+
   suggestions: {
     tag: 'suggestion',
     title: 'AI suggestions',

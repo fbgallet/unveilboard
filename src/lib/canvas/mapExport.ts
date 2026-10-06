@@ -6,13 +6,14 @@
 import { renderPlaintextFromRichText, type Editor, type TLArrowBinding, type TLRichText, type TLShape, type TLShapeId } from 'tldraw'
 import { m } from '@/i18n/client'
 import { richTextToMarkdown, type RichNode } from '../map/markdown'
-import { MAP_FORMAT, MAP_VERSION, type MapElement, type MapLink, type MapOther, type MapVocabulary, type UnveilMap } from '../map/format'
+import { MAP_FORMAT, MAP_VERSION, TASK_STATES, type MapElement, type MapLink, type MapOther, type MapVocabulary, type TaskState, type UnveilMap } from '../map/format'
 import { fromEngineSteps, type RefShapes, type ShapeOwner } from '../map/sequence'
 import { defaultPresets, MODALITIES, REASONINGS, type Modality, type Preset, type Reasoning } from '../presets/presets'
 import { treeAxis } from '../tree/layout'
 import { readSequence } from './adapter'
 import { presetById } from './presets'
 import { directionOf, functionOf, getTreeIndex } from './tree'
+import { ownStyle } from './elementStyle'
 import { documentRelationLabels } from './relationLabels'
 
 export interface MapExport {
@@ -101,6 +102,8 @@ export function exportMap(editor: Editor): MapExport {
     const dir = isRoot ? directionOf(editor, id) : undefined
     const side = shape.meta.treeSide
     const role = functionOf(editor, id)?.role
+    const task = shape.meta.task as TaskState | undefined
+    const style = ownStyle(editor, shape)
     return {
       id: refOf.get(id)!,
       // Texte des boîtes : leur mise en forme (gras, italique, listes…) en Markdown.
@@ -114,6 +117,8 @@ export function exportMap(editor: Editor): MapExport {
       ...(modality && MODALITIES.includes(modality) && { modality }),
       ...(str(shape.meta.note) && { note: shape.meta.note as string }),
       ...(shape.meta.folded === true && children.has(id) && { folded: true }),
+      ...(task && TASK_STATES.includes(task) && { task }),
+      ...(style && { style }),
       ...((origin === 'text' || origin === 'reconstruction') && { origin }),
       ...(str(shape.meta.excerpt) && { excerpt: shape.meta.excerpt as string }),
       ...(role && { function: role }),

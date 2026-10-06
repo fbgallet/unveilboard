@@ -29,6 +29,7 @@ import { lighterSide, treeAxis, type TreeSide, type Vec } from '../tree/layout'
 import { applyPresetTo, documentPresets, presetById, presetSettingsAtom, setReasoning } from './presets'
 import { branchOf, linkToParent, relayout, setArgumentTree } from './tree'
 import { relationLabels, rememberRelationLabels } from './relationLabels'
+import { applyOwnStyle } from './elementStyle'
 
 /** Taille des boîtes créées (celle des nœuds d'arbre de l'éditeur) ; la hauteur grandit avec le texte. */
 const NODE = { w: 300, h: 150 }
@@ -79,6 +80,7 @@ export function importMap(editor: Editor, map: UnveilMap, opts: { at?: Vec; unve
     const { horizontal, sign } = treeAxis(dir)
     const rootId = createBox(root, origin, { ...(dir !== 'right' && { treeDir: dir }) })
     applyType(editor, rootId, presetOf(root.type, 'shape'))
+    applyOwnStyle(editor, rootId, root.style)
     shapes.set(root.id, { kind: 'element', node: rootId })
 
     // Place de départ : la profondeur le long de l'arbre, l'ordre de visite en travers (la mise en
@@ -98,6 +100,7 @@ export function importMap(editor: Editor, map: UnveilMap, opts: { at?: Vec; unve
         }
         const id = createBox(child, at, side ? { treeSide: side } : {})
         const edge = attachToParent(editor, ids.get(parent.id)!, id, child, presetOf, lang)
+        applyOwnStyle(editor, id, child.style)
         shapes.set(child.id, { kind: 'element', node: id, edge })
         visit(child, depth + 1)
       }
@@ -152,6 +155,7 @@ export function createElementBox(editor: Editor, e: MapElement, at: Vec, extraMe
     ...(e.modality && { modality: e.modality }),
     ...(e.note && { note: e.note }),
     ...(e.folded && { folded: true }),
+    ...(e.task && { task: e.task }),
     ...(e.origin && { origin: e.origin }),
     ...(e.excerpt && { excerpt: e.excerpt }),
     ...extraMeta,
