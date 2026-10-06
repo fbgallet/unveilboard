@@ -22,6 +22,7 @@ import { toAiError } from '@/lib/ai/errors'
 import { MODELS } from '@/lib/ai/models'
 import { REASONING_EFFORTS, type ReasoningEffort } from '@/lib/ai/chat'
 import { DiagramSizeFields } from './DiagramSize'
+import { ContentLangSelect } from './ContentLanguage'
 import {
   CHATGPT_USAGE_URL,
   cancelChatGptSignIn,
@@ -262,6 +263,11 @@ function AiSettingsView() {
           <h3 className="preset-group-title">{t.ai.size.title}</h3>
           <DiagramSizeFields size={draft.size} onChange={(size) => set({ size })} />
           <span className="text-xs text-zinc-500">{t.ai.size.hint}</span>
+        </section>
+        <section className="grid gap-1 border-t border-zinc-200 pt-3">
+          <h3 className="preset-group-title">{t.ai.lang.title}</h3>
+          <ContentLangSelect value={draft.contentLang} onChange={(contentLang) => set({ contentLang })} />
+          <span className="text-xs text-zinc-500">{t.ai.lang.hint}</span>
         </section>
 
         <footer className="flex justify-end gap-2">

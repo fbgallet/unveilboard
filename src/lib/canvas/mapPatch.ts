@@ -13,6 +13,7 @@ import { exportMap } from './mapExport'
 import { applyType, attachToParent, contentLocale, createElementBox, createLink, presetResolver, type PresetOf } from './mapImport'
 import type { Locale } from '@/i18n/config'
 import { applyPresetTo, setReasoning } from './presets'
+import { relationLabels, rememberRelationLabels } from './relationLabels'
 import {
   getTreeIndex,
   linkToParent,
@@ -34,14 +35,15 @@ const GAP = 200
  */
 export function applyPatch(editor: Editor, patch: MapPatch, opts: { ghost?: boolean } = {}): { skipped: number } {
   const mark = editor.markHistoryStoppingPoint('modifications JSON')
-  const presetOf = presetResolver(editor, patch.vocabulary)
   const exported = exportMap(editor)
+  const presetOf = presetResolver(editor, patch.vocabulary, exported.map.lang)
   const shapes = exported.shapes
   const lang = contentLocale(exported.map.lang)
   /** Nœuds dont l'arbre est à remettre en page. */
   const touched = new Set<TLShapeId>()
   let skipped = 0
   editor.run(() => {
+    rememberRelationLabels(editor, relationLabels(editor, patch.vocabulary, exported.map.lang))
     for (const op of patch.operations) {
       if (opts.ghost && op.op !== 'add' && op.op !== 'link') {
         skipped++

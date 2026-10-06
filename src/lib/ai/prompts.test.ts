@@ -111,3 +111,27 @@ describe('consignes : boîte explicite, note facultative', () => {
     expect(prompt).not.toContain('Never put the essential in the note alone')
   })
 })
+
+describe('langue du contenu', () => {
+  const base = { task: 'create' as const, instruction: 'Die Freiheit', vocabulary, delivery: 'api' as const }
+
+  it('automatique : la langue du schéma, sinon de la demande ou du texte, notée dans `lang`', () => {
+    const prompt = buildPrompt({ ...base, lang: 'auto' })
+    expect(prompt).toContain("in the language of the current diagram if there is one; otherwise in the language of the user's request")
+    expect(prompt).toContain('ISO 639-1 code')
+    expect(prompt).toContain('If that language is neither English nor French')
+  })
+
+  it('une langue que l’app ne traduit pas : son nom, et les relations à nommer dans `vocabulary`', () => {
+    const prompt = buildPrompt({ ...base, lang: 'de' })
+    expect(prompt).toContain('in German, except quotations')
+    expect(prompt).toContain('to `de`')
+    expect(prompt).toContain('The content is in German: the vocabulary names above are not in that language')
+  })
+
+  it('une langue de l’app : pas de noms de relations à traduire', () => {
+    const prompt = buildPrompt({ ...base, lang: 'fr' })
+    expect(prompt).toContain('in French, except quotations')
+    expect(prompt).not.toContain('vocabulary names above are not in that language')
+  })
+})

@@ -3,13 +3,15 @@
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { atom, useValue, type Editor } from 'tldraw'
-import { useT } from '@/i18n/client'
+import { clientLocale, useT } from '@/i18n/client'
 import { aiSettingsAtom, askAi, isAiReady, modelName, serverAiAtom, transcribeFile } from '@/lib/ai/client'
 import { toAiError } from '@/lib/ai/errors'
 import { buildPrompt, type PromptInput } from '@/lib/ai/prompts'
 import { addMapToDocument, createDocumentFromMap, editorPromptInput, readPasted } from '@/lib/canvas/assistant'
 import { normalizeSize, sizeIssues } from '@/lib/map/size'
 import { DiagramSizeNote } from './DiagramSize'
+import { ContentLangNote } from './ContentLanguage'
+import { resolveContentLang } from '@/lib/ai/language'
 import { MapDestinationPicker, useMapDestination } from './MapDestination'
 import type { MapIssue } from '@/lib/map/check'
 import { checkExcerpts, type ExcerptCheck } from '@/lib/map/excerpts'
@@ -79,6 +81,7 @@ function SourceView({ editor }: { editor: Editor }) {
   // Taille du schéma : celle des réglages de l'IA, modifiable pour cette création.
   const [sizeDraft, setSizeDraft] = useState(() => settings.size)
   const size = useMemo(() => normalizeSize(sizeDraft), [sizeDraft])
+  const [lang, setLang] = useState(() => settings.contentLang)
   const [destination, setDestination] = useMapDestination(editor)
   // Cette page garde déjà un autre texte : le schéma tiré de celui-ci va ailleurs.
   const hereBlocked = keepText && pageSource && pageSource.text !== text ? t.mapJson.hereHasOtherText : undefined
@@ -90,6 +93,7 @@ function SourceView({ editor }: { editor: Editor }) {
     withSequence,
     notes,
     size,
+    lang: resolveContentLang(lang, clientLocale()),
     ...(prompt.method && { method: prompt.method }),
   })
 
@@ -320,6 +324,7 @@ function SourceView({ editor }: { editor: Editor }) {
             {t.ai.notesOption}
           </label>
           <DiagramSizeNote size={sizeDraft} onChange={setSizeDraft} disabled={!!run} />
+          <ContentLangNote value={lang} onChange={setLang} disabled={!!run} />
           <PromptPicker choice={prompt} disabled={!!run} />
           <textarea
             className="map-json-input assistant-instruction"

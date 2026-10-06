@@ -20,6 +20,7 @@ import { OPENROUTER_PDF_PLUGIN, readTranscription, transcriptionMessages } from 
 import { normalizeSize, type DiagramSize } from '../map/size'
 import type { MapIssue } from '../map/check'
 import { chatGptAvailable, chatGptChat, initChatGpt } from './chatgpt'
+import { AUTO_LANG, normalizeContentLang } from './language'
 
 export const PROVIDERS = ['clipboard', 'server', 'chatgpt', 'openrouter', 'custom'] as const
 export type ProviderKind = (typeof PROVIDERS)[number]
@@ -40,6 +41,11 @@ export interface AiSettings {
   reasoning: ReasoningEffort
   /** Taille des schémas créés : bornes facultatives (aucune : au choix de l'IA), modifiables à la création. */
   size: DiagramSize
+  /**
+   * Langue du contenu des schémas créés : « auto » (celle de la demande ou du texte), « ui » (celle de
+   * l'interface) ou un code (« de »), modifiable à la création. Un schéma existant garde la sienne.
+   */
+  contentLang: string
 }
 
 export const OPENROUTER_URL = 'https://openrouter.ai/api/v1'
@@ -53,6 +59,7 @@ export const DEFAULT_AI_SETTINGS: AiSettings = {
   chatgptModel: '',
   reasoning: 'default',
   size: {},
+  contentLang: AUTO_LANG,
 }
 
 export interface ServerAi {
@@ -81,6 +88,7 @@ export function loadAiSettings(server: ServerAi | null = null) {
     if (!PROVIDERS.includes(next.kind) || (next.kind === 'chatgpt' && !chatGptAvailable())) next.kind = fallback.kind
     if (!REASONING_EFFORTS.includes(next.reasoning)) next.reasoning = 'default'
     next.size = normalizeSize(next.size)
+    next.contentLang = normalizeContentLang(next.contentLang)
     aiSettingsAtom.set(next)
   } catch {
     aiSettingsAtom.set(fallback)

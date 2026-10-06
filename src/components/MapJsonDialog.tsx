@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { atom, useValue, type Editor } from 'tldraw'
-import { m, useT } from '@/i18n/client'
+import { clientLocale, m, useT } from '@/i18n/client'
 import { ASSISTANT_TASKS, buildPrompt, type Task } from '@/lib/ai/prompts'
 import { readSequence } from '@/lib/canvas/adapter'
 import { addMapToDocument, createDocumentFromMap, editorPromptInput, readPasted, selectedRefs } from '@/lib/canvas/assistant'
@@ -27,6 +27,8 @@ import { planPanelOpenAtom } from './PlanPanel'
 import { skeletonMap } from '@/lib/map/plan'
 import { PromptPicker, usePromptChoice } from './PromptPicker'
 import { DiagramSizeNote } from './DiagramSize'
+import { ContentLangNote } from './ContentLanguage'
+import { resolveContentLang } from '@/lib/ai/language'
 import { MapDestinationPicker, useMapDestination } from './MapDestination'
 import { normalizeSize, sizeIssues, type DiagramSize } from '@/lib/map/size'
 
@@ -287,7 +289,12 @@ function AssistantView({ editor }: { editor: Editor }) {
   const method = prompt.method && { method: prompt.method }
   // Taille du schéma créé : celle des réglages de l'IA, modifiable pour cette création.
   const [size, setSize] = useState(() => settings.size)
-  const created = useMemo(() => (task === 'create' ? { size: normalizeSize(size) } : {}), [task, size])
+  // Langue du contenu créé : celle des réglages de l'IA, modifiable pour cette création.
+  const [lang, setLang] = useState(() => settings.contentLang)
+  const created = useMemo(
+    () => (task === 'create' ? { size: normalizeSize(size), lang: resolveContentLang(lang, clientLocale()) } : {}),
+    [task, size, lang]
+  )
 
   const input = () => ({
     ...editorPromptInput(editor, task, instruction, { selection: useSelection && task !== 'create', withSource }),
@@ -427,6 +434,7 @@ function AssistantView({ editor }: { editor: Editor }) {
           </label>
         )}
         {task === 'create' && <DiagramSizeNote size={size} onChange={setSize} disabled={!!run} />}
+        {task === 'create' && <ContentLangNote value={lang} onChange={setLang} disabled={!!run} />}
         {task === 'create' && ready && (
           <label className="grid gap-0.5 text-xs">
             <span className="flex items-center gap-2">

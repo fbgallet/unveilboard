@@ -13,6 +13,7 @@ import { treeAxis } from '../tree/layout'
 import { readSequence } from './adapter'
 import { presetById } from './presets'
 import { directionOf, functionOf, getTreeIndex } from './tree'
+import { documentRelationLabels } from './relationLabels'
 
 export interface MapExport {
   map: UnveilMap
@@ -162,13 +163,14 @@ export function exportMap(editor: Editor): MapExport {
   }
 
   const seq = readSequence(editor)
+  const labels = documentRelationLabels(editor)
   const map: UnveilMap = {
     format: MAP_FORMAT,
     version: MAP_VERSION,
     ...(seq?.title && { title: seq.title }),
     // Langue du contenu, si le document la connaît (schéma importé ou généré).
     ...(typeof editor.getDocumentSettings().meta.lang === 'string' && { lang: editor.getDocumentSettings().meta.lang as string }),
-    vocabulary: [...usedPresets.values()].map(vocabularyEntry),
+    vocabulary: [...usedPresets.values()].map((p) => vocabularyEntry(p, labels[p.id])),
     elements,
     ...(links.length && { links }),
     ...(others.length && { others }),
@@ -200,13 +202,16 @@ function stableRef(own: unknown, shapeId: string, prefix: string, taken: Map<str
   return `${prefix}${hash}${n}`
 }
 
-/** Entrée du vocabulaire : nom, définition, sens de lecture ; le style seulement pour les préréglages créés. */
-function vocabularyEntry(p: Preset): MapVocabulary {
+/**
+ * Entrée du vocabulaire : nom (celui de la langue du schéma, s'il est gardé), définition, sens de
+ * lecture ; le style seulement pour les préréglages créés.
+ */
+function vocabularyEntry(p: Preset, label?: string): MapVocabulary {
   const description = p.description ?? m().presetHelp[p.id]?.definition
   return {
     id: p.id,
     kind: p.target === 'shape' ? 'type' : 'relation',
-    name: p.name,
+    name: (p.target === 'arrow' && label) || p.name,
     ...(description && { description }),
     ...(p.target === 'arrow' && { direction: p.towardChild ? 'toChild' : 'toParent' }),
     ...(p.target === 'arrow' && p.childNature && { childType: p.childNature }),

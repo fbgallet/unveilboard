@@ -9,9 +9,10 @@ import { MapSchema, type UnveilMap } from '../map/format'
 import { PlanSchema, type DiagramPlan } from '../map/plan'
 import { numberedSource, passageOf, sourceParagraphs } from '../source/paragraphs'
 import { FOCUS_OF_KIND, REMARK_KINDS, REVIEW_FOCUS, type ReviewFocus } from '../map/review'
+import { APP_LANGS, AUTO_LANG, baseLang, languageName } from './language'
 import { SIZE_LIMITS, sizeText, type DiagramSize } from '../map/size'
 
-export const PROMPT_VERSION = 10
+export const PROMPT_VERSION = 11
 
 export const TASKS = ['create', 'enrich', 'sequence', 'review', 'edit', 'expand', 'plan', 'develop', 'finish'] as const
 export type Task = (typeof TASKS)[number]
@@ -150,7 +151,6 @@ ${problems.map((p) => `- ${p}`).join('\n')}
 Answer again with the whole corrected JSON, in one \`\`\`json code block, and nothing else.`
 }
 
-const LANG_NAMES: Record<string, string> = { fr: 'French', en: 'English' }
 
 export function buildPrompt(input: PromptInput): string {
   const output = input.task === 'create' ? 'map' : input.task === 'review' ? 'review' : input.task === 'plan' ? 'plan' : 'patch'
@@ -589,12 +589,26 @@ function writingRules(notes: boolean) {
 - **Note** (\`note\`, optional, Markdown): rare. Most elements have none. Add one only for a precise detail the box cannot hold: a full quotation, an exact reference, a date or figure, a technical precision, a worked example. Never to restate, paraphrase or introduce the box. Brief (one to three sentences), longer only if the user asks for developments. Never put the essential in the note alone: the box must still say it.`
 }
 
+/** La langue du contenu, et les noms des relations à traduire quand l'app n'a pas cette langue. */
+function languageRules(lang: string) {
+  const content = 'all content (texts, notes, titles, narration, summary, vocabulary names)'
+  const translate = (when: string) =>
+    `- ${when}: the vocabulary names above are not in that language, and relation names are written on the arrows. In your answer's \`vocabulary\`, add an entry for each relation of the vocabulary above that you use: same \`id\` and \`kind\`, with its \`name\` in the content language, as it should read on the arrow (a short verb phrase).`
+  if (lang === AUTO_LANG) {
+    return `- Write ${content} in the language of the current diagram if there is one; otherwise in the language of the user's request, or of the source text when the request is empty or gives no clear cue. Quotations stay in their language. Set the \`lang\` of the diagram or plan you write to the ISO 639-1 code of that language.
+${translate('If that language is neither English nor French')}`
+  }
+  const name = languageName(lang)
+  return `- Write ${content} in ${name}, except quotations, kept in their language. Set the \`lang\` of the diagram or plan you write to \`${lang}\`.${
+    APP_LANGS.includes(baseLang(lang)) ? '' : `\n${translate(`The content is in ${name}`)}`
+  }`
+}
+
 function rules(lang: string, notes: boolean) {
-  const name = LANG_NAMES[lang] ?? lang
   return `## Rules
 
 ${writingRules(notes)}
-- Write all content (texts, notes, titles, narration, summary) in ${name}, except quotations, kept in their language.
+${languageRules(lang)}
 - Be faithful: never invent a quotation, a source or a reference. A \`quote\` element must be an exact quotation with its \`source\`; when you are not sure of the exact words, write a \`statement\` without \`source\`. Mark your own reconstructions with \`"origin": "reconstruction"\`.
 - Use the vocabulary above (ids, not names). It was designed for arguments and theories: when the material calls for other kinds of elements or relations (a step, an event, a period, a cause, a character, a work; “leads to”, “precedes”, “is a kind of”, “is part of”, “causes”, “influences”…), declare them in \`vocabulary\` rather than forcing a type or relation that does not fit: \`{ "id", "kind": "type" | "relation", "name" (in the content language), "description", "direction"?, "childType"?, "style"? }\`. A relation reads “child RELATION parent” unless \`"direction": "toChild"\` (“parent RELATION child”: “leads to”, “is divided into”). \`style\` (optional): for a type, \`{ "geo": "rectangle" | "oval" | "ellipse" | "diamond" | "hexagon" | "cloud" | "rhombus", "color", "fill": "semi" | "solid" | "none", "dash": "draw" | "solid" | "dashed" | "dotted" }\`; for a relation, \`{ "color", "dash" }\`; colors: \`black\`, \`grey\`, \`violet\`, \`light-violet\`, \`blue\`, \`light-blue\`, \`yellow\`, \`orange\`, \`green\`, \`light-green\`, \`red\`, \`light-red\`. Keep such additions few and consistent.
 - Nothing may rely on colors or positions: they are computed by the app.

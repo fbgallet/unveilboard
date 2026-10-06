@@ -28,6 +28,7 @@ import { SEQUENCE_VERSION, newId, type Sequence } from '../sequence/types'
 import { lighterSide, treeAxis, type TreeSide, type Vec } from '../tree/layout'
 import { applyPresetTo, documentPresets, presetById, presetSettingsAtom, setReasoning } from './presets'
 import { branchOf, linkToParent, relayout, setArgumentTree } from './tree'
+import { relationLabels, rememberRelationLabels } from './relationLabels'
 
 /** Taille des boîtes créées (celle des nœuds d'arbre de l'éditeur) ; la hauteur grandit avec le texte. */
 const NODE = { w: 300, h: 150 }
@@ -51,7 +52,8 @@ export function knownVocabulary(editor?: Editor): KnownVocabulary {
 
 /** Crée les formes du schéma sur la page courante, à partir de `at`, et renvoie sa séquence (non enregistrée). */
 export function importMap(editor: Editor, map: UnveilMap, opts: { at?: Vec; unverified?: string[] } = {}): MapImport {
-  const presetOf = presetResolver(editor, map.vocabulary)
+  const presetOf = presetResolver(editor, map.vocabulary, map.lang)
+  rememberRelationLabels(editor, relationLabels(editor, map.vocabulary, map.lang))
   const lang = contentLocale(map.lang)
   const shapes = new Map<string, RefShapes>()
   const ids = new Map<string, TLShapeId>()
@@ -211,12 +213,17 @@ export function applyType(editor: Editor, id: TLShapeId, preset: Preset | undefi
  * Préréglage d'un identifiant du schéma : celui de l'instance (communs, copie du document), sinon
  * celui que décrit le vocabulaire du schéma (préréglage créé ailleurs, repris avec son style).
  */
-export function presetResolver(editor: Editor, entries: MapVocabulary[] | undefined): PresetOf {
+export function presetResolver(editor: Editor, entries: MapVocabulary[] | undefined, lang?: string): PresetOf {
   const vocabulary = new Map((entries ?? []).map((v) => [v.id, v]))
+  // Langue que l'app ne traduit pas : une relation connue porte le nom donné par l'IA (ou le document).
+  const labels = relationLabels(editor, entries, lang)
   return (id, target) => {
     if (!id) return undefined
     const own = presetById(editor, id)
-    if (own) return own.target === target ? own : undefined
+    if (own) {
+      if (own.target !== target) return undefined
+      return target === 'arrow' && own.label !== undefined && labels[id] ? { ...own, label: labels[id] } : own
+    }
     const v = vocabulary.get(id)
     if (!v || (v.kind === 'type') !== (target === 'shape')) return undefined
     return {

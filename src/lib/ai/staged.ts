@@ -12,6 +12,7 @@
 // moment, valide à tout moment.
 
 import type { KnownVocabulary, MapIssue } from '../map/check'
+import { AUTO_LANG } from './language'
 import { checkExcerpts } from '../map/excerpts'
 import type { MapElement, UnveilMap } from '../map/format'
 import { sourceParagraphs } from '../source/paragraphs'
@@ -56,7 +57,9 @@ export async function askPlan(
   const run = await ctx.ask(input, (text) => readPlan(text, ctx.known, { paragraphs }), { reasoning: ctx.reasoning, onText: opts.onText })
   if (!run.result.ok) throw new AiError('invalid_output')
   const plan = run.result.plan
-  return { ...run, plan: { ...plan, lang: plan.lang ?? ctx.base.lang } }
+  // Langue « auto » : celle que le modèle a choisie (le plan la donne), jamais « auto » elle-même.
+  const lang = plan.lang ?? (ctx.base.lang === AUTO_LANG ? undefined : ctx.base.lang)
+  return { ...run, plan: { ...plan, ...(lang && { lang }) } }
 }
 
 /** Où vit le schéma en construction : en mémoire (tout d'un coup), ou sur le canevas (en direct). */
@@ -113,7 +116,7 @@ async function developOne(ctx: StagedContext, plan: DiagramPlan, store: MapStore
   const check = (answer: unknown, attempt = 2) =>
     withExcerpts(readStepPatch(answer, store.get(), ctx.known, { allowed: ['add', 'link'], section: id, taken: store.taken?.() }), ctx.base.source?.text, attempt)
   try {
-    const run = await ctx.ask({ ...ctx.base, task: 'develop', plan, focus: id, map: store.get(), ...(request?.trim() && { sectionRequest: request }) }, check, {
+    const run = await ctx.ask({ ...ctx.base, lang: plan.lang ?? ctx.base.lang, task: 'develop', plan, focus: id, map: store.get(), ...(request?.trim() && { sectionRequest: request }) }, check, {
       reasoning: stepReasoning(ctx.reasoning),
       onText: (text, thinking) => events.onText(id, text.length, thinking),
     })
@@ -151,7 +154,7 @@ export async function finishMap(
   onText?: (text: string, thinking: number) => void
 ): Promise<AiRun<SectionPatchResult>> {
   const check = (answer: unknown) => readStepPatch(answer, store.get(), ctx.known, { allowed: ['link', 'sequence'], taken: store.taken?.() })
-  const run = await ctx.ask({ ...ctx.base, task: 'finish', plan, map: store.get() }, check, { reasoning: stepReasoning(ctx.reasoning), onText })
+  const run = await ctx.ask({ ...ctx.base, lang: plan.lang ?? ctx.base.lang, task: 'finish', plan, map: store.get() }, check, { reasoning: stepReasoning(ctx.reasoning), onText })
   if (!run.result.ok) throw new AiError('invalid_output')
   const merged = check(run.result.patch)
   if (!merged.ok) throw new AiError('invalid_output')

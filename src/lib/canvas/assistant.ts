@@ -22,9 +22,16 @@ import { revealOrder } from './tree'
 import { extractAround } from '../map/extract'
 import { presetSettingsAtom } from './presets'
 import { readPageSource, writePageSource } from './source'
+import { documentRelationLabels } from './relationLabels'
+import { aiSettingsAtom } from '../ai/client'
+import { resolveContentLang } from '../ai/language'
 
-/** Vocabulaire proposé à l'IA : tous les préréglages visibles (pas seulement l'essentiel), avec leur définition. */
-export function promptVocabulary(): VocabularyLine[] {
+/**
+ * Vocabulaire proposé à l'IA : tous les préréglages visibles (pas seulement l'essentiel), avec leur
+ * définition ; une relation porte le nom gardé par le document dans sa langue, s'il en a un.
+ */
+export function promptVocabulary(editor?: Editor): VocabularyLine[] {
+  const labels = editor ? documentRelationLabels(editor) : {}
   return presetSettingsAtom
     .get()
     .items.filter((p) => !p.hidden)
@@ -33,7 +40,7 @@ export function promptVocabulary(): VocabularyLine[] {
       return {
         id: p.id,
         kind: p.target === 'shape' ? 'type' : 'relation',
-        name: p.name,
+        name: (p.target === 'arrow' && labels[p.id]) || p.name,
         ...(definition && { definition }),
         ...(p.target === 'arrow' && { direction: p.towardChild ? 'toChild' : 'toParent' }),
         ...(p.target === 'arrow' && p.childNature && { childType: p.childNature }),
@@ -60,6 +67,8 @@ export interface PromptOptions {
   reviewFocus?: ReviewFocus[]
   /** S'appuyer sur le texte source de la page, s'il y en a un. */
   withSource?: boolean
+  /** Langue du contenu, pour une création (sinon : celle des réglages de l'IA). Un schéma existant garde la sienne. */
+  lang?: string
 }
 
 /** Demande pour une tâche, sur le schéma ouvert (le schéma et la sélection compris). */
@@ -80,8 +89,8 @@ export function editorPromptInput(editor: Editor, task: Task, instruction: strin
     ...(task === 'sequence' && exported && { order: defaultOrder(editor, exported.map, refOf) }),
     ...(task === 'review' && opts.reviewFocus && { reviewFocus: opts.reviewFocus }),
     ...(opts.withSource && source && { source: { text: source.text, ...(source.label && { label: source.label }) } }),
-    vocabulary: promptVocabulary(),
-    lang: map?.lang ?? clientLocale(),
+    vocabulary: promptVocabulary(editor),
+    lang: map?.lang ?? opts.lang ?? resolveContentLang(aiSettingsAtom.get().contentLang, clientLocale()),
     delivery: opts.delivery ?? 'clipboard',
     pasteMenu: m().mapJson.menuImport,
   }
