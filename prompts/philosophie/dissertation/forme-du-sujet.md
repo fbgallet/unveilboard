@@ -4,6 +4,7 @@ description: Ce que la formulation du sujet engage : forme logique, présupposé
 tasks: [create, expand, enrich]
 placeholder: "Le sujet de dissertation, par exemple : « Peut-on renoncer à la vérité ? »"
 order: 2
+source: none
 ---
 La demande de l'utilisateur est un sujet de dissertation de philosophie (niveau Terminale). Il s'agit d'analyser la **forme de la question** : identifier les éléments structurants de sa formulation, ceux qu'un élève ne doit pas négliger sous peine de hors-sujet, puis en dégager le sens de la question. C'est une analyse préalable, comme au brouillon : mobilise une réelle culture philosophique, mais **sans nom d'auteur ni de courant**.
 

@@ -27,6 +27,7 @@ description: One line, shown under the picker.
 tasks: [create, expand, enrich]
 placeholder: Text shown in the request box, e.g. "The essay question…"
 order: 1
+source: none
 ---
 Common part, sent with every task.
 
@@ -40,7 +41,8 @@ Sent when developing an element or enriching the diagram.
 ```
 
 - `tasks`: where the prompt is offered: `create`, `enrich`, `expand` (develop the selected element), `edit`, `sequence`, `review`, `plan`. Omitted: all tasks. Offering `create` also offers the prompt for the plan of a multi-pass creation.
-- The user's text (the subject, the notions…) is sent as "the user's request": refer to it as such.
+- `source`: `required` for a prompt that works on the page's source text (a text to explain): offered only when the request uses a source text (“Create a diagram from a text”, or “Use the source text of this page” checked); `none` for a prompt that works without one (an essay question): offered only then. Omitted: both.
+- The user's text (the subject, the notions…) is sent as "the user's request": refer to it as such. A source text is sent as "the source text", and the app already asks for verbatim excerpts.
 - Write the method in the language of its users; the app tells the model which language the content must be written in.
 - Element types and relations are those of the app's default vocabulary (`statement`, `belief`, `concept`, `distinction`, `question`, `problem`, `example`, `quote`; `supports`, `objects`, `answers`, `presupposes`, `raises`, `defines`, `distinguishes`, `opposes`, `relates`…). A method may ask the model to declare new ones in the diagram's `vocabulary`.
 

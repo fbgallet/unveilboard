@@ -12,7 +12,7 @@ import {
   writePromptChoice,
   type PromptGroup,
 } from '@/lib/prompts/library'
-import { PROMPT_TASKS, methodOf, type PromptTask, type PromptTemplate } from '@/lib/prompts/template'
+import { PROMPT_TASKS, methodOf, type PromptContext, type PromptTask, type PromptTemplate } from '@/lib/prompts/template'
 import type { PromptMethod, Task } from '@/lib/ai/prompts'
 
 export interface PromptChoice {
@@ -29,14 +29,15 @@ const isPromptTask = (task: Task): task is PromptTask => (PROMPT_TASKS as readon
 /**
  * Méthode choisie pour une tâche : la dernière choisie sur cet appareil, tant qu'elle est proposée.
  * Une tâche sans boîte de dialogue (étapes d'une création en plusieurs temps) n'en propose aucune.
+ * `context.source` : la demande s'appuie sur un texte source (les prompts d'explication de texte).
  */
-export function usePromptChoice(task: Task): PromptChoice {
+export function usePromptChoice(task: Task, context: PromptContext = {}): PromptChoice {
   const t = useT()
   const settings = useValue(promptLibraryAtom)
   // Le choix est relu à chaque rendu (la tâche peut changer) ; `bump` redessine après un choix.
   const [, bump] = useState(0)
   if (!isPromptTask(task)) return { groups: [], choose: () => {} }
-  const groups = promptGroups(settings, task, t.prompts.defaultGroup)
+  const groups = promptGroups(settings, task, t.prompts.defaultGroup, context)
   const id = readPromptChoice(task)
   const offered = !!id && groups.some((g) => g.prompts.some((p) => p.id === id))
   const template = offered ? findPrompt(settings, id, t.prompts.defaultGroup) : undefined

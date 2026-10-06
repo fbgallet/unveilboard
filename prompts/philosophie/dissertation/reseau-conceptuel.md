@@ -4,6 +4,7 @@ description: Analyse des termes du sujet en séries de liens, des mots exacts de
 tasks: [create, expand, enrich, review]
 placeholder: "Le sujet de dissertation, par exemple : « La liberté revient-elle à faire ce qu'on veut ? »"
 order: 1
+source: none
 ---
 La demande de l'utilisateur est un sujet de dissertation de philosophie (niveau Terminale). Il s'agit de construire son **réseau conceptuel** : l'analyse des termes du sujet comme on la ferait au brouillon, avant de chercher un plan. Mobilise une réelle culture philosophique (distinctions précises, concepts classiques, repères du programme), mais **sans nom d'auteur ni de courant** : ce n'est pas encore le moment des références.
 

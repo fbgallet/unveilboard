@@ -9,8 +9,9 @@ import { MapSchema, type UnveilMap } from '../map/format'
 import { PlanSchema, type DiagramPlan } from '../map/plan'
 import { numberedSource, passageOf, sourceParagraphs } from '../source/paragraphs'
 import { FOCUS_OF_KIND, REMARK_KINDS, REVIEW_FOCUS, type ReviewFocus } from '../map/review'
+import { SIZE_LIMITS, sizeText, type DiagramSize } from '../map/size'
 
-export const PROMPT_VERSION = 9
+export const PROMPT_VERSION = 10
 
 export const TASKS = ['create', 'enrich', 'sequence', 'review', 'edit', 'expand', 'plan', 'develop', 'finish'] as const
 export type Task = (typeof TASKS)[number]
@@ -65,6 +66,8 @@ export interface PromptInput {
   kind?: 'auto' | 'argument' | 'mindmap'
   /** « create » : écrire aussi la séquence et sa narration (par défaut : oui). */
   withSequence?: boolean
+  /** Création (et son plan, ses sections) : nombre d'éléments et de niveaux voulus (réglages de l'IA). */
+  size?: DiagramSize
   /** Développer au besoin dans la note des éléments (par défaut : oui) ; sinon, tout dans la boîte. */
   notes?: boolean
   /** « review » : ce qu'on attend de la relecture (par défaut : tout). */
@@ -100,6 +103,14 @@ export const PromptInputSchema = z.object({
   source: z.object({ text: z.string().max(300_000), label: z.string().max(300).optional() }).optional(),
   kind: z.enum(['auto', 'argument', 'mindmap']).optional(),
   withSequence: z.boolean().optional(),
+  size: z
+    .object({
+      minElements: z.number().int().min(1).max(SIZE_LIMITS.elements).optional(),
+      maxElements: z.number().int().min(1).max(SIZE_LIMITS.elements).optional(),
+      minLevels: z.number().int().min(1).max(SIZE_LIMITS.levels).optional(),
+      maxLevels: z.number().int().min(1).max(SIZE_LIMITS.levels).optional(),
+    })
+    .optional(),
   notes: z.boolean().optional(),
   reviewFocus: z.array(z.enum(REVIEW_FOCUS)).max(REVIEW_FOCUS.length).optional(),
   plan: PlanSchema.optional(),
@@ -171,7 +182,7 @@ export function buildPrompt(input: PromptInput): string {
       : '',
     input.task === 'plan' && input.plan ? planRevisionText(input.plan, input.planRemarks) : '',
     SHAPE_TASKS.includes(input.task)
-      ? `## The shape of the diagram\n\n${(input.task === 'create' || input.task === 'plan') && input.kind !== 'argument' ? `${FORM_TEXT}\n\n` : ''}${DEPTH_TEXT}`
+      ? `## The shape of the diagram\n\n${(input.task === 'create' || input.task === 'plan') && input.kind !== 'argument' ? `${FORM_TEXT}\n\n` : ''}${DEPTH_TEXT}${shapeSizeText(input)}`
       : '',
     vocabularyText(input.vocabulary),
     MAP_FORMAT_TEXT,
@@ -228,6 +239,13 @@ const FORM_TEXT = `Choose the form that fits the material, rather than a tree of
 - a process, a chronology, a chain of causes → a **chain**: each step is the child of the previous one, with a relation that says the passage (“leads to”, “then”, “causes”); a cycle is closed by a link from the last step back to the first;
 - a comparison (two doctrines, authors, periods) → **one tree per term**, side by side (several roots), and links between the points that correspond or oppose;
 - notions bound by many mutual relations → a tree for the main structure, and links for the other relations.`
+
+/** Bornes de taille de l'utilisateur, pour la création, son plan et ses sections. */
+function shapeSizeText(input: PromptInput) {
+  const scope = input.task === 'create' ? 'diagram' : input.task === 'plan' ? 'plan' : input.task === 'develop' ? 'section' : null
+  const text = scope ? sizeText(input.size, scope) : ''
+  return text ? `\n\n${text}` : ''
+}
 
 /** La profondeur plutôt que la largeur. */
 const DEPTH_TEXT = `**Prefer depth to width.** A reader takes in three to five branches at a glance; a long row of siblings is hard to read and to present. This is a strong preference, not a fixed limit: follow the material.

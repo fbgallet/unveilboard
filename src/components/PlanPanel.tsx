@@ -47,7 +47,8 @@ function PlanProposal({ editor }: { editor: Editor }) {
   const [remarks, setRemarks] = useState('')
   const [run, setRun] = useState<{ chars: number; thinking: number; abort: AbortController } | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
-  const prompt = usePromptChoice('plan')
+  const hasSource = useValue('page source', () => !!readPageSource(editor), [editor])
+  const prompt = usePromptChoice('plan', { source: hasSource })
 
   async function propose(previous?: DiagramPlan) {
     setFailure(null)

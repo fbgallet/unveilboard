@@ -29,6 +29,7 @@ import {
 } from 'tldraw'
 import { applyPresetTo, presetById } from './presets'
 import { LINKED, PREMISE, type Preset } from '../presets/presets'
+import { preferredDirection, rememberDirection } from '../tree/preferences'
 import {
   TREE_DIRECTIONS,
   TREE_GAPS,
@@ -519,6 +520,12 @@ export function newChildPlacement(editor: Editor, id: TLShapeId): { near: Vec; s
 /** Tab : ajoute un enfant (et fait de la forme la racine d'un arbre si besoin). */
 export function addChild(editor: Editor, id: TLShapeId) {
   editor.markHistoryStoppingPoint('ajouter un enfant')
+  // Nouvel arbre : il s'oriente comme le dernier dont on a choisi l'orientation.
+  const shape = editor.getShape(id)
+  if (shape && !isTreeNode(editor, id) && !shape.meta.treeDir) {
+    const dir = preferredDirection(!!shape.meta.argument)
+    if (dir !== 'right') editor.updateShape({ id, type: shape.type, meta: { ...shape.meta, treeDir: dir } })
+  }
   const kids = getTreeIndex(editor).children.get(id) ?? []
   const { near, side } = newChildPlacement(editor, id)
   return createNode(editor, id, kids[0] ?? id, near, side)
@@ -791,6 +798,7 @@ export function setDirection(editor: Editor, id: TLShapeId, dir: TreeDirection) 
   editor.markHistoryStoppingPoint('direction de l’arbre')
   editor.run(() => {
     editor.updateShape({ id: rootId, type: root.type, meta: { ...root.meta, treeDir: dir } })
+    rememberDirection(!!root.meta.argument, dir)
     // Passage à « both » : les branches se répartissent entre les deux côtés, dans leur ordre.
     if (dir === 'both') {
       const kids = [...(getTreeIndex(editor).children.get(rootId) ?? [])]

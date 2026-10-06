@@ -8,7 +8,7 @@ import { clientLocale } from '@/i18n/client'
 import type { SettingsStore } from '../storage/types'
 import { TASKS, type Task } from '../ai/prompts'
 import shared from './library.json'
-import { offersTask, parseBody, type PromptCollection, type PromptLibraryData, type PromptTask, type PromptTemplate } from './template'
+import { offersTask, parseBody, type PromptCollection, type PromptContext, type PromptLibraryData, type PromptTask, type PromptTemplate } from './template'
 
 export const SHARED_LIBRARY = shared as PromptLibraryData
 
@@ -32,11 +32,15 @@ export interface CustomPrompt {
 export interface PromptLibrarySettings {
   version: 1
   custom: CustomPrompt[]
-  /** Collections partagées affichées ; null : celles de la langue de l'interface. */
-  enabled: string[] | null
+  /**
+   * Écarts au choix par défaut (les collections de la langue de l'interface) : collections affichées
+   * en plus, et masquées. Une collection ajoutée plus tard suit le choix par défaut.
+   */
+  shown: string[]
+  hidden: string[]
 }
 
-const EMPTY: PromptLibrarySettings = { version: 1, custom: [], enabled: null }
+const EMPTY: PromptLibrarySettings = { version: 1, custom: [], shown: [], hidden: [] }
 
 export const promptLibraryAtom = atom<PromptLibrarySettings>('promptLibrary', EMPTY)
 /** Erreur de la dernière sauvegarde (affichée dans la bibliothèque). */
@@ -50,8 +54,15 @@ function normalize(value: unknown): PromptLibrarySettings {
   const custom = Array.isArray(v.custom)
     ? v.custom.filter((p): p is CustomPrompt => !!p && typeof p.id === 'string' && typeof p.title === 'string' && typeof p.source === 'string')
     : []
-  const enabled = Array.isArray(v.enabled) ? v.enabled.filter((c): c is string => typeof c === 'string') : null
-  return { version: 1, custom, enabled }
+  const strings = (a: unknown) => (Array.isArray(a) ? a.filter((c): c is string => typeof c === 'string') : [])
+  // Ancien format : la liste complète des collections affichées.
+  const legacy = (value as { enabled?: unknown }).enabled
+  if (Array.isArray(legacy)) {
+    const enabled = new Set(strings(legacy))
+    const defaults = new Set(defaultEnabled())
+    return { version: 1, custom, shown: [...enabled].filter((c) => !defaults.has(c)), hidden: [...defaults].filter((c) => !enabled.has(c)) }
+  }
+  return { version: 1, custom, shown: strings(v.shown), hidden: strings(v.hidden) }
 }
 
 /** Charge les réglages de la bibliothèque (copie locale si le stockage est injoignable). */
@@ -112,7 +123,18 @@ export function defaultEnabled(locale: string = clientLocale()): string[] {
 }
 
 export function enabledCollections(settings: PromptLibrarySettings): Set<string> {
-  return new Set(settings.enabled ?? defaultEnabled())
+  const hidden = new Set(settings.hidden)
+  return new Set([...defaultEnabled().filter((c) => !hidden.has(c)), ...settings.shown])
+}
+
+/** Affiche ou masque une collection : seul l'écart au choix par défaut est gardé. */
+export function withCollection(settings: PromptLibrarySettings, id: string, on: boolean): PromptLibrarySettings {
+  const byDefault = defaultEnabled().includes(id)
+  const shown = settings.shown.filter((c) => c !== id)
+  const hidden = settings.hidden.filter((c) => c !== id)
+  if (on && !byDefault) shown.push(id)
+  if (!on && byDefault) hidden.push(id)
+  return { ...settings, shown: shown.sort(), hidden: hidden.sort() }
 }
 
 // ---------- Prompts proposés ----------
@@ -149,10 +171,10 @@ export function collectionTitle(id: string, collections: PromptCollection[] = SH
 }
 
 /** Prompts proposés pour une tâche, par groupe : les personnels d'abord, puis les collections affichées. */
-export function promptGroups(settings: PromptLibrarySettings, task: PromptTask, defaultGroup: string): PromptGroup[] {
+export function promptGroups(settings: PromptLibrarySettings, task: PromptTask, defaultGroup: string, context: PromptContext = {}): PromptGroup[] {
   const groups = new Map<string, PromptGroup>()
   const add = (template: PromptTemplate, title: string) => {
-    if (!offersTask(template, task)) return
+    if (!offersTask(template, task, context)) return
     const group = groups.get(template.collection) ?? { id: template.collection, title, prompts: [] }
     group.prompts.push(template)
     groups.set(template.collection, group)

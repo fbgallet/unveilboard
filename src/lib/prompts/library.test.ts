@@ -107,6 +107,18 @@ describe('format des prompts', () => {
     expect(offersTask({ ...base, tasks: ['create'] }, 'plan')).toBe(true)
     expect(offersTask({ ...base, tasks: ['create'] }, 'expand')).toBe(false)
   })
+
+  it('texte source : « required » seulement avec un texte, « none » seulement sans ; sans contexte, pas de filtre', () => {
+    const base = { id: 'a/b', collection: 'a', title: 'T', body: 'x', variants: {} }
+    const explication = { ...base, source: 'required' as const }
+    const sujet = { ...base, source: 'none' as const }
+    expect(offersTask(explication, 'create', { source: true })).toBe(true)
+    expect(offersTask(explication, 'create', { source: false })).toBe(false)
+    expect(offersTask(sujet, 'create', { source: true })).toBe(false)
+    expect(offersTask(sujet, 'create', { source: false })).toBe(true)
+    expect(offersTask(base, 'create', { source: true })).toBe(true)
+    expect(offersTask(explication, 'create')).toBe(true)
+  })
 })
 
 describe('méthode dans la consigne', () => {

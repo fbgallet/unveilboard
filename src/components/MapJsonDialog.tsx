@@ -6,7 +6,7 @@ import { atom, useValue, type Editor } from 'tldraw'
 import { m, useT } from '@/i18n/client'
 import { ASSISTANT_TASKS, buildPrompt, type Task } from '@/lib/ai/prompts'
 import { readSequence } from '@/lib/canvas/adapter'
-import { createDocumentFromMap, editorPromptInput, readPasted, selectedRefs } from '@/lib/canvas/assistant'
+import { addMapToDocument, createDocumentFromMap, editorPromptInput, readPasted, selectedRefs } from '@/lib/canvas/assistant'
 import { aiSettingsAtom, askAi, isAiReady, modelName, serverAiAtom } from '@/lib/ai/client'
 import { toAiError } from '@/lib/ai/errors'
 import type { AiRun } from '@/lib/ai/run'
@@ -26,6 +26,9 @@ import { checkExcerpts } from '@/lib/map/excerpts'
 import { planPanelOpenAtom } from './PlanPanel'
 import { skeletonMap } from '@/lib/map/plan'
 import { PromptPicker, usePromptChoice } from './PromptPicker'
+import { DiagramSizeNote } from './DiagramSize'
+import { MapDestinationPicker, useMapDestination } from './MapDestination'
+import { normalizeSize, sizeIssues, type DiagramSize } from '@/lib/map/size'
 
 export const mapImportOpenAtom = atom<boolean>('mapImportOpen', false)
 export const assistantOpenAtom = atom<boolean>('assistantOpen', false)
@@ -103,6 +106,7 @@ function JsonPastePanel({
   text,
   setText,
   source,
+  size,
 }: {
   editor: Editor
   onDone(): void
@@ -110,12 +114,18 @@ function JsonPastePanel({
   setText(text: string): void
   /** Schéma créé à partir de ce texte (celui de la page) : il le garde. */
   source?: { text: string; label?: string }
+  /** Taille demandée à l'IA : un schéma qui en sort est signalé. */
+  size?: DiagramSize
 }) {
   const t = useT()
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
-  const result = useMemo(() => (text.trim() ? readPasted(editor, text) : null), [text, editor])
+  const [destination, setDestination] = useMapDestination(editor)
+  const result = useMemo(() => {
+    const read = text.trim() ? readPasted(editor, text) : null
+    return read?.ok && read.kind === 'map' && size ? { ...read, issues: [...read.issues, ...sizeIssues(read.map, size, false)] } : read
+  }, [text, editor, size])
 
   async function pickFile(file: File | undefined) {
     if (file) setText(await file.text())
@@ -138,10 +148,13 @@ function JsonPastePanel({
     setFailure(null)
     try {
       // Créé à partir du texte de la page : le nouveau schéma le garde, extraits vérifiés.
-      const id = await createDocumentFromMap(
-        result.map,
-        source ? { source, unverified: checkExcerpts(result.map, source.text, false).unverified } : {}
-      )
+      const opts = source ? { source, unverified: checkExcerpts(result.map, source.text, false).unverified } : {}
+      if (destination !== 'document') {
+        addMapToDocument(editor, result.map, destination, opts)
+        if (source) openSourcePanel()
+        return onDone()
+      }
+      const id = await createDocumentFromMap(result.map, opts)
       if (source) openSourcePanel()
       onDone()
       router.push(`/d/${id}`)
@@ -193,12 +206,21 @@ function JsonPastePanel({
         </section>
       )}
       {failure && <p className="text-xs text-red-700">{failure}</p>}
+      {result?.ok && result.kind === 'map' && <MapDestinationPicker editor={editor} value={destination} onChange={setDestination} />}
       <footer className="flex justify-end gap-2">
         <button className="btn" onClick={onDone}>
           {t.common.cancel}
         </button>
         <button className="btn-primary" disabled={!result?.ok || busy} onClick={() => void run()}>
-          {busy ? t.mapJson.creating : result?.kind === 'patch' ? t.mapJson.apply : result?.kind === 'review' ? t.review.show : t.mapJson.create}
+          {busy
+            ? t.mapJson.creating
+            : result?.kind === 'patch'
+              ? t.mapJson.apply
+              : result?.kind === 'review'
+                ? t.review.show
+                : destination === 'document'
+                  ? t.mapJson.create
+                  : t.mapJson.addTo[destination]}
         </button>
       </footer>
     </>
@@ -261,17 +283,31 @@ function AssistantView({ editor }: { editor: Editor }) {
   const [answer, setAnswer] = useState('')
   const [run, setRun] = useState<{ chars: number; thinking: number; seconds: number; abort: AbortController } | null>(null)
   const [outcome, setOutcome] = useState<AiRun<unknown> & { seconds: number } | null>(null)
-  const prompt = usePromptChoice(task)
+  const prompt = usePromptChoice(task, { source: withSource })
   const method = prompt.method && { method: prompt.method }
+  // Taille du schéma créé : celle des réglages de l'IA, modifiable pour cette création.
+  const [size, setSize] = useState(() => settings.size)
+  const created = useMemo(() => (task === 'create' ? { size: normalizeSize(size) } : {}), [task, size])
 
-  const input = () => ({ ...editorPromptInput(editor, task, instruction, { selection: useSelection && task !== 'create', withSource }), notes, ...method })
-  /** Réponse de l'IA ; une création à partir du texte a ses extraits vérifiés (à corriger au premier essai). */
+  const input = () => ({
+    ...editorPromptInput(editor, task, instruction, { selection: useSelection && task !== 'create', withSource }),
+    notes,
+    ...method,
+    ...created,
+  })
+  /**
+   * Réponse de l'IA ; une création est comptée (taille demandée) et, à partir du texte, ses extraits
+   * vérifiés : au premier essai, ce qui ne va pas est à corriger ; ensuite, seulement signalé.
+   */
   const check = (text: string, attempt: number) => {
     const result = readPasted(editor, text)
-    if (!(withSource && task === 'create' && result.ok && result.kind === 'map')) return result
-    const excerpts = checkExcerpts(result.map, pageSource!.text, attempt === 1)
-    const issues = [...result.issues, ...excerpts.issues]
-    return excerpts.issues.some((i) => i.level === 'error') ? { kind: 'map' as const, ok: false as const, issues } : { ...result, issues }
+    if (!(task === 'create' && result.ok && result.kind === 'map')) return result
+    const extra = [
+      ...sizeIssues(result.map, created.size, attempt === 1),
+      ...(withSource ? checkExcerpts(result.map, pageSource!.text, attempt === 1).issues : []),
+    ]
+    const issues = [...result.issues, ...extra]
+    return extra.some((i) => i.level === 'error') ? { kind: 'map' as const, ok: false as const, issues } : { ...result, issues }
   }
   const changed = () => {
     setCopied(null)
@@ -390,6 +426,7 @@ function AssistantView({ editor }: { editor: Editor }) {
             {t.source.useSource}
           </label>
         )}
+        {task === 'create' && <DiagramSizeNote size={size} onChange={setSize} disabled={!!run} />}
         {task === 'create' && ready && (
           <label className="grid gap-0.5 text-xs">
             <span className="flex items-center gap-2">
@@ -409,7 +446,7 @@ function AssistantView({ editor }: { editor: Editor }) {
           <StagedCreate
             editor={editor}
             settings={settings}
-            input={() => ({ ...editorPromptInput(editor, 'create', instruction, { delivery: 'api', withSource }), notes, ...method })}
+            input={() => ({ ...editorPromptInput(editor, 'create', instruction, { delivery: 'api', withSource }), notes, ...method, ...created })}
             canStart={!!instruction.trim() || withSource}
             onResult={(map) => setAnswer(JSON.stringify(map, null, 2))}
             onLive={async (record) => {
@@ -470,7 +507,14 @@ function AssistantView({ editor }: { editor: Editor }) {
       </section>
       <section className="grid gap-2 border-t border-zinc-200 pt-3">
         <h3 className="preset-group-title">{ready ? t.assistant.step2Ai : t.assistant.step2}</h3>
-        <JsonPastePanel editor={editor} onDone={close} text={answer} setText={setAnswer} source={withSource && task === 'create' ? pageSource! : undefined} />
+        <JsonPastePanel
+          editor={editor}
+          onDone={close}
+          text={answer}
+          setText={setAnswer}
+          source={withSource && task === 'create' ? pageSource! : undefined}
+          size={created.size}
+        />
       </section>
     </Dialog>
   )

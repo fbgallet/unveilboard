@@ -17,6 +17,7 @@ import { buildPrompt, type PromptInput } from './prompts'
 import { chatMessages, runWithRepair, type AiRun, type Repair } from './run'
 import { DEFAULT_MODEL, TRANSCRIPTION_MODEL } from './models'
 import { OPENROUTER_PDF_PLUGIN, readTranscription, transcriptionMessages } from './transcribe'
+import { normalizeSize, type DiagramSize } from '../map/size'
 import type { MapIssue } from '../map/check'
 import { chatGptAvailable, chatGptChat, initChatGpt } from './chatgpt'
 
@@ -37,6 +38,8 @@ export interface AiSettings {
   chatgptModel: string
   /** Réflexion du modèle (tous les fournisseurs ne l'acceptent pas). */
   reasoning: ReasoningEffort
+  /** Taille des schémas créés : bornes facultatives (aucune : au choix de l'IA), modifiables à la création. */
+  size: DiagramSize
 }
 
 export const OPENROUTER_URL = 'https://openrouter.ai/api/v1'
@@ -49,6 +52,7 @@ export const DEFAULT_AI_SETTINGS: AiSettings = {
   customJsonMode: false,
   chatgptModel: '',
   reasoning: 'default',
+  size: {},
 }
 
 export interface ServerAi {
@@ -76,6 +80,7 @@ export function loadAiSettings(server: ServerAi | null = null) {
     const next = { ...fallback, ...raw }
     if (!PROVIDERS.includes(next.kind) || (next.kind === 'chatgpt' && !chatGptAvailable())) next.kind = fallback.kind
     if (!REASONING_EFFORTS.includes(next.reasoning)) next.reasoning = 'default'
+    next.size = normalizeSize(next.size)
     aiSettingsAtom.set(next)
   } catch {
     aiSettingsAtom.set(fallback)
@@ -83,7 +88,8 @@ export function loadAiSettings(server: ServerAi | null = null) {
   void initChatGpt()
 }
 
-export function saveAiSettings(next: AiSettings) {
+export function saveAiSettings(settings: AiSettings) {
+  const next = { ...settings, size: normalizeSize(settings.size) }
   aiSettingsAtom.set(next)
   try {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(next))

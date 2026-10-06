@@ -34,6 +34,8 @@ export type IssueCode =
   | 'quote_not_found'
   | 'operation_not_allowed'
   | 'outside_section'
+  | 'size_elements'
+  | 'size_levels'
 
 export interface MapIssue {
   level: 'error' | 'warning'
@@ -209,6 +211,8 @@ const MESSAGES: Record<IssueCode, string> = {
   quote_not_found: 'This quotation is not in the source text: copy it exactly, or make it a statement',
   operation_not_allowed: 'This operation is not allowed at this step',
   outside_section: 'Added elements must descend from the section being developed (its head, or an element added before in these changes)',
+  size_elements: 'The number of elements is outside the bounds set by the user: add or remove elements (group, merge or develop) to fit them',
+  size_levels: 'The depth of the diagram (levels below the root) is outside the bounds set by the user: restructure the tree to fit them',
 }
 
 /** Problème en une ligne, en anglais (pour une IA, ou les journaux). */

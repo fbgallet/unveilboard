@@ -60,7 +60,7 @@ describe('normalizePresetSettings', () => {
       ],
     }
     const v3 = normalizePresetSettings(v2, names, roles)
-    expect(v3.version).toBe(11)
+    expect(v3.version).toBe(12)
     expect(v3.items.map((p) => p.id)).toEqual([
       'statement', 'belief', 'fact', 'example', 'quote', 'linked', 'objects', 'explains', 'distinction', 'opposes', 'relates', 'premise',
     ])
@@ -77,6 +77,14 @@ describe('normalizePresetSettings', () => {
     expect(quote({ dash: 'dashed', fill: 'none' })).toMatchObject({ dash: 'none', fill: 'solid' })
     expect(quote({ dash: 'none', fill: 'semi' }, 10)).toMatchObject({ dash: 'none', fill: 'solid' })
     expect(quote({ dash: 'solid', fill: 'pattern' })).toMatchObject({ dash: 'solid', fill: 'pattern' })
+  })
+
+  it('v11 → v12 : « s’oppose à » devient rouge, sauf couleur choisie par l’utilisateur', () => {
+    const opposes = (color: string) =>
+      normalizePresetSettings({ version: 11, items: [{ id: 'opposes', name: 'o', target: 'arrow', style: { color } }] }, names)
+        .items.find((p) => p.id === 'opposes')!.style.color
+    expect(opposes('blue')).toBe('red')
+    expect(opposes('green')).toBe('green')
   })
 })
 

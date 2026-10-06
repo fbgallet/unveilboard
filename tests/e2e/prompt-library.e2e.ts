@@ -32,6 +32,7 @@ test('bibliothèque de prompts : collection partagée, méthode choisie, prompt 
   const philosophy = library.getByRole('checkbox', { name: 'Philosophie › Dissertation (bac)' })
   await expect(philosophy).not.toBeChecked()
   await philosophy.check()
+  await library.getByRole('checkbox', { name: 'Philosophie › Explication de texte (bac)' }).check()
 
   // Un prompt personnel, sans tâche cochée (proposé partout), avec une variante pour « expand ».
   await library.getByRole('button', { name: 'New prompt' }).click()
@@ -65,6 +66,10 @@ test('bibliothèque de prompts : collection partagée, méthode choisie, prompt 
   expect(prompt).toContain('Always add a counter-example.')
   expect(prompt).not.toContain('Only when developing an element.')
 
+  // Sans texte source, les prompts d'explication de texte ne sont pas proposés.
+  const methods = dialog.getByRole('combobox', { name: 'Method' }).locator('option')
+  await expect(methods.filter({ hasText: 'Structure argumentative du texte' })).toHaveCount(0)
+
   // Le choix est retenu par tâche.
   await dialog.getByRole('radio', { name: 'Create a diagram' }).click()
   await expect(dialog.getByRole('combobox', { name: 'Method' })).toHaveValue('philosophie/dissertation/reseau-conceptuel')
@@ -83,4 +88,13 @@ test('bibliothèque de prompts : collection partagée, méthode choisie, prompt 
   await panel.getByRole('combobox', { name: 'Method' }).selectOption({ label: 'Réseau conceptuel du sujet' })
   await expect(panel.getByRole('textbox', { name: 'Your request' })).toHaveAttribute('placeholder', /the method is enough/)
   await expect(ask).toBeEnabled()
+
+  await panel.getByRole('button', { name: 'Close' }).click()
+
+  // Depuis un texte : seulement les prompts qui s'appuient sur un texte.
+  await openFromLauncher(page, 'New diagram from a text…')
+  const source = page.getByRole('dialog', { name: 'Create a diagram from a text' })
+  const sourceMethods = source.getByRole('combobox', { name: 'Method' }).locator('option')
+  await expect(sourceMethods.filter({ hasText: 'Structure argumentative du texte' })).toHaveCount(1)
+  await expect(sourceMethods.filter({ hasText: 'Réseau conceptuel du sujet' })).toHaveCount(0)
 })

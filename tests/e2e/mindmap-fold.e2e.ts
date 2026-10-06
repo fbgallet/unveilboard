@@ -90,13 +90,15 @@ test('carte mentale : déplier ouvre toute la branche, repli par niveau', async 
   // Les 9 apparaissent : B2, repliée dans B, s'ouvre avec elle.
   await expect.poll(() => visibleNodes(page)).toBe(35)
 
-  // Niveaux : 1 ne laisse que la racine et ses branches ; « All » déplie tout.
-  await page.locator('.tree-levels').getByRole('button', { name: '1' }).click()
+  // Niveaux : 1 ne laisse que la racine et ses branches ; « All levels » déplie tout.
+  const levels = page.getByRole('combobox', { name: 'Levels' })
+  await expect(levels).toHaveValue('mixed')
+  await levels.selectOption('1')
   await expect.poll(() => visibleNodes(page)).toBe(5)
-  await expect(page.locator('.tree-levels').getByRole('button', { name: '1' })).toHaveAttribute('aria-pressed', 'true')
-  await page.locator('.tree-levels').getByRole('button', { name: '2' }).click()
+  await expect(levels).toHaveValue('1')
+  await levels.selectOption('2')
   await expect.poll(() => visibleNodes(page)).toBe(17)
-  await page.locator('.tree-levels').getByRole('button', { name: 'All' }).click()
+  await levels.selectOption('all')
   await expect.poll(() => visibleNodes(page)).toBe(41)
   await page.keyboard.press('Control+z')
   await expect.poll(() => visibleNodes(page)).toBe(17)
@@ -136,4 +138,29 @@ test('carte mentale en présentation : déplier, niveaux, pastille « − » ave
   await collapse.click()
   await expect.poll(() => hiddenNodes(page)).toBe(40)
   expect(errors).toEqual([])
+})
+
+test('orientation : choisie au sélecteur, elle oriente le prochain arbre créé', async ({ page }) => {
+  await openMindMap(page)
+  await page.evaluate(async () => {
+    const { editor } = window as unknown as Win
+    editor.select(editor.getCurrentPageShapes().find((s) => s.meta.ref === 'r')!.id)
+  })
+  const direction = page.getByRole('combobox', { name: /Direction of the tree/ })
+  await expect(direction).toHaveValue('both')
+  await direction.selectOption('down')
+  await expect(direction).toHaveValue('down')
+
+  // Nouvelle boîte, Tab : l'arbre qui commence s'oriente vers le bas.
+  const dir = await page.evaluate(() => {
+    const { editor } = window as unknown as Win
+    editor.createShape({ type: 'geo', x: 3000, y: 3000, props: { w: 160, h: 60 } })
+    const box = editor.getCurrentPageShapes().find((s) => s.x === 3000)!
+    editor.select(box.id)
+    return String(box.id)
+  })
+  await page.keyboard.press('Tab')
+  await page.keyboard.press('Escape')
+  await page.evaluate((id) => void (window as unknown as Win).editor.select(id as never), dir)
+  await expect(direction).toHaveValue('down')
 })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 // Infobulles de l'app : à la place de l'infobulle native (lente, et différente d'un système à l'autre),
@@ -13,11 +13,13 @@ import { createPortal } from 'react-dom'
 const DELAY = 300
 const GAP = 6
 
+/** Marge entre la bulle et les bords de la fenêtre. */
+const EDGE = 6
+
 interface Tip {
   text: string
-  x: number
-  y: number
-  below: boolean
+  /** L'élément survolé (coordonnées de la fenêtre). */
+  anchor: { left: number; right: number; top: number; bottom: number }
 }
 
 export function Tooltips() {
@@ -52,9 +54,8 @@ export function Tooltips() {
       if (!el.getAttribute('aria-label') && !el.textContent?.trim()) el.setAttribute('aria-label', text)
       timer = setTimeout(() => {
         if (current !== el || !el.isConnected) return
-        const r = el.getBoundingClientRect()
-        const below = r.top < 48
-        setTip({ text, x: r.left + r.width / 2, y: below ? r.bottom + GAP : r.top - GAP, below })
+        const { left, right, top, bottom } = el.getBoundingClientRect()
+        setTip({ text, anchor: { left, right, top, bottom } })
       }, DELAY)
     }
 
@@ -82,18 +83,27 @@ export function Tooltips() {
     }
   }, [])
 
+  // Placement une fois la bulle mesurée : au-dessus de l'élément s'il y a la place, sinon
+  // au-dessous ; centrée sur lui, sans sortir de la fenêtre (une bulle de plusieurs lignes aussi).
+  const bubble = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = bubble.current
+    if (!tip || !el) return
+    const { width, height } = el.getBoundingClientRect()
+    const { anchor } = tip
+    const above = anchor.top - GAP - height
+    const below = anchor.bottom + GAP
+    const top = above >= EDGE || below + height > window.innerHeight - EDGE ? Math.max(EDGE, above) : below
+    const center = (anchor.left + anchor.right) / 2
+    const left = Math.min(Math.max(center - width / 2, EDGE), window.innerWidth - EDGE - width)
+    el.style.left = `${left}px`
+    el.style.top = `${top}px`
+    el.style.visibility = 'visible'
+  }, [tip])
+
   if (!tip) return null
   return createPortal(
-    <div
-      className="app-tooltip"
-      role="tooltip"
-      style={{
-        // Centrée sur l'élément, sans sortir de l'écran (la bulle fait au plus 260 px).
-        left: Math.min(Math.max(tip.x, 136), window.innerWidth - 136),
-        top: tip.y,
-        transform: `translate(-50%, ${tip.below ? '0' : '-100%'})`,
-      }}
-    >
+    <div ref={bubble} className="app-tooltip" role="tooltip" style={{ left: 0, top: 0, visibility: 'hidden' }}>
       {tip.text}
     </div>,
     document.body

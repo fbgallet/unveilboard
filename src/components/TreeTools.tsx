@@ -139,6 +139,27 @@ function isTypingTarget(target: EventTarget | null) {
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
 }
 
+/**
+ * La barre s'arrête avant le panneau de styles de tldraw (en haut à droite) : trop large, elle
+ * passerait dessous ; elle va alors à la ligne. Recalé quand la fenêtre change de taille.
+ */
+function clearOfStylePanel(bar: HTMLDivElement | null) {
+  if (!bar) return
+  const fit = () => {
+    const panel = document.querySelector('.tlui-style-panel__wrapper')
+    const container = bar.offsetParent?.getBoundingClientRect()
+    if (!panel || !container) return void (bar.style.right = '')
+    const room = container.right - panel.getBoundingClientRect().left + 8
+    bar.style.right = `${Math.max(52, Math.round(room))}px`
+  }
+  fit()
+  const observer = new ResizeObserver(fit)
+  observer.observe(document.body)
+  const panel = document.querySelector('.tlui-style-panel__wrapper')
+  if (panel) observer.observe(panel)
+  return () => observer.disconnect()
+}
+
 /** Barre contextuelle en édition : une boîte (ou un nœud d'arbre) sélectionnée. */
 export function TreeToolbar({ editor }: { editor: Editor }) {
   const t = useT()
@@ -226,7 +247,7 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
 
   if (!info.inTree) {
     return (
-      <div className="tree-toolbar">
+      <div className="tree-toolbar" ref={clearOfStylePanel}>
         {aiButton}
         {argumentToggle}
         <span className="tree-hint">
@@ -236,11 +257,33 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
     )
   }
   return (
-    <div className="tree-toolbar">
+    <div className="tree-toolbar" ref={clearOfStylePanel}>
       {info.kids > 0 && (
         <button className="qa-btn" onClick={() => toggleFold(editor, id)} title={t.tree.toggleFoldHint}>
           {info.folded ? t.tree.unfoldCount(info.kids) : t.tree.fold}
         </button>
+      )}
+      {/* Repli de tout l'arbre à un niveau */}
+      {info.depth > 1 && (
+        <select
+          className="tree-select"
+          value={info.level === undefined ? 'mixed' : (info.level ?? 'all')}
+          onChange={(e) => foldToLevel(editor, info.root, e.target.value === 'all' ? null : Number(e.target.value))}
+          title={t.tree.levelsHint}
+          aria-label={t.tree.levels}
+        >
+          {info.level === undefined && (
+            <option value="mixed" disabled>
+              {t.tree.levelsPlaceholder}
+            </option>
+          )}
+          {Array.from({ length: Math.min(info.depth - 1, 8) }, (_, i) => (
+            <option key={i + 1} value={i + 1}>
+              {t.tree.level(i + 1)}
+            </option>
+          ))}
+          <option value="all">{t.tree.allLevels}</option>
+        </select>
       )}
       <button
         className="qa-btn"
@@ -272,40 +315,33 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
         {t.tree.sequenceAi}
       </button>
       {aiButton}
-      {/* Orientation de l'arbre */}
-      <span className="tree-dirs">
+      {/* Orientation de l'arbre (la dernière choisie oriente les nouveaux arbres) et tracé des branches */}
+      <select
+        className="tree-select"
+        value={info.dir}
+        onChange={(e) => setDirection(editor, id, e.target.value as TreeDirection)}
+        title={t.tree.directionHint}
+        aria-label={t.tree.directionHint}
+      >
         {TREE_DIRECTIONS.map((dir) => (
-          <button
-            key={dir}
-            className={`tree-dir ${info.dir === dir ? 'tree-dir-active' : ''}`}
-            onClick={() => info.dir !== dir && setDirection(editor, id, dir)}
-            title={t.tree.directions[dir]}
-            aria-label={t.tree.directions[dir]}
-            aria-pressed={info.dir === dir}
-          >
-            {ARROWS[dir]}
-          </button>
+          <option key={dir} value={dir}>
+            {ARROWS[dir]} {t.tree.directionsShort[dir]}
+          </option>
         ))}
-      </span>
-      {/* Tracé des branches */}
-      <span className="tree-dirs">
+      </select>
+      <select
+        className="tree-select"
+        value={info.edges}
+        onChange={(e) => setEdges(editor, id, e.target.value as TreeEdges)}
+        title={t.tree.edgesHint}
+        aria-label={t.tree.edgesHint}
+      >
         {(['curve', 'elbow'] as TreeEdges[]).map((edges) => (
-          <button
-            key={edges}
-            className={`tree-dir ${info.edges === edges ? 'tree-dir-active' : ''}`}
-            onClick={() => info.edges !== edges && setEdges(editor, id, edges)}
-            title={t.tree.edges[edges]}
-            aria-label={t.tree.edges[edges]}
-            aria-pressed={info.edges === edges}
-          >
-            {EDGE_GLYPHS[edges]}
-          </button>
+          <option key={edges} value={edges}>
+            {EDGE_GLYPHS[edges]} {t.tree.edgesShort[edges]}
+          </option>
         ))}
-      </span>
-      {/* Repli de tout l'arbre à un niveau */}
-      {info.depth > 1 && (
-        <FoldLevels depth={info.depth} level={info.level} onPick={(level) => foldToLevel(editor, info.root, level)} />
-      )}
+      </select>
       <span className="tree-hint">
         <kbd>Tab</kbd> {t.tree.child} · <kbd>{t.tree.enter}</kbd> {t.tree.sibling}
       </span>

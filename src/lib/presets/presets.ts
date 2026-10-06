@@ -39,7 +39,7 @@ export interface Preset {
 }
 
 export interface PresetSettings {
-  version: 11
+  version: 12
   /** Section « Préréglages » affichée dans le panneau de styles. */
   enabled: boolean
   /** Étiquettes de nature affichées sur le canevas. */
@@ -122,9 +122,9 @@ export function defaultPresets(names: Record<string, string>, roles: Record<stri
     arrow('illustrates', n('illustrates'), { color: 'grey', dash: 'dotted' }, { childNature: 'example', role: r('illustrates') }),
     arrow('defines', n('defines'), { color: 'blue', dash: 'dashed' }, { childNature: 'concept', role: r('defines') }),
     arrow('raises', n('raises'), { color: 'red', dash: 'dashed' }, { towardChild: true, childNature: 'problem', role: r('raises') }),
-    // Rapports entre concepts, symétriques : différence, opposition, parenté.
+    // Rapports entre concepts, symétriques : différence, opposition (en rouge, comme ce qui s'oppose), parenté.
     arrow('distinguishes', n('distinguishes'), { color: 'blue', arrowheadStart: 'bar', arrowheadEnd: 'bar' }, { childNature: 'concept', role: r('distinguishes') }),
-    arrow('opposes', n('opposes'), { color: 'blue', arrowheadStart: 'arrow', arrowheadEnd: 'arrow' }, { childNature: 'concept', role: r('opposes') }),
+    arrow('opposes', n('opposes'), { color: 'red', arrowheadStart: 'arrow', arrowheadEnd: 'arrow' }, { childNature: 'concept', role: r('opposes') }),
     arrow('relates', n('relates'), { color: 'blue', size: 's', dash: 'dotted', arrowheadStart: 'none', arrowheadEnd: 'none' }, { childNature: 'concept', role: r('relates') }),
     // Prémisse d'une pastille de prémisses liées : un trait fin, sans pointe ni étiquette.
     { ...arrow(PREMISE, n(PREMISE), { color: 'green', size: 's', arrowheadEnd: 'none' }, { childNature: 'statement', role: r(PREMISE) }), label: undefined },
@@ -132,7 +132,7 @@ export function defaultPresets(names: Record<string, string>, roles: Record<stri
 }
 
 export function defaultPresetSettings(names: Record<string, string>, roles: Record<string, string> = {}): PresetSettings {
-  return { version: 11, enabled: true, showTags: true, profile: 'essential', items: defaultPresets(names, roles) }
+  return { version: 12, enabled: true, showTags: true, profile: 'essential', items: defaultPresets(names, roles) }
 }
 
 /** Couleurs de départ changées en v8 (familles de couleurs de l'enseignant) : [id, ancienne, nouvelle]. */
@@ -175,7 +175,8 @@ const OLD_DISTINGUISHES_NAMES = ['distingue']
  * - v8 → v9 : prémisses liées (type `linked`, relation `premise`) ajoutées ;
  * - v9 → v11 : la citation, sans cadre, prend un fond jaune pâle (`solid` : la teinte pâle de sa
  *   couleur ; `semi` est le fond blanc) ; elle perd le cadre en tirets de la v1, si son trait n'avait
- *   pas été changé, et gagne son fond, s'il était vide ou blanc (celui, erroné, d'une v10).
+ *   pas été changé, et gagne son fond, s'il était vide ou blanc (celui, erroné, d'une v10) ;
+ * - v11 → v12 : « s'oppose à » passe du bleu au rouge, si sa couleur n'avait pas été changée.
  */
 export function normalizePresetSettings(
   raw: unknown,
@@ -218,6 +219,7 @@ export function normalizePresetSettings(
         if (!style.fill || style.fill === 'none' || style.fill === 'semi') style.fill = 'solid'
         next = { ...next, style }
       }
+      if (version < 12 && p.id === 'opposes' && next.style.color === 'blue') next = { ...next, style: { ...next.style, color: 'red' } }
       if (version < 6 && p.id === 'distinguishes' && OLD_DISTINGUISHES_NAMES.includes(next.name)) next = { ...next, name: d.name }
       return next
     })
@@ -238,7 +240,7 @@ export function normalizePresetSettings(
     }
   }
   const profile = r.profile === 'complete' ? 'complete' : 'essential'
-  return { version: 11, enabled: r.enabled !== false, showTags: r.showTags !== false, profile, items }
+  return { version: 12, enabled: r.enabled !== false, showTags: r.showTags !== false, profile, items }
 }
 
 export function newPresetId(name: string) {

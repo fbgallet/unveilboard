@@ -2,7 +2,7 @@
 // sa réponse (schéma ou modifications), et API de la page pour les agents qui pilotent le
 // navigateur (window.unveilboard). Aucun appel réseau : l'IA est celle de l'utilisateur.
 
-import type { Editor, TLShapeId } from 'tldraw'
+import { Box, PageRecordType, type Editor, type TLShapeId } from 'tldraw'
 import { z } from 'zod'
 import { clientLocale, m } from '@/i18n/client'
 import { buildPrompt, type PromptInput, type Task, type VocabularyLine } from '../ai/prompts'
@@ -14,13 +14,14 @@ import type { ReviewFocus } from '../map/review'
 import { documentStore } from '../storage'
 import { storageModeAtom } from '../sync/documentSync'
 import { exportMap } from './mapExport'
-import { knownVocabulary } from './mapImport'
+import { importMap, knownVocabulary } from './mapImport'
+import { readSequence, writeSequence } from './adapter'
 import { applyPatch } from './mapPatch'
 import { setReview } from './review'
 import { revealOrder } from './tree'
 import { extractAround } from '../map/extract'
 import { presetSettingsAtom } from './presets'
-import { readPageSource } from './source'
+import { readPageSource, writePageSource } from './source'
 
 /** Vocabulaire proposé à l'IA : tous les préréglages visibles (pas seulement l'essentiel), avec leur définition. */
 export function promptVocabulary(): VocabularyLine[] {
@@ -117,6 +118,56 @@ export async function createDocumentFromMap(map: UnveilMap, opts: Omit<PendingMa
   const id = await documentStore(storageModeAtom.get()).create(map.title || m().common.untitled)
   stashPendingMap(id, { map, ...opts })
   return id
+}
+
+/**
+ * Où va un schéma créé (par l'IA, ou collé) : un nouveau document, une nouvelle page du document
+ * ouvert, ou la page ouverte, à droite de ce qui s'y trouve.
+ */
+export type MapDestination = 'document' | 'page' | 'here'
+
+/** Écart entre ce que la page contient déjà et le schéma ajouté à côté. */
+const BESIDE_GAP = 300
+
+/**
+ * Ajoute un schéma au document ouvert, sur une nouvelle page (nommée d'après son titre) ou sur la
+ * page ouverte, à droite de son contenu. Sa séquence devient celle de la nouvelle page, ou s'ajoute
+ * à la suite de celle de la page ; le titre du document ne change pas. Un seul Ctrl+Z annule tout.
+ * `source` : le texte dont le schéma est tiré, gardé avec la page (si elle n'en a pas déjà un).
+ */
+export function addMapToDocument(
+  editor: Editor,
+  map: UnveilMap,
+  destination: Exclude<MapDestination, 'document'>,
+  opts: Omit<PendingMap, 'map' | 'plan'> = {}
+) {
+  const mark = editor.markHistoryStoppingPoint('schéma ajouté')
+  if (destination === 'page') {
+    const page = PageRecordType.createId()
+    editor.createPage({ id: page, name: map.title?.trim() || m().common.untitled })
+    editor.setCurrentPage(page)
+  }
+  const content = destination === 'here' ? editor.getCurrentPageBounds() : undefined
+  const at = content ? { x: content.maxX + BESIDE_GAP, y: content.minY } : { x: 0, y: 0 }
+  const before = readSequence(editor)
+  const { shapes, sequence } = importMap(editor, map, { at, unverified: opts.unverified })
+  editor.setEditingShape(null)
+  editor.selectNone()
+  writeSequence(
+    editor,
+    before
+      ? { ...before, steps: [...before.steps, ...sequence.steps], intro: before.intro || sequence.intro }
+      : sequence,
+    { undoable: true }
+  )
+  // Langue du contenu : celle du document, s'il n'en avait pas encore.
+  const meta = editor.getDocumentSettings().meta
+  if (map.lang && !meta.lang) editor.updateDocumentSettings({ meta: { ...meta, lang: map.lang } })
+  if (opts.source && !readPageSource(editor)) writePageSource(editor, opts.source)
+  editor.squashToMark(mark)
+
+  const bounds = [...shapes.values()].map((s) => editor.getShapePageBounds(s.node as TLShapeId)).filter((b) => !!b)
+  if (bounds.length) editor.zoomToBounds(Box.Common(bounds), { inset: 64, animation: { duration: 400 } })
 }
 
 // ---------- API de la page, pour les agents qui pilotent le navigateur ----------

@@ -6,6 +6,7 @@
 //   ---
 //   title: Réseau conceptuel du sujet
 //   tasks: [create, expand]
+//   source: required
 //   ---
 //   Partie commune, pour toutes les tâches.
 //
@@ -38,6 +39,11 @@ export interface PromptTemplate {
   lang?: string
   /** Ordre dans sa collection (sinon : par titre). */
   order?: number
+  /**
+   * Texte source : « required », proposé seulement quand la demande s'appuie sur un texte (explication
+   * de texte) ; « none », seulement sans texte (un sujet de dissertation). Absent : dans les deux cas.
+   */
+  source?: 'required' | 'none'
   body: string
   variants: Partial<Record<Task, string>>
 }
@@ -137,6 +143,7 @@ export function parsePromptFile(source: string, path: string): { template: Promp
   const tasks = declared?.filter((t): t is Task => (TASKS as readonly string[]).includes(t))
   for (const t of declared ?? []) if (!(TASKS as readonly string[]).includes(t)) problems.push(`unknown task “${t}” in “tasks”`)
   if (!body && !Object.keys(variants).length) problems.push('empty prompt')
+  if (data.source !== undefined && data.source !== 'required' && data.source !== 'none') problems.push('“source” must be “required” or “none”')
   const slash = path.lastIndexOf('/')
   const template: PromptTemplate = {
     id: path,
@@ -147,6 +154,7 @@ export function parsePromptFile(source: string, path: string): { template: Promp
     ...(str(data.placeholder) && { placeholder: str(data.placeholder) }),
     ...(str(data.lang) && { lang: str(data.lang) }),
     ...(typeof data.order === 'number' && { order: data.order }),
+    ...((data.source === 'required' || data.source === 'none') && { source: data.source }),
     body,
     variants,
   }
@@ -165,7 +173,7 @@ export function parseCollectionFile(source: string, path: string): PromptCollect
 }
 
 /** L'en-tête d'un prompt (titre, description, tâches, aide, langue). */
-export function serializeFrontmatter(meta: Pick<PromptTemplate, 'title' | 'description' | 'tasks' | 'placeholder' | 'lang'>): string {
+export function serializeFrontmatter(meta: Pick<PromptTemplate, 'title' | 'description' | 'tasks' | 'placeholder' | 'lang' | 'source'>): string {
   const quote = (v: string) => (/[:#\[\]{},"']|^\s|\s$/.test(v) ? JSON.stringify(v) : v)
   const head = [
     `title: ${quote(meta.title)}`,
@@ -173,6 +181,7 @@ export function serializeFrontmatter(meta: Pick<PromptTemplate, 'title' | 'descr
     meta.tasks?.length && `tasks: [${meta.tasks.join(', ')}]`,
     meta.placeholder && `placeholder: ${quote(meta.placeholder)}`,
     meta.lang && `lang: ${meta.lang}`,
+    meta.source && `source: ${meta.source}`,
   ].filter(Boolean)
   return `---\n${head.join('\n')}\n---\n`
 }
@@ -193,8 +202,14 @@ export function serializePrompt(template: Omit<PromptTemplate, 'id' | 'collectio
   return `${serializeFrontmatter(template)}\n${serializeBody(template.body, template.variants)}\n`
 }
 
-/** Le prompt est-il proposé pour cette tâche ? Le plan (création en plusieurs temps) suit la création. */
-export function offersTask(template: PromptTemplate, task: PromptTask): boolean {
+/** Contexte d'une demande : s'appuie-t-elle sur un texte source ? (absent : ne pas filtrer) */
+export interface PromptContext {
+  source?: boolean
+}
+
+/** Le prompt est-il proposé pour cette tâche (et ce contexte) ? Le plan (création en plusieurs temps) suit la création. */
+export function offersTask(template: PromptTemplate, task: PromptTask, context: PromptContext = {}): boolean {
+  if (context.source !== undefined && template.source && (template.source === 'required') !== context.source) return false
   const tasks = template.tasks
   return !tasks?.length || tasks.includes(task) || (task === 'plan' && tasks.includes('create'))
 }

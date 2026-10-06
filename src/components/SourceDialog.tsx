@@ -7,7 +7,10 @@ import { useT } from '@/i18n/client'
 import { aiSettingsAtom, askAi, isAiReady, modelName, serverAiAtom, transcribeFile } from '@/lib/ai/client'
 import { toAiError } from '@/lib/ai/errors'
 import { buildPrompt, type PromptInput } from '@/lib/ai/prompts'
-import { createDocumentFromMap, editorPromptInput, readPasted } from '@/lib/canvas/assistant'
+import { addMapToDocument, createDocumentFromMap, editorPromptInput, readPasted } from '@/lib/canvas/assistant'
+import { normalizeSize, sizeIssues } from '@/lib/map/size'
+import { DiagramSizeNote } from './DiagramSize'
+import { MapDestinationPicker, useMapDestination } from './MapDestination'
 import type { MapIssue } from '@/lib/map/check'
 import { checkExcerpts, type ExcerptCheck } from '@/lib/map/excerpts'
 import type { ReadResult } from '@/lib/map/read'
@@ -72,7 +75,13 @@ function SourceView({ editor }: { editor: Editor }) {
   const [busy, setBusy] = useState(false)
   const [staged, setStaged] = useState(false)
   const [keepText, setKeepText] = useState(true)
-  const prompt = usePromptChoice('create')
+  const prompt = usePromptChoice('create', { source: true })
+  // Taille du schéma : celle des réglages de l'IA, modifiable pour cette création.
+  const [sizeDraft, setSizeDraft] = useState(() => settings.size)
+  const size = useMemo(() => normalizeSize(sizeDraft), [sizeDraft])
+  const [destination, setDestination] = useMapDestination(editor)
+  // Cette page garde déjà un autre texte : le schéma tiré de celui-ci va ailleurs.
+  const hereBlocked = keepText && pageSource && pageSource.text !== text ? t.mapJson.hereHasOtherText : undefined
 
   const input = (delivery: PromptInput['delivery']): PromptInput => ({
     ...editorPromptInput(editor, 'create', instruction, { delivery }),
@@ -80,6 +89,7 @@ function SourceView({ editor }: { editor: Editor }) {
     kind,
     withSequence,
     notes,
+    size,
     ...(prompt.method && { method: prompt.method }),
   })
 
@@ -92,13 +102,15 @@ function SourceView({ editor }: { editor: Editor }) {
     if (!result.ok) return result
     // Premier essai : un extrait introuvable est une erreur (le modèle est invité à corriger) ;
     // ensuite, un avertissement (le schéma s'ouvre, les éléments en cause sont signalés).
+    // Même chose pour la taille demandée.
     const excerpts = checkExcerpts(result.map, text, attempt === 1)
-    const issues = [...result.issues, ...excerpts.issues]
-    if (excerpts.issues.some((i) => i.level === 'error')) return { kind: 'map', ok: false, issues }
+    const extra = [...excerpts.issues, ...sizeIssues(result.map, size, attempt === 1)]
+    const issues = [...result.issues, ...extra]
+    if (extra.some((i) => i.level === 'error')) return { kind: 'map', ok: false, issues }
     return { ...result, issues, excerpts }
   }
   // Réponse collée à la main : pas de correction possible, les extraits introuvables sont signalés.
-  const checked = useMemo(() => (answer.trim() && text.trim() ? check(answer, 2) : null), [answer, text]) // eslint-disable-line react-hooks/exhaustive-deps
+  const checked = useMemo(() => (answer.trim() && text.trim() ? check(answer, 2) : null), [answer, text, size]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function pickFile(file: File | undefined) {
     if (!file) return
@@ -176,10 +188,17 @@ function SourceView({ editor }: { editor: Editor }) {
     if (!checked?.ok || checked.kind !== 'map') return
     setBusy(true)
     try {
-      const id = await createDocumentFromMap(checked.map, {
+      const opts = {
         unverified: checked.excerpts?.unverified,
         ...(keepText && { source: { text, ...(label.trim() && { label: label.trim() }) } }),
-      })
+      }
+      const where = destination === 'here' && hereBlocked ? 'page' : destination
+      if (where !== 'document') {
+        addMapToDocument(editor, checked.map, where, opts)
+        if (keepText) openSourcePanel()
+        return close()
+      }
+      const id = await createDocumentFromMap(checked.map, opts)
       if (keepText) openSourcePanel()
       close()
       router.push(`/d/${id}`)
@@ -300,6 +319,7 @@ function SourceView({ editor }: { editor: Editor }) {
             <input type="checkbox" checked={notes} onChange={(e) => setNotes(e.target.checked)} />
             {t.ai.notesOption}
           </label>
+          <DiagramSizeNote size={sizeDraft} onChange={setSizeDraft} disabled={!!run} />
           <PromptPicker choice={prompt} disabled={!!run} />
           <textarea
             className="map-json-input assistant-instruction"
@@ -399,6 +419,14 @@ function SourceView({ editor }: { editor: Editor }) {
             )}
             {errors.length > 0 && <ul className="map-json-issues text-xs text-red-700">{errors.map(issueLine)}</ul>}
             {warnings.length > 0 && <ul className="map-json-issues text-xs text-amber-700">{warnings.map(issueLine)}</ul>}
+            {checked?.ok && (
+              <MapDestinationPicker
+                editor={editor}
+                value={destination === 'here' && hereBlocked ? 'page' : destination}
+                onChange={setDestination}
+                hereBlocked={hereBlocked}
+              />
+            )}
             <footer className="flex flex-wrap items-center justify-end gap-2">
               <label className="mr-auto flex items-center gap-2 text-xs">
                 <input type="checkbox" checked={keepText} onChange={(e) => setKeepText(e.target.checked)} />
@@ -408,7 +436,11 @@ function SourceView({ editor }: { editor: Editor }) {
                 {t.common.cancel}
               </button>
               <button className="btn-primary" disabled={!checked?.ok || busy} onClick={() => void openDiagram()}>
-                {busy ? t.mapJson.creating : t.mapJson.create}
+                {busy
+                  ? t.mapJson.creating
+                  : destination === 'document'
+                    ? t.mapJson.create
+                    : t.mapJson.addTo[destination === 'here' && hereBlocked ? 'page' : destination]}
               </button>
             </footer>
           </section>

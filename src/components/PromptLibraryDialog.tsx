@@ -9,6 +9,7 @@ import {
   SHARED_LIBRARY,
   collectionTitle,
   enabledCollections,
+  withCollection,
   newPromptId,
   promptLibraryAtom,
   promptLibraryErrorAtom,
@@ -56,10 +57,7 @@ function PromptLibraryView() {
     .filter((c) => c.prompts.length)
 
   function toggle(id: string, on: boolean) {
-    const next = new Set(enabled)
-    if (on) next.add(id)
-    else next.delete(id)
-    void save({ ...settings, enabled: [...next].sort() })
+    void save(withCollection(settings, id, on))
   }
 
   function upsert(prompt: CustomPrompt) {
@@ -96,7 +94,7 @@ function PromptLibraryView() {
   }
 
   function exportPrompt(p: CustomPrompt) {
-    download(p.title, `${serializeFrontmatter(p)}\n${p.source}\n`)
+    download(p.title, `${serializeFrontmatter({ ...p, source: undefined })}\n${p.source}\n`)
   }
 
   return (

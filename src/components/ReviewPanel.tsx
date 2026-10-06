@@ -17,6 +17,7 @@ import { FOCUS_OF_AUTO, REVIEW_FOCUS, autoRemarks, nameRefs, summarizeOperations
 import { readJson, type ReadResult } from '@/lib/map/read'
 import { modeAtom } from '@/lib/presentation/store'
 import { aiSettingsOpenAtom } from './AiSettingsDialog'
+import { readPageSource } from '@/lib/canvas/source'
 import { PromptPicker, usePromptChoice } from './PromptPicker'
 import { Markdownish } from './Markdownish'
 
@@ -133,7 +134,8 @@ function ReviewView({ editor }: { editor: Editor }) {
   /** Remarques dont la correction ne s'applique plus (le schéma a changé depuis la relecture). */
   const [stale, setStale] = useState<string[]>([])
 
-  const prompt = usePromptChoice('review')
+  const hasSource = useValue('page source', () => !!readPageSource(editor), [editor])
+  const prompt = usePromptChoice('review', { source: hasSource })
   const input = (delivery: 'api' | 'clipboard') => ({
     ...editorPromptInput(editor, 'review', instruction, { selection: useSelection, delivery, reviewFocus: focus, withSource: true }),
     ...(prompt.method && { method: prompt.method }),

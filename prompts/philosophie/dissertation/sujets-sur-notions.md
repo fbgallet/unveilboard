@@ -4,6 +4,7 @@ description: Proposer des sujets de dissertation sur une notion du programme, ou
 tasks: [create, expand, enrich]
 placeholder: "Une ou plusieurs notions, par exemple : « la liberté, le devoir » (éventuellement : un angle, un niveau)"
 order: 4
+source: none
 ---
 La demande de l'utilisateur donne une ou plusieurs **notions** du programme de philosophie de Terminale (et parfois un angle, un niveau ou un nombre de sujets). Il s'agit de proposer des **sujets de dissertation** sur ces notions, regroupés par le problème qu'ils posent, pour entraîner les élèves ou préparer un cours.
 

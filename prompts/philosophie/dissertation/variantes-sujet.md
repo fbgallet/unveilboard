@@ -4,6 +4,7 @@ description: Transformer un sujet (modalité, termes, portée, renversement, pr�
 tasks: [create, expand, enrich]
 placeholder: "Le sujet de départ, par exemple : « Le travail est-il une contrainte ? »"
 order: 3
+source: none
 ---
 La demande de l'utilisateur est un sujet de dissertation de philosophie (niveau Terminale). Il s'agit d'en proposer des **variantes**, pour faire voir aux élèves comment un léger changement de formulation déplace le problème, et pour s'entraîner à repérer ce qu'un sujet engage précisément.
 

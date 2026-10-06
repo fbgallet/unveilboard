@@ -77,7 +77,7 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
 
   const pageSource = useValue('page source', () => readPageSource(editor), [editor])
   const [useSource, setUseSource] = useState(true)
-  const prompt = usePromptChoice('expand')
+  const prompt = usePromptChoice('expand', { source: useSource && !!pageSource })
   const input = () => ({
     ...editorPromptInput(editor, 'expand', instruction, { focus: id, wholeMap, delivery: ready ? 'api' : 'clipboard', withSource: useSource }),
     notes,
