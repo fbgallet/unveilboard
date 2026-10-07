@@ -2121,6 +2121,28 @@ svg.preset-swatch {
   opacity: 1;
   background: var(--color-amber-100);
 }
+.step-jump {
+  position: absolute;
+  z-index: 100000;
+  transform-origin: bottom center;
+  padding: 0 10px;
+  height: 26px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: var(--color-amber-600);
+  color: var(--color-white);
+  font: 600 13px/26px var(--font-geist-sans), sans-serif;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
+  pointer-events: auto;
+  cursor: pointer;
+  animation: step-jump-in 150ms ease-out both;
+}
+@keyframes step-jump-in {
+  from { opacity: 0; }
+}
+.step-jump:hover {
+  background: var(--color-amber-700);
+}
 .narration-note {
   padding-top: 1em;
   border-top: 1px solid var(--color-stone-200);

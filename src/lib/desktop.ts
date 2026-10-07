@@ -41,6 +41,9 @@ declare global {
 
 const SITE = 'https://unveilboard.com'
 
+/** Installateurs de l'application de bureau (dernière version publiée). */
+export const DESKTOP_DOWNLOAD_URL = 'https://github.com/fbgallet/unveilboard/releases/latest'
+
 /**
  * Dans l'application de bureau ? Côté serveur, Electron le signale au serveur embarqué
  * (UNVEILBOARD_DESKTOP) ; côté navigateur, le preload, avant tout script de la page : les deux rendus

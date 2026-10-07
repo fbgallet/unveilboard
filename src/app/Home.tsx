@@ -16,11 +16,10 @@ import { HeroDemo } from '@/components/home/HeroDemo'
 import { Features } from '@/components/home/Features'
 import type { DemoName } from '@/lib/demoNames'
 import { Logo } from '@/components/Logo'
-import { isDesktop } from '@/lib/desktop'
+import { DESKTOP_DOWNLOAD_URL, isDesktop } from '@/lib/desktop'
 
 const GITHUB_URL = 'https://github.com/fbgallet/unveilboard'
-/** Application de bureau : installateurs (dernière version publiée) et guide d'installation. */
-const DOWNLOAD_URL = `${GITHUB_URL}/releases/latest`
+/** Application de bureau : guide d'installation. */
 const desktopGuideUrl = (locale: string) => `${GITHUB_URL}/blob/main/docs/desktop${locale === 'fr' ? '.fr' : ''}.md`
 
 /** Titre des schémas d'exemple : celui de leur séquence, dans leur langue (src/lib/demo.ts, demoTruth.ts). */
@@ -205,7 +204,7 @@ function PublicHome({ docs, legal }: { docs: Documents; legal: boolean }) {
               <DesktopIcon />
               <span>
                 {l.desktop.text}{' '}
-                <a href={DOWNLOAD_URL} className="underline decoration-stone-300 underline-offset-4 hover:text-stone-900">
+                <a href={DESKTOP_DOWNLOAD_URL} className="underline decoration-stone-300 underline-offset-4 hover:text-stone-900">
                   {l.desktop.download}
                 </a>
                 {' · '}

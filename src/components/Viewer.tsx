@@ -9,7 +9,7 @@ import { LaserOverlayUtil } from '@/lib/canvas/laser'
 import { SpotlightShapeUtil } from '@/lib/canvas/spotlight'
 import { modeAtom, stepIndexAtom, viewerAtom } from '@/lib/presentation/store'
 import { PresShapeWrapper } from './PresShapeWrapper'
-import { Legend, NarrationPanel, NoteMarkers, ProgressBar } from './PresenterUI'
+import { Legend, NarrationPanel, NoteMarkers, StepJump, ProgressBar } from './PresenterUI'
 import { SourcePanel, sourcePresentOpenAtom } from './SourcePanel'
 import { readPageSource } from '@/lib/canvas/source'
 import { SpotlightOverlay } from './SpotlightOverlay'
@@ -30,6 +30,7 @@ function CanvasBadges() {
     <>
       <FoldBadges />
       <NoteMarkers />
+      <StepJump />
     </>
   )
 }

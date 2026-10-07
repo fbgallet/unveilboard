@@ -21,7 +21,7 @@ import { PresShapeWrapper } from './PresShapeWrapper'
 import { StepBadges } from './StepBadges'
 import { ContextMenu } from './SequenceMenu'
 import { SequencePanel } from './SequencePanel'
-import { Legend, NarrationPanel, NoteMarkers, ProgressBar } from './PresenterUI'
+import { Legend, NarrationPanel, NoteMarkers, StepJump, ProgressBar } from './PresenterUI'
 import { pinNarrationScale, usePresentation } from './usePresentation'
 import { QuickAssign, QuickSequence, SelectionAssign } from './QuickAssign'
 import { FileBanner, SyncBanner } from './SyncIndicator'
@@ -68,6 +68,7 @@ function CanvasBadges() {
       <SuggestionBadges />
       <ReviewBadges />
       <NoteMarkers />
+      <StepJump />
     </>
   )
 }

@@ -33,6 +33,7 @@ import {
   signOutChatGpt,
   type ChatGptModel,
 } from '@/lib/ai/chatgpt'
+import { DESKTOP_DOWNLOAD_URL, isDesktop } from '@/lib/desktop'
 
 export const aiSettingsOpenAtom = atom<boolean>('aiSettingsOpen', false)
 
@@ -156,6 +157,14 @@ function AiSettingsView() {
             </label>
           ))}
         </div>
+        {!isDesktop() && (
+          <p className="text-xs text-zinc-500">
+            {t.ai.chatgptDesktopOnly}{' '}
+            <a className="underline" href={DESKTOP_DOWNLOAD_URL} target="_blank" rel="noreferrer">
+              {t.ai.downloadDesktop}
+            </a>
+          </p>
+        )}
 
         {draft.kind === 'server' && server && (
           <label className="grid gap-1">

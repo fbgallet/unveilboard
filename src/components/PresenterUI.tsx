@@ -5,6 +5,7 @@ import { useEditor, useValue, type Editor, type TLPageId, type TLShapeId } from 
 import { noteOf, panelNoteIds, plannedNoteIds, resolveTextImage, shapeLabel } from '@/lib/canvas/notes'
 import { presetById, swatchColor } from '@/lib/canvas/presets'
 import { presetName } from '@/lib/presets/labels'
+import { appearances, stepUses } from '@/lib/sequence/edit'
 import { adjacentPage, presentedPages, presentedSequence, readSequence } from '@/lib/canvas/adapter'
 import {
   DEFAULT_LASER,
@@ -723,6 +724,50 @@ export function NoteMarkers() {
         </button>
       ))}
     </>
+  )
+}
+
+/**
+ * Présentation : un objet sélectionné propose d'aller à son étape, celle où il apparaît (la première
+ * s'il apparaît plusieurs fois), sinon la première qui le vise. Un cadre ou un groupe compte pour
+ * ce qu'il contient. Pas pendant la modification (document déverrouillé).
+ */
+export function StepJump() {
+  const t = useT()
+  const editor = useEditor()
+  const target = useValue(
+    'step jump',
+    () => {
+      if (modeAtom.get() !== 'present' || editUnlockedAtom.get()) return null
+      const shape = editor.getOnlySelectedShape()
+      const classes = shapeClassesAtom.get()
+      if (!shape || !classes || (classes.byId.get(shape.id) ?? classes.fallback).className.includes('pres-hidden')) return null
+      const seq = presentedSequence(editor)
+      const shown = appearances(seq)
+      const used = stepUses(seq)
+      const refs = [shape.id, ...editor.getShapeAncestors(shape).map((a) => a.id).reverse()]
+      const step = refs.map((id) => shown.get(id)?.[0]).find(Boolean) ?? refs.map((id) => used.get(id)?.[0]).find(Boolean)
+      const b = editor.getShapePageBounds(shape.id)
+      if (!step || !b || step - 1 === stepIndexAtom.get()) return null
+      return { index: step - 1, title: seq.steps[step - 1].title, x: b.midX, y: b.minY }
+    },
+    [editor]
+  )
+  const zoom = useValue('zoom', () => editor.getZoomLevel(), [editor])
+  if (!target) return null
+  return (
+    <button
+      className="step-jump"
+      style={{ left: target.x, top: target.y, transform: `translate(-50%, calc(-100% - 8px)) scale(${1 / zoom})` }}
+      title={target.title || undefined}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={() => {
+        editor.selectNone()
+        goToStep(editor, target.index)
+      }}
+    >
+      {t.presenter.goToStep(target.index + 1)}
+    </button>
   )
 }
 
