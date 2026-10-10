@@ -5,7 +5,6 @@ import { useEditor, useValue, type Editor, type TLPageId, type TLShapeId } from 
 import { noteOf, panelNoteIds, plannedNoteIds, resolveTextImage, shapeLabel } from '@/lib/canvas/notes'
 import { presetById, swatchColor } from '@/lib/canvas/presets'
 import { presetName } from '@/lib/presets/labels'
-import { appearances, stepUses } from '@/lib/sequence/edit'
 import { adjacentPage, presentedPages, presentedSequence, readSequence } from '@/lib/canvas/adapter'
 import {
   DEFAULT_LASER,
@@ -36,6 +35,7 @@ import {
   viewerAtom,
   moreMenuOpenAtom,
   shortcutsHelpOpenAtom,
+  stageViewAtom,
 } from '@/lib/presentation/store'
 import {
   clearLiveSpot,
@@ -50,6 +50,7 @@ import {
   toggleSpotTool,
   toggleUnlocked,
   foldLevelLive,
+  cycleStageView,
 } from './usePresentation'
 import { FoldLevels } from './TreeTools'
 import { ResizeHandle } from './ResizeHandle'
@@ -249,6 +250,7 @@ export function ProgressBar({
   const remoteConnected = useValue('remote connected', () => remoteStatusAtom.get().state === 'connected', [])
   const laser = useValue('laser', () => editor.getCurrentToolId() === 'laser', [editor])
   const fold = useValue(foldBadgesAtom)
+  const view = useValue(stageViewAtom)
   const total = seq.steps.length
 
   return (
@@ -295,6 +297,10 @@ export function ProgressBar({
           }
           items={[
             { label: t.presenter.recenter, icon: 'recenter', onClick: recenter },
+            // Affichage par-dessus la séquence : tout le schéma, ou l'étape seule (touche V).
+            ...(total
+              ? [{ label: `${t.presenter.view[view]} (V)`, icon: 'view' as IconName, onClick: () => cycleStageView(editor), active: view !== 'sequence' }]
+              : []),
             { label: t.help.menu, icon: 'help', onClick: () => shortcutsHelpOpenAtom.set(true) },
             ...(sourceText ? [{ label: t.source.panelTitle, icon: 'text' as IconName, onClick: sourceText.toggle, active: sourceText.open }] : []),
             ...(viewer
@@ -601,6 +607,7 @@ type IconName =
   | 'close'
   | 'collapse'
   | 'text'
+  | 'view'
 
 const ICONS: Record<IconName, ReactNode> = {
   prev: <path d="m15 18-6-6 6-6" />,
@@ -655,6 +662,7 @@ const ICONS: Record<IconName, ReactNode> = {
   ),
   fullscreen: <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" />,
   close: <path d="M18 6 6 18M6 6l12 12" />,
+  view: <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />,
   collapse: <path d="m6 17 5-5-5-5M13 17l5-5-5-5" />,
 }
 
@@ -724,50 +732,6 @@ export function NoteMarkers() {
         </button>
       ))}
     </>
-  )
-}
-
-/**
- * Présentation : un objet sélectionné propose d'aller à son étape, celle où il apparaît (la première
- * s'il apparaît plusieurs fois), sinon la première qui le vise. Un cadre ou un groupe compte pour
- * ce qu'il contient. Pas pendant la modification (document déverrouillé).
- */
-export function StepJump() {
-  const t = useT()
-  const editor = useEditor()
-  const target = useValue(
-    'step jump',
-    () => {
-      if (modeAtom.get() !== 'present' || editUnlockedAtom.get()) return null
-      const shape = editor.getOnlySelectedShape()
-      const classes = shapeClassesAtom.get()
-      if (!shape || !classes || (classes.byId.get(shape.id) ?? classes.fallback).className.includes('pres-hidden')) return null
-      const seq = presentedSequence(editor)
-      const shown = appearances(seq)
-      const used = stepUses(seq)
-      const refs = [shape.id, ...editor.getShapeAncestors(shape).map((a) => a.id).reverse()]
-      const step = refs.map((id) => shown.get(id)?.[0]).find(Boolean) ?? refs.map((id) => used.get(id)?.[0]).find(Boolean)
-      const b = editor.getShapePageBounds(shape.id)
-      if (!step || !b || step - 1 === stepIndexAtom.get()) return null
-      return { index: step - 1, title: seq.steps[step - 1].title, x: b.midX, y: b.minY }
-    },
-    [editor]
-  )
-  const zoom = useValue('zoom', () => editor.getZoomLevel(), [editor])
-  if (!target) return null
-  return (
-    <button
-      className="step-jump"
-      style={{ left: target.x, top: target.y, transform: `translate(-50%, calc(-100% - 8px)) scale(${1 / zoom})` }}
-      title={target.title || undefined}
-      onPointerDown={(e) => e.stopPropagation()}
-      onClick={() => {
-        editor.selectNone()
-        goToStep(editor, target.index)
-      }}
-    >
-      {t.presenter.goToStep(target.index + 1)}
-    </button>
   )
 }
 

@@ -13,7 +13,15 @@ export interface ShapeState {
   foldHidden?: boolean
   /** Entrée provoquée par un dépliage à la main pendant la présentation, pas par l'étape. */
   live?: boolean
+  /** Légèrement atténué : hors de l'étape courante (mode « tour », ou vue « tout »). */
+  muted?: boolean
 }
+
+/**
+ * Affichage choisi pendant la présentation, par-dessus la séquence : « all », tout le schéma
+ * (l'étape courante mise en valeur) ; « step », seulement les objets de l'étape courante.
+ */
+export type StageView = 'sequence' | 'all' | 'step'
 
 export interface ComputeOptions {
   /** Résout une liste de cibles (ex. : un cadre → ses enfants). */
@@ -35,6 +43,8 @@ export interface ComputeOptions {
   foldOverrides?: Map<ShapeRef, boolean>
   /** Nœuds dépliés à la main pendant l'étape courante : leurs descendants entrent en fondu. */
   liveUnfolds?: Set<ShapeRef>
+  /** Affichage par-dessus la séquence (par défaut : la séquence). */
+  view?: StageView
 }
 
 export type Stage = Map<ShapeRef, ShapeState>
@@ -66,8 +76,10 @@ export function computeStage(seq: Sequence, index: number, opts: ComputeOptions 
     stage.set(id, { ...prev, ...patch })
   }
 
+  // Mode « tour » : rien n'est caché au départ ; « show » désigne ce que l'étape montre (et cadre).
+  const tour = seq.mode === 'tour'
   const managed = managedShapes(seq, resolve)
-  for (const id of managed) set(id, { visibility: 'hidden' })
+  if (!tour) for (const id of managed) set(id, { visibility: 'hidden' })
   const folded = new Set(opts.folded)
   /** Nœuds dépliés à l'étape courante : leurs descendants entrent en fondu. */
   const unfoldedNow = new Set<ShapeRef>()
@@ -79,12 +91,14 @@ export function computeStage(seq: Sequence, index: number, opts: ComputeOptions 
       const ids = resolve(action.targets)
       switch (action.type) {
         case 'show':
-          ids.forEach((id) =>
+          ids.forEach((id) => {
+            // En « tour », un objet déjà visible n'a pas d'effet d'entrée (seul un objet caché par une étape réapparaît).
+            const appears = !tour || stage.get(id)?.visibility === 'hidden'
             set(id, {
               visibility: 'visible',
-              entering: isCurrent ? (action.effect ?? 'fade') : undefined,
+              entering: isCurrent && appears ? (action.effect ?? 'fade') : undefined,
             })
-          )
+          })
           break
         case 'hide':
           ids.forEach((id) => set(id, { visibility: 'hidden' }))
@@ -137,7 +151,57 @@ export function computeStage(seq: Sequence, index: number, opts: ComputeOptions 
   }
 
   if (last >= 0) applyTransient(seq.steps[last], stage, resolve)
+
+  const view = opts.view ?? 'sequence'
+  const step = last >= 0 ? seq.steps[last] : undefined
+  if (view === 'all') revealAll(stage)
+  if (view === 'step') {
+    if (step) isolateStep(stage, stepFocusTargets(step, resolve, stage), opts.dependencies)
+  } else if (step && !stage.has(FOCUS_MARKER) && (view === 'all' || (tour && seq.tourMute !== false))) {
+    muteOthers(stage, stepFocusTargets(step, resolve, stage), opts.dependencies)
+  }
   return stage
+}
+
+/** Vue « tout » : ce que la séquence cache encore apparaît (sans effet) ; les branches repliées le restent. */
+function revealAll(stage: Stage) {
+  for (const [id, s] of stage) {
+    if (s.visibility === 'hidden' && !s.foldHidden) stage.set(id, { ...s, visibility: 'visible', entering: undefined })
+  }
+}
+
+/** Les objets de l'étape restent nets, le reste est légèrement atténué (une flèche suit ses extrémités). */
+function muteOthers(stage: Stage, targets: ShapeRef[], dependencies?: Map<ShapeRef, ShapeRef[]>) {
+  const keep = withLinkedArrows(targets, dependencies)
+  if (!keep.size) return
+  for (const [id, s] of stage) if (!keep.has(id) && s.visibility !== 'hidden') stage.set(id, { ...s, muted: true })
+  for (const id of keep) if (stage.get(id)?.muted) stage.set(id, { ...stage.get(id)!, muted: false })
+  // Les objets absents de la Map (non gérés) sont atténués aussi, sauf ceux de l'étape.
+  stage.set(MUTE_MARKER, { visibility: 'visible', highlighted: false })
+  for (const id of keep) if (!stage.has(id)) stage.set(id, { visibility: 'visible', highlighted: false })
+}
+
+/** Vue « étape seule » : seuls les objets de l'étape restent visibles, et les flèches entre eux. */
+function isolateStep(stage: Stage, targets: ShapeRef[], dependencies?: Map<ShapeRef, ShapeRef[]>) {
+  const keep = withLinkedArrows(targets, dependencies)
+  for (const [id, s] of stage) if (!keep.has(id)) stage.set(id, { ...s, visibility: 'hidden', entering: undefined })
+  stage.set(HIDE_MARKER, { visibility: 'hidden', highlighted: false })
+  for (const id of keep) {
+    const s = stage.get(id)
+    if (!s) stage.set(id, { visibility: 'visible', highlighted: false })
+    else if (s.visibility === 'hidden' && !s.foldHidden) stage.set(id, { ...s, visibility: 'visible' })
+  }
+  // Une flèche dont une extrémité n'est plus visible disparaît.
+  for (const [id, deps] of dependencies ?? []) {
+    if (keep.has(id) && deps.some((d) => !keep.has(d))) stage.set(id, { ...(stage.get(id) as ShapeState), visibility: 'hidden' })
+  }
+}
+
+/** Objets de l'étape, et les flèches dont toutes les extrémités en font partie. */
+function withLinkedArrows(targets: ShapeRef[], dependencies?: Map<ShapeRef, ShapeRef[]>): Set<ShapeRef> {
+  const keep = new Set(targets)
+  for (const [id, deps] of dependencies ?? []) if (deps.length && deps.every((d) => keep.has(d))) keep.add(id)
+  return keep
 }
 
 /**
@@ -210,11 +274,31 @@ function applyTransient(step: Step, stage: Stage, resolve: (r: ShapeRef[]) => Sh
  * (absents de la Map) doivent eux aussi être atténués.
  */
 export const FOCUS_MARKER = '__focus__'
+/** Clés spéciales : les objets absents de la Map sont atténués légèrement (MUTE), ou cachés (HIDE). */
+export const MUTE_MARKER = '__mute__'
+export const HIDE_MARKER = '__hide__'
 
 export function stateOf(stage: Stage, id: ShapeRef): ShapeState {
   const s = stage.get(id)
   if (s) return s
-  return { visibility: stage.has(FOCUS_MARKER) ? 'dim' : 'visible', highlighted: false }
+  if (stage.has(HIDE_MARKER)) return { visibility: 'hidden', highlighted: false }
+  return { visibility: stage.has(FOCUS_MARKER) ? 'dim' : 'visible', highlighted: false, ...(stage.has(MUTE_MARKER) && { muted: true }) }
+}
+
+/**
+ * Étapes qui concernent un objet (il y apparaît, ou elles le surlignent, le mettent au point ou
+ * montrent sa note), dans l'ordre. Sert à aller à l'étape d'un objet cliqué.
+ */
+export function stepsOf(seq: Sequence, id: ShapeRef, resolve = identity): number[] {
+  const kinds: StepActionType[] = ['show', 'highlight', 'focus', 'note']
+  return seq.steps.flatMap((step, i) => (step.actions.some((a) => kinds.includes(a.type) && resolve(a.targets).includes(id)) ? [i] : []))
+}
+
+/** Étape où aller en cliquant un objet : aucune s'il est de l'étape courante, sinon la suivante qui le concerne, ou la première. */
+export function stepToJump(seq: Sequence, index: number, id: ShapeRef, resolve = identity): number | null {
+  const steps = stepsOf(seq, id, resolve)
+  if (!steps.length || steps.includes(index)) return null
+  return steps.find((i) => i > index) ?? steps[0]
 }
 
 /**

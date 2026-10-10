@@ -6,6 +6,7 @@
 
 import { atom, type TLScribble } from 'tldraw'
 import type { FoldOverrides, LaserSettings, PageRect } from './store'
+import type { StageView } from '../sequence/compute'
 
 export interface ScreenState {
   presenting: boolean
@@ -25,6 +26,8 @@ export interface ScreenState {
   laser: LaserSettings
   /** Branches repliées ou dépliées à la main. */
   foldOverrides: FoldOverrides
+  /** Affichage par-dessus la séquence : tout le schéma, ou l'étape seule. */
+  view?: StageView
 }
 
 export type ScreenMessage =

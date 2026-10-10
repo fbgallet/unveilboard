@@ -32,6 +32,7 @@ export function ShortcutsHelp() {
         [['+', '−', '0'], h.textSize],
         [[h.wheel], h.textSizeWheel],
         [['L'], h.legend],
+        [['V'], h.view],
         [['1', '…', '9'], h.foldLevel],
       ],
     },
@@ -40,6 +41,7 @@ export function ShortcutsHelp() {
       rows: [
         [['K'], h.laser],
         [['M'], h.mask],
+        [[h.click], h.jump],
         [[h.doubleClick], h.note],
       ],
     },

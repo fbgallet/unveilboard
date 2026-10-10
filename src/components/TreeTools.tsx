@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { atom, renderPlaintextFromRichText, useEditor, useValue, type Box, type Editor, type TLRichText, type TLShapeId } from 'tldraw'
 import { readSequence, writeSequence } from '@/lib/canvas/adapter'
 import { addStep, appearanceIndex, showAlongWith } from '@/lib/sequence/edit'
@@ -45,9 +45,11 @@ import { useT } from '@/i18n/client'
 import { swallowNextKeyUp } from '@/lib/keyboard'
 import { elementAiAtom } from './ElementAi'
 import { openAssistant } from './MapJsonDialog'
+import { ElementStyleControls, ElementStylePreview } from './ElementStyle'
 
 const ARROWS: Record<TreeDirection, string> = { right: '→', left: '←', down: '↓', up: '↑', both: '↔' }
-const EDGE_GLYPHS: Record<TreeEdges, string> = { curve: '╭', elbow: '┌' }
+/** Tracé des branches, dessiné : d'un nœud parent (à gauche) vers deux enfants. */
+const EDGE_PATHS: Record<TreeEdges, string> = { curve: 'M2 8 C7 8 7 3 14 3 M2 8 C7 8 7 13 14 13', elbow: 'M2 8 H7 V3 H14 M7 8 V13 H14' }
 
 /** Arbre argumentatif : nœud dont on choisit la relation du prochain enfant (Tab). */
 export const relationPickerAtom = atom<TLShapeId | null>('relationPicker', null)
@@ -245,9 +247,17 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
     </button>
   )
 
+  // Fond et couleur du texte : un aperçu « A », qui ouvre les pastilles.
+  const colorsButton = (
+    <ToolbarPopover label={<ElementStylePreview editor={editor} ids={[id]} />} title={t.elementStyle.button} className="tree-popover-colors">
+      <ElementStyleControls editor={editor} ids={[id]} />
+    </ToolbarPopover>
+  )
+
   if (!info.inTree) {
     return (
       <div className="tree-toolbar" ref={clearOfStylePanel}>
+        {colorsButton}
         {aiButton}
         {argumentToggle}
         <span className="tree-hint">
@@ -262,28 +272,6 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
         <button className="qa-btn" onClick={() => toggleFold(editor, id)} title={t.tree.toggleFoldHint}>
           {info.folded ? t.tree.unfoldCount(info.kids) : t.tree.fold}
         </button>
-      )}
-      {/* Repli de tout l'arbre à un niveau */}
-      {info.depth > 1 && (
-        <select
-          className="tree-select"
-          value={info.level === undefined ? 'mixed' : (info.level ?? 'all')}
-          onChange={(e) => foldToLevel(editor, info.root, e.target.value === 'all' ? null : Number(e.target.value))}
-          title={t.tree.levelsHint}
-          aria-label={t.tree.levels}
-        >
-          {info.level === undefined && (
-            <option value="mixed" disabled>
-              {t.tree.levelsPlaceholder}
-            </option>
-          )}
-          {Array.from({ length: Math.min(info.depth - 1, 8) }, (_, i) => (
-            <option key={i + 1} value={i + 1}>
-              {t.tree.level(i + 1)}
-            </option>
-          ))}
-          <option value="all">{t.tree.allLevels}</option>
-        </select>
       )}
       <button
         className="qa-btn"
@@ -315,33 +303,52 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
         {t.tree.sequenceAi}
       </button>
       {aiButton}
-      {/* Orientation de l'arbre (la dernière choisie oriente les nouveaux arbres) et tracé des branches */}
-      <select
-        className="tree-select"
-        value={info.dir}
-        onChange={(e) => setDirection(editor, id, e.target.value as TreeDirection)}
-        title={t.tree.directionHint}
-        aria-label={t.tree.directionHint}
-      >
-        {TREE_DIRECTIONS.map((dir) => (
-          <option key={dir} value={dir}>
-            {ARROWS[dir]} {t.tree.directionsShort[dir]}
-          </option>
-        ))}
-      </select>
-      <select
-        className="tree-select"
-        value={info.edges}
-        onChange={(e) => setEdges(editor, id, e.target.value as TreeEdges)}
-        title={t.tree.edgesHint}
-        aria-label={t.tree.edgesHint}
-      >
+      {colorsButton}
+      <span className="tree-sep" />
+      {/* Disposition de l'arbre : repli à un niveau, orientation (la dernière choisie oriente les nouveaux arbres), tracé des branches */}
+      {info.depth > 1 && (
+        <ToolbarPopover
+          label={
+            <>
+              <LevelsIcon />
+              <span className="tabular-nums">{info.level === undefined ? '–' : (info.level ?? t.tree.all)}</span>
+            </>
+          }
+          title={t.tree.levelsHint}
+        >
+          <FoldLevels depth={info.depth} level={info.level} max={8} onPick={(l) => foldToLevel(editor, info.root, l)} />
+        </ToolbarPopover>
+      )}
+      <ToolbarPopover label={<span className="tree-arrow">{ARROWS[info.dir]}</span>} title={t.tree.directionHint}>
+        <span className="tree-dirs" role="group" aria-label={t.tree.directionHint}>
+          {TREE_DIRECTIONS.map((dir) => (
+            <button
+              key={dir}
+              className={`tree-dir ${info.dir === dir ? 'tree-dir-active' : ''}`}
+              onClick={() => setDirection(editor, id, dir)}
+              title={t.tree.directions[dir]}
+              aria-pressed={info.dir === dir}
+            >
+              {ARROWS[dir]}
+            </button>
+          ))}
+        </span>
+      </ToolbarPopover>
+      <span className="tree-dirs" role="group" aria-label={t.tree.edgesHint}>
         {(['curve', 'elbow'] as TreeEdges[]).map((edges) => (
-          <option key={edges} value={edges}>
-            {EDGE_GLYPHS[edges]} {t.tree.edgesShort[edges]}
-          </option>
+          <button
+            key={edges}
+            className={`tree-dir ${info.edges === edges ? 'tree-dir-active' : ''}`}
+            onClick={() => setEdges(editor, id, edges)}
+            title={t.tree.edges[edges]}
+            aria-pressed={info.edges === edges}
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
+              <path d={EDGE_PATHS[edges]} />
+            </svg>
+          </button>
         ))}
-      </select>
+      </span>
       <span className="tree-hint">
         <kbd>Tab</kbd> {t.tree.child} · <kbd>{t.tree.enter}</kbd> {t.tree.sibling}
       </span>
@@ -357,15 +364,17 @@ export function FoldLevels({
   depth,
   level,
   onPick,
+  max = 5,
   className = 'tree-dirs tree-levels',
 }: {
   depth: number
   level: number | null | undefined
   onPick(level: number | null): void
+  max?: number
   className?: string
 }) {
   const t = useT()
-  const levels = Array.from({ length: Math.min(depth - 1, 5) }, (_, i) => i + 1)
+  const levels = Array.from({ length: Math.min(depth - 1, max) }, (_, i) => i + 1)
   return (
     <span className={className} role="group" aria-label={t.tree.levels}>
       <span className="tree-levels-label" title={t.tree.levelsHint}>
@@ -383,6 +392,48 @@ export function FoldLevels({
         </button>
       ))}
     </span>
+  )
+}
+
+/** Bouton compact de la barre d'action, qui ouvre un petit panneau en dessous (Échap ou clic ailleurs le ferme). */
+function ToolbarPopover({ label, title, className = '', children }: { label: ReactNode; title: string; className?: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const root = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => {
+      if (!root.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.stopPropagation()
+      setOpen(false)
+    }
+    document.addEventListener('pointerdown', onDown, { capture: true })
+    window.addEventListener('keydown', onKey, { capture: true })
+    return () => {
+      document.removeEventListener('pointerdown', onDown, { capture: true })
+      window.removeEventListener('keydown', onKey, { capture: true })
+    }
+  }, [open])
+  return (
+    <div ref={root} className="relative">
+      <button className={`qa-btn tree-popover-btn ${open ? 'qa-btn-on' : ''}`} onClick={() => setOpen(!open)} title={title} aria-label={title} aria-expanded={open}>
+        {label}
+      </button>
+      {open && <div className={`tree-popover ${className}`}>{children}</div>}
+    </div>
+  )
+}
+
+/** Icône des niveaux de repli : un arbre en trois rangs. */
+function LevelsIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden>
+      <rect x="1" y="2" width="6" height="2.5" rx="1" />
+      <rect x="4" y="6.75" width="6" height="2.5" rx="1" />
+      <rect x="7" y="11.5" width="7" height="2.5" rx="1" />
+    </svg>
   )
 }
 

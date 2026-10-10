@@ -55,7 +55,18 @@ export interface Step {
   narration: string
 }
 
+/**
+ * Manière de présenter : « reveal » (par défaut), chaque étape fait apparaître des objets, cachés
+ * au départ ; « tour », tout est visible dès le départ et chaque étape cadre ses objets.
+ */
+export type SequenceMode = 'reveal' | 'tour'
+export const SEQUENCE_MODES: SequenceMode[] = ['reveal', 'tour']
+
 export interface Sequence {
+  /** Manière de présenter (absente : « reveal »). Commune à toutes les pages du document. */
+  mode?: SequenceMode
+  /** Mode « tour » : atténuer légèrement ce que l'étape ne montre pas (par défaut : oui). */
+  tourMute?: boolean
   /** Taille par défaut du texte du panneau de narration (%, 100 si absente). */
   narrationScale?: number
   /** Afficher le texte source (barre de gauche) au lancement de la présentation (par défaut : non). */

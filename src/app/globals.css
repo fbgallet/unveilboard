@@ -52,6 +52,16 @@ body {
   .panel-tab-active {
     @apply bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-900/5;
   }
+  /* Manière de présenter (onglet Séquence) : révélation ou parcours */
+  .seq-mode {
+    @apply flex rounded-md bg-zinc-200/70 p-0.5;
+  }
+  .seq-mode-btn {
+    @apply rounded px-2 py-0.5 font-medium text-zinc-500 hover:text-zinc-900;
+  }
+  .seq-mode-on {
+    @apply bg-white text-zinc-900 shadow-sm;
+  }
   .panel-rail-tab {
     @apply flex w-full flex-col items-center gap-1.5 rounded-md py-2 text-xs font-medium text-zinc-500 hover:bg-zinc-200/70 hover:text-zinc-900;
   }
@@ -790,20 +800,107 @@ button.review-badge {
   color: var(--color-amber-700);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.1);
 }
-/* Sélecteurs de la barre d'arbre (niveaux, orientation, tracé) : compacts, comme les boutons voisins. */
-.tree-select {
+/* Boutons compacts de la barre d'arbre (couleurs, niveaux, orientation) : ils ouvrent un petit panneau. */
+.tree-popover-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   height: 28px;
-  padding: 0 4px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: var(--color-stone-100);
-  color: var(--color-stone-700);
-  font: inherit;
-  font-weight: 500;
-  cursor: pointer;
+  padding: 0 7px;
 }
-.tree-select:hover {
+.tree-arrow {
+  min-width: 12px;
+  font-size: 14px;
+  line-height: 1;
+}
+.tree-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 6px;
+  border: 1px solid var(--color-stone-200);
+  border-radius: 10px;
+  background: var(--color-white);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+  white-space: nowrap;
+}
+.tree-popover-colors {
+  width: 248px;
+  padding: 8px 10px;
+  white-space: normal;
+}
+.tree-sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 2px;
+  background: var(--color-stone-200);
+}
+
+/* Couleurs d'un élément : fond et texte (onglet Élément, barre d'arbre) */
+.element-style {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.element-style-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.element-style-label {
+  font-size: 11px;
+  color: var(--color-stone-500);
+}
+.element-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.element-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 1.5px solid transparent;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  transition: transform 100ms;
+}
+.element-swatch:hover {
+  transform: scale(1.12);
+}
+.element-swatch-on {
+  outline: 2px solid var(--color-amber-500);
+  outline-offset: 1px;
+}
+/* « Sans fond » : une case barrée */
+.element-swatch-none {
   border-color: var(--color-stone-300);
+  background: linear-gradient(to top right, transparent calc(50% - 0.75px), var(--color-red-400) calc(50% - 0.75px), var(--color-red-400) calc(50% + 0.75px), transparent calc(50% + 0.75px));
+}
+.element-swatch-text {
+  background: var(--color-stone-100);
+}
+.element-intensity .tree-dir {
+  width: auto;
+  padding: 0 8px;
+  font-size: 11px;
+}
+/* Aperçu dans la barre : « A » dans la couleur du texte, sur le fond */
+.element-style-preview {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid var(--color-stone-300);
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1;
 }
 
 /* Niveaux de repli : « Niveaux 1 2 3 Tout » (menu ⋯ de la présentation) */
@@ -1159,6 +1256,9 @@ body.is-resizing {
 .tl-shape.pres-dim {
   opacity: 0.18 !important;
   filter: grayscale(1);
+}
+.tl-shape.pres-muted {
+  opacity: 0.42;
 }
 .tl-shape.pres-hl {
   filter: drop-shadow(0 0 6px rgb(251 191 36 / 0.95)) drop-shadow(0 0 18px rgb(251 191 36 / 0.55));
@@ -2120,28 +2220,6 @@ svg.preset-swatch {
 .note-marker-open {
   opacity: 1;
   background: var(--color-amber-100);
-}
-.step-jump {
-  position: absolute;
-  z-index: 100000;
-  transform-origin: bottom center;
-  padding: 0 10px;
-  height: 26px;
-  border-radius: 999px;
-  white-space: nowrap;
-  background: var(--color-amber-600);
-  color: var(--color-white);
-  font: 600 13px/26px var(--font-geist-sans), sans-serif;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
-  pointer-events: auto;
-  cursor: pointer;
-  animation: step-jump-in 150ms ease-out both;
-}
-@keyframes step-jump-in {
-  from { opacity: 0; }
-}
-.step-jump:hover {
-  background: var(--color-amber-700);
 }
 .narration-note {
   padding-top: 1em;

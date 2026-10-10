@@ -193,6 +193,12 @@ export const MapSchema = z
     sequence: z
       .object({
         narrationScale: z.number().optional(),
+        presentation: z
+          .enum(['reveal', 'tour'])
+          .optional()
+          .describe(
+            'How the diagram is presented. "reveal" (default): elements shown by a step are hidden until that step. "tour": the whole diagram is visible from the start, and each step frames (and highlights) the elements it shows.'
+          ),
         intro: z
           .string()
           .max(20000)

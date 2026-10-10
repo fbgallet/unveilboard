@@ -14,6 +14,7 @@ import { MarkdownEditor } from './MarkdownEditor'
 import { QUICK, elementAiAtom, elementAiRequestAtom } from './ElementAi'
 import { openAssistant } from './MapJsonDialog'
 import { ChatPane } from './ChatPane'
+import { ElementStyleControls } from './ElementStyle'
 import { Markdownish } from './Markdownish'
 import {
   addStep,
@@ -28,6 +29,7 @@ import {
 } from '@/lib/sequence/edit'
 import {
   CAMERA_MODES,
+  SEQUENCE_MODES,
   EFFECTS,
   emptySequence,
   type Area,
@@ -184,7 +186,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
     const id = selection[0]
     const shown = appears.get(id) ?? []
     const others = (uses.get(id) ?? []).filter((n) => !shown.includes(n))
-    return [shown.length ? t.panel.appearsAtStep(shown) : '', others.length ? t.panel.usedAtSteps(others) : ''].filter(Boolean).join(' ')
+    return [shown.length ? (seq.mode === 'tour' ? t.panel.shownAtSteps(shown) : t.panel.appearsAtStep(shown)) : '', others.length ? t.panel.usedAtSteps(others) : ''].filter(Boolean).join(' ')
   }
   const selectionHint =
     selection.length === 1 && uses.has(selection[0])
@@ -264,6 +266,33 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
       <>
       <div className="flex flex-col gap-2 border-b border-zinc-200 px-3 py-3">
         {pageName !== null && <p className="px-1 text-[11px] text-zinc-400">{t.panel.pageSteps(pageName)}</p>}
+        {/* Manière de présenter (tout le document) : révéler pas à pas, ou parcourir un schéma visible. */}
+        <div className="flex items-center gap-2 text-[11px]">
+          <div className="seq-mode" role="radiogroup" aria-label={t.panel.modeLabel}>
+            {SEQUENCE_MODES.map((mode) => (
+              <button
+                key={mode}
+                role="radio"
+                aria-checked={(seq.mode ?? 'reveal') === mode}
+                className={`seq-mode-btn ${(seq.mode ?? 'reveal') === mode ? 'seq-mode-on' : ''}`}
+                onClick={() => save({ ...seq, mode: mode === 'reveal' ? undefined : mode })}
+                title={t.panel.modeHints[mode]}
+              >
+                {t.panel.modes[mode]}
+              </button>
+            ))}
+          </div>
+          {seq.mode === 'tour' && (
+            <label className="flex items-center gap-1 text-zinc-500" title={t.panel.tourMuteHint}>
+              <input
+                type="checkbox"
+                checked={seq.tourMute !== false}
+                onChange={(e) => save({ ...seq, tourMute: e.target.checked ? undefined : false })}
+              />
+              {t.panel.tourMute}
+            </label>
+          )}
+        </div>
         <div className="flex gap-2">
           <button className="btn-primary flex-1" onClick={() => enterPresentation(-1)} disabled={!seq.steps.length}>
             {t.panel.present}
@@ -369,7 +398,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
 
       <footer className="border-t border-zinc-200 p-3 text-[11px] leading-relaxed text-zinc-500">
         {k.intro} <kbd>→</kbd>/<kbd>{k.space}</kbd> {k.next} · <kbd>←</kbd> {k.previous} · <kbd>O</kbd> {k.overview} ·{' '}
-        <kbd>C</kbd> {k.recenter} · <kbd>K</kbd> {k.laser} · <kbd>M</kbd> {k.mask} · <kbd>N</kbd> {k.narration} · <kbd>+</kbd>/<kbd>−</kbd> {k.textSize} · <kbd>L</kbd> {k.legend} ·{' '}
+        <kbd>C</kbd> {k.recenter} · <kbd>K</kbd> {k.laser} · <kbd>M</kbd> {k.mask} · <kbd>N</kbd> {k.narration} · <kbd>+</kbd>/<kbd>−</kbd> {k.textSize} · <kbd>L</kbd> {k.legend} · <kbd>V</kbd> {k.view} ·{' '}
         <kbd>F</kbd> {k.fullscreen} · <kbd>{k.esc}</kbd> {k.exit}
       </footer>
       </>
@@ -663,13 +692,8 @@ function ElementPane(p: { editor: Editor; selection: TLShapeId[]; usage: string;
   const title = useValue('element title', () => (id ? shapeLabel(p.editor, p.editor.getShape(id)!) : ''), [p.editor, id])
   // L'IA part d'une boîte (pas d'une flèche, d'un dessin ou d'une image).
   const isBox = useValue('element is box', () => !!id && p.editor.getShape(id)?.type === 'geo', [p.editor, id])
-  if (!id) {
-    return (
-      <p className="p-4 text-[12px] leading-relaxed text-zinc-500">
-        {p.selection.length ? t.panel.elementMany(p.selection.length) : t.panel.elementHint}
-      </p>
-    )
-  }
+  if (!p.selection.length) return <p className="p-4 text-[12px] leading-relaxed text-zinc-500">{t.panel.elementHint}</p>
+  if (!id) return <SelectionPane editor={p.editor} selection={p.selection} />
   return (
     <div ref={pane} className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
       <div className="flex items-center gap-1 px-1">
@@ -690,7 +714,70 @@ function ElementPane(p: { editor: Editor; selection: TLShapeId[]; usage: string;
       <NatureFields editor={p.editor} id={id} />
       <ProvenanceField editor={p.editor} id={id} />
       <ReasoningField editor={p.editor} id={id} />
+      <StyleSection editor={p.editor} ids={p.selection} />
       <NoteSection key={id} editor={p.editor} id={id} images={p.images} />
+    </div>
+  )
+}
+
+/** Couleurs de la sélection : fond et texte. */
+function StyleSection(p: { editor: Editor; ids: TLShapeId[] }) {
+  const t = useT()
+  return (
+    <section className="mt-2 flex flex-col gap-2 border-t border-zinc-200 px-1 pt-3">
+      <h3 className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{t.elementStyle.title}</h3>
+      <ElementStyleControls editor={p.editor} ids={p.ids} />
+    </section>
+  )
+}
+
+/**
+ * Onglet Élément, plusieurs objets sélectionnés : leurs couleurs d'un coup, et la liste des objets
+ * (¶ : ils ont une note) ; un clic sélectionne l'objet seul, pour sa note, sa nature, sa provenance.
+ */
+function SelectionPane(p: { editor: Editor; selection: TLShapeId[] }) {
+  const t = useT()
+  const items = useValue(
+    'selection items',
+    () =>
+      p.selection.flatMap((id) => {
+        const shape = p.editor.getShape(id)
+        return shape ? [{ id, label: shapeLabel(p.editor, shape), hasNote: !!noteOf(shape) }] : []
+      }),
+    [p.editor, p.selection]
+  )
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
+      <div className="flex items-center gap-1 px-1">
+        <h2 className="min-w-0 flex-1 truncate font-medium text-zinc-900">{t.panel.elementMany(p.selection.length)}</h2>
+        <button
+          className="icon-btn"
+          onClick={() => p.editor.zoomToSelection({ animation: { duration: 300 } })}
+          title={t.panel.noteLocate}
+          aria-label={t.panel.noteLocate}
+        >
+          <Icon name="locate" />
+        </button>
+      </div>
+      <p className="px-1 text-[11px] leading-relaxed text-zinc-400">{t.panel.elementManyHint}</p>
+      <StyleSection editor={p.editor} ids={p.selection} />
+      <ul className="mt-2 flex flex-col border-t border-zinc-200 pt-2">
+        {items.map((item) => (
+          <li key={item.id}>
+            <button
+              className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-[13px] text-zinc-700 hover:bg-zinc-100"
+              onClick={() => p.editor.select(item.id)}
+            >
+              <span className="min-w-0 flex-1 truncate">{item.label || t.panel.elementUntitled}</span>
+              {item.hasNote && (
+                <span className="text-zinc-400" title={t.panel.hasNote}>
+                  ¶
+                </span>
+              )}
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

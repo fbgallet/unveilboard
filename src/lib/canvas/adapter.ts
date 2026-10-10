@@ -150,7 +150,7 @@ export function computeEditorStage(
   editor: Editor,
   seq: Sequence,
   index: number,
-  live?: Pick<ComputeOptions, 'foldOverrides' | 'liveUnfolds'>
+  live?: Pick<ComputeOptions, 'foldOverrides' | 'liveUnfolds' | 'view'>
 ): Stage {
   return computeStage(seq, index, {
     resolve: resolveTargets(editor),

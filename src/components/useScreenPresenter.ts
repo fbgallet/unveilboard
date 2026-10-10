@@ -14,6 +14,7 @@ import {
   overviewAtom,
   recenterAtom,
   stepIndexAtom,
+  stageViewAtom,
 } from '@/lib/presentation/store'
 import {
   SCREEN_TIMEOUT_MS,
@@ -46,6 +47,7 @@ export function useScreenPresenter(editor: Editor, docId: string) {
       narrationScale: narrationScaleAtom.get(),
       laser: laserSettingsAtom.get(),
       foldOverrides: foldOverridesAtom.get(),
+      view: stageViewAtom.get(),
     })
 
     let lastSeen = 0

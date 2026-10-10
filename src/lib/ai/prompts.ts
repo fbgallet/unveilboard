@@ -12,7 +12,7 @@ import { FOCUS_OF_KIND, REMARK_KINDS, REVIEW_FOCUS, type ReviewFocus } from '../
 import { APP_LANGS, AUTO_LANG, baseLang, languageName } from './language'
 import { SIZE_LIMITS, sizeText, type DiagramSize } from '../map/size'
 
-export const PROMPT_VERSION = 13
+export const PROMPT_VERSION = 14
 
 export const TASKS = ['create', 'enrich', 'sequence', 'review', 'edit', 'expand', 'plan', 'develop', 'finish', 'style', 'chat'] as const
 export type Task = (typeof TASKS)[number]
@@ -631,6 +631,7 @@ A **Step**: \`{ "title", "narration"?, "camera"?: "follow" | "overview" | "keep"
 
 - \`do\`: \`show\`, \`hide\`, \`dim\`, \`undim\` (lasting); \`highlight\`, \`focus\` (everything else is dimmed), \`note\` (shows the element's note beside the diagram): this step only; \`fold\`, \`unfold\` (a branch).
 - Targeting an element acts on its box **and** the arrow to its parent (\`show\` makes the box rise and draws the arrow). \`part\`: \`"node"\` or \`"edge"\` to act on one of them only.
+- **Presentation mode**: if the current diagram's sequence has \`"presentation": "tour"\`, the whole diagram is visible from the start and \`show\` designates the elements a step frames and highlights (the rest is slightly dimmed): each step shows the part of the diagram the teacher talks about, in any order, and the visibility rule below does not apply. Otherwise (\`"reveal"\`, the default), steps reveal the diagram:
 - **Visibility rule**: an element that no step shows is visible from the start, but only while its parent is visible. So showing a thesis shows its whole tree, except what later steps show. To reveal a tree progressively, show every element in its own step (or group elements that go together); never show a child before its parent.
 - \`camera\`: \`follow\` (default) frames what the step shows; use \`overview\` for the first and last steps.
 - \`narration\`: what the teacher says at that step (Markdown): what the boxes do not say, such as the link with the previous step, why this point matters, a question to the class, a transition. Never paraphrase or restate the boxes shown; one to three sentences is usually enough, and a step whose boxes speak for themselves needs little or none.

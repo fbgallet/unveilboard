@@ -182,6 +182,7 @@ export function exportMap(editor: Editor): MapExport {
     ...(seq && {
       sequence: {
         ...(seq.narrationScale && seq.narrationScale !== 100 && { narrationScale: seq.narrationScale }),
+        ...(seq.mode === 'tour' && { presentation: 'tour' as const }),
         ...(seq.intro && { intro: seq.intro }),
         steps: fromEngineSteps(seq.steps, (s) => owners.get(s), (r) => shapes.get(r)),
       },

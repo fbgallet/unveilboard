@@ -20,6 +20,7 @@ import {
   recenterAtom,
   remoteScribblesAtom,
   stepIndexAtom,
+  stageViewAtom,
   viewerAtom,
 } from '@/lib/presentation/store'
 import { SCREEN_HEARTBEAT_MS, screenChannelName, type ScreenMessage, type ScreenState } from '@/lib/presentation/screen'
@@ -165,4 +166,5 @@ function apply(editor: Editor, state: ScreenState) {
   narrationScaleAtom.set(state.narrationScale)
   laserSettingsAtom.set(state.laser)
   foldOverridesAtom.set(state.foldOverrides ?? {})
+  stageViewAtom.set(state.view ?? 'sequence')
 }

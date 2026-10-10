@@ -1,3 +1,4 @@
+import type { StageView } from '../sequence/compute'
 import { atom, type TLScribble } from 'tldraw'
 
 export type Mode = 'edit' | 'present'
@@ -13,6 +14,12 @@ export const stepIndexAtom = atom<number>('stepIndex', -1)
 
 /** Vue d'ensemble temporaire (touche O) pendant la présentation. */
 export const overviewAtom = atom<boolean>('overview', false)
+
+/**
+ * Affichage par-dessus la séquence pendant la présentation (touche V) : la séquence, tout le schéma,
+ * ou l'étape seule. Revient à la séquence à chaque changement d'étape.
+ */
+export const stageViewAtom = atom<StageView>('stageView', 'sequence')
 
 /** Incrémenté pour demander à la caméra de se recaler sur l'étape courante (touche C). */
 export const recenterAtom = atom<number>('recenter', 0)

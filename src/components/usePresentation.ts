@@ -11,9 +11,10 @@ import {
   moveCamera,
   presentedSequence,
   readSequence,
+  resolveTargets,
   writeSequence,
 } from '@/lib/canvas/adapter'
-import { stateOf, type Stage } from '@/lib/sequence/compute'
+import { stateOf, stepToJump, stepsOf, type Stage, type StageView } from '@/lib/sequence/compute'
 import { branchOf, foldLevelOf, foldsForLevel, getTreeIndex, relayoutAll, setFoldSource, treeDepths, treeRoots } from '@/lib/canvas/tree'
 import { noteOf, panelNoteIds } from '@/lib/canvas/notes'
 import { swallowNextKeyUp } from '@/lib/keyboard'
@@ -50,12 +51,14 @@ import {
   narrationScaleAtom,
   narrationScaleDefaultAtom,
   NARRATION_SCALE,
+  stageViewAtom,
 } from '@/lib/presentation/store'
 
 export function enterPresentation(fromIndex = -1) {
   presentationStartedAtAtom.set(Date.now())
   stepIndexAtom.set(fromIndex)
   overviewAtom.set(false)
+  stageViewAtom.set('sequence')
   modeAtom.set('present')
 }
 
@@ -64,6 +67,7 @@ export function exitPresentation() {
   moreMenuOpenAtom.set(false)
   shortcutsHelpOpenAtom.set(false)
   clearLiveSpot()
+  stageViewAtom.set('sequence')
   modeAtom.set('edit')
   editUnlockedAtom.set(false)
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
@@ -77,6 +81,7 @@ export function exitPresentation() {
 export function goToStep(editor: Editor, index: number) {
   const seq = presentedSequence(editor)
   overviewAtom.set(false)
+  stageViewAtom.set('sequence')
   const page = index === seq.steps.length ? adjacentPage(editor, 1) : index === -2 ? adjacentPage(editor, -1) : null
   if (page) {
     pendingPageStep = index < -1 ? presentedSequence(editor, page).steps.length - 1 : -1
@@ -84,6 +89,36 @@ export function goToStep(editor: Editor, index: number) {
     return
   }
   stepIndexAtom.set(Math.max(-1, Math.min(index, seq.steps.length - 1)))
+}
+
+/**
+ * Affichage suivant (touche V, menu ⋯) : séquence → tout → étape seule. En mode « tour », tout est
+ * déjà visible : séquence ↔ étape seule. Au départ, avant la première étape, seulement « tout ».
+ */
+export function cycleStageView(editor: Editor) {
+  const seq = presentedSequence(editor)
+  const order: StageView[] = seq.mode === 'tour' ? ['sequence', 'step'] : stepIndexAtom.get() < 0 ? ['sequence', 'all'] : ['sequence', 'all', 'step']
+  const current = order.indexOf(stageViewAtom.get())
+  stageViewAtom.set(order[(current + 1) % order.length])
+}
+
+/**
+ * Clic sur un objet pendant la présentation (document verrouillé, outil de sélection) : aller à
+ * l'étape qui le concerne, sauf s'il est de l'étape courante. Un glisser (déplacer la vue) n'en est pas un.
+ */
+function jumpToClicked(editor: Editor) {
+  if (editUnlockedAtom.get() || spotToolAtom.get() || editor.getCurrentToolId() !== 'select' || editor.inputs.getIsDragging()) return
+  const classes = shapeClassesAtom.get()
+  const hidden = (id: string) => !!classes && (classes.byId.get(id) ?? classes.fallback).className.includes('pres-hidden')
+  const seq = presentedSequence(editor)
+  const resolve = resolveTargets(editor)
+  const shape = editor
+    .getShapesAtPoint(editor.inputs.getCurrentPagePoint(), { hitInside: true, margin: 4 })
+    .reverse()
+    .find((s) => !hidden(s.id) && stepsOf(seq, s.id, resolve).length)
+  if (!shape) return
+  const target = stepToJump(seq, stepIndexAtom.get(), shape.id, resolve)
+  if (target !== null) goToStep(editor, target)
 }
 
 /** Étape où arriver sur la page qu'on vient de choisir (goToStep) ; sinon, son départ. */
@@ -106,7 +141,18 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
       const step = readSequence(editor)?.steps[index]
       activeNoteAtom.set(panelNoteIds(editor, step, [])[0] ?? null)
     })
+    // Clic simple : un appui vu par le canevas (pas sur une pastille, qui l'arrête), relâché presque sur place.
+    let downAt: { x: number; y: number } | null = null
     const onEvent = (info: TLEventInfo) => {
+      if (modeAtom.get() === 'present' && info.type === 'pointer') {
+        if (info.name === 'pointer_down') downAt = { x: info.point.x, y: info.point.y }
+        if (info.name === 'pointer_up') {
+          const click = !!downAt && Math.hypot(info.point.x - downAt.x, info.point.y - downAt.y) < 5
+          downAt = null
+          if (click) jumpToClicked(editor)
+        }
+        return
+      }
       if (modeAtom.get() !== 'present' || info.name !== 'double_click' || info.type !== 'click' || info.phase !== 'up') return
       // tldraw ne résout pas la forme visée pour un double-clic : on cherche, sous le pointeur,
       // l'objet le plus haut qui a une note et que la séquence n'a pas caché.
@@ -198,6 +244,7 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
       const stage = computeEditorStage(editor, seq, index, {
         foldOverrides: new Map(overrides.map(([id, o]) => [id, o.folded])),
         liveUnfolds: new Set(overrides.filter(([, o]) => !o.folded && o.step === index).map(([id]) => id)),
+        view: stageViewAtom.get(),
       })
 
       const byId = new Map<string, ShapePresentation>()
@@ -206,6 +253,7 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
         const cls = ['pres', `pres-${s.visibility}`]
         let style: Record<string, string> | undefined
         if (s.highlighted) cls.push('pres-hl')
+        if (s.muted && s.visibility === 'visible') cls.push('pres-muted')
         if ((animate || s.live) && s.entering && s.entering !== 'none' && s.visibility !== 'hidden') {
           cls.push(`pres-enter-${s.entering}`)
           if (s.entering === 'draw') {
@@ -216,7 +264,8 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
         }
         byId.set(id, { className: cls.join(' '), style })
       }
-      shapeClassesAtom.set({ byId, fallback: { className: 'pres pres-visible' } })
+      const fallback = stateOf(stage, '')
+      shapeClassesAtom.set({ byId, fallback: { className: `pres pres-${fallback.visibility}${fallback.muted ? ' pres-muted' : ''}` } })
       foldBadgesAtom.set(foldBadges(editor, stage))
 
       if (keyboard) {
@@ -404,6 +453,10 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
         case 'l':
         case 'L':
           legendVisibleAtom.set(!legendVisibleAtom.get())
+          break
+        case 'v':
+        case 'V':
+          cycleStageView(editor)
           break
         case '+':
         case '=':

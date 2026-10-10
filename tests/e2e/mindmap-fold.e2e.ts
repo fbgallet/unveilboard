@@ -90,15 +90,19 @@ test('carte mentale : déplier ouvre toute la branche, repli par niveau', async 
   // Les 9 apparaissent : B2, repliée dans B, s'ouvre avec elle.
   await expect.poll(() => visibleNodes(page)).toBe(35)
 
-  // Niveaux : 1 ne laisse que la racine et ses branches ; « All levels » déplie tout.
-  const levels = page.getByRole('combobox', { name: 'Levels' })
-  await expect(levels).toHaveValue('mixed')
-  await levels.selectOption('1')
+  // Niveaux (bouton de la barre d'arbre, qui ouvre les niveaux) : 1 ne laisse que la racine et ses
+  // branches ; « All » déplie tout. Le bouton affiche le niveau courant (« – » : replis mêlés).
+  const levelsButton = page.getByRole('button', { name: /Collapse the whole tree to a level/ })
+  await expect(levelsButton).toContainText('–')
+  await levelsButton.click()
+  const levels = page.getByRole('group', { name: 'Levels' })
+  await levels.getByRole('button', { name: '1', exact: true }).click()
   await expect.poll(() => visibleNodes(page)).toBe(5)
-  await expect(levels).toHaveValue('1')
-  await levels.selectOption('2')
+  await expect(levels.getByRole('button', { name: '1', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(levelsButton).toContainText('1')
+  await levels.getByRole('button', { name: '2', exact: true }).click()
   await expect.poll(() => visibleNodes(page)).toBe(17)
-  await levels.selectOption('all')
+  await levels.getByRole('button', { name: 'All', exact: true }).click()
   await expect.poll(() => visibleNodes(page)).toBe(41)
   await page.keyboard.press('Control+z')
   await expect.poll(() => visibleNodes(page)).toBe(17)
@@ -146,10 +150,12 @@ test('orientation : choisie au sélecteur, elle oriente le prochain arbre créé
     const { editor } = window as unknown as Win
     editor.select(editor.getCurrentPageShapes().find((s) => s.meta.ref === 'r')!.id)
   })
-  const direction = page.getByRole('combobox', { name: /Direction of the tree/ })
-  await expect(direction).toHaveValue('both')
-  await direction.selectOption('down')
-  await expect(direction).toHaveValue('down')
+  // Le bouton d'orientation montre la flèche courante, et ouvre les cinq orientations.
+  const direction = page.getByRole('button', { name: /Direction of the tree/ })
+  await expect(direction).toHaveText('↔')
+  await direction.click()
+  await page.getByRole('group', { name: /Direction of the tree/ }).getByRole('button', { name: '↓' }).click()
+  await expect(direction).toHaveText('↓')
 
   // Nouvelle boîte, Tab : l'arbre qui commence s'oriente vers le bas.
   const dir = await page.evaluate(() => {
@@ -162,5 +168,5 @@ test('orientation : choisie au sélecteur, elle oriente le prochain arbre créé
   await page.keyboard.press('Tab')
   await page.keyboard.press('Escape')
   await page.evaluate((id) => void (window as unknown as Win).editor.select(id as never), dir)
-  await expect(direction).toHaveValue('down')
+  await expect(direction).toHaveText('↓')
 })

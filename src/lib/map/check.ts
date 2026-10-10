@@ -169,7 +169,7 @@ function simulate(map: UnveilMap, parent: Map<string, string>): { step: number; 
   for (const o of map.others ?? []) shapes.set(o.id, { kind: 'other', node: o.id })
   let n = 0
   const steps = toEngineSteps(map.sequence!.steps, (ref) => shapes.get(ref), () => `s${n++}`)
-  const seq = { version: SEQUENCE_VERSION, id: 'check', title: '', steps }
+  const seq = { version: SEQUENCE_VERSION, id: 'check', title: '', steps, ...(map.sequence!.presentation === 'tour' && { mode: 'tour' as const }) }
 
   const dependencies = new Map<ShapeRef, ShapeRef[]>()
   for (const [child, p] of parent) dependencies.set(`${child}>`, [child, p])

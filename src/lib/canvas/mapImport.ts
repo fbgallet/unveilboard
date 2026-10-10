@@ -132,6 +132,7 @@ export function importMap(editor: Editor, map: UnveilMap, opts: { at?: Vec; unve
     id: newId('seq'),
     title: map.title ?? m().sequence.defaultTitle,
     ...(map.sequence?.narrationScale && { narrationScale: map.sequence.narrationScale }),
+    ...(map.sequence?.presentation === 'tour' && { mode: 'tour' as const }),
     ...(map.sequence?.intro && { intro: map.sequence.intro }),
     steps,
   }

@@ -95,6 +95,8 @@ Un type ou une relation créés par l'utilisateur y portent aussi leur `style` (
 
 `sequence.intro` (facultatif, Markdown) s'affiche sous le titre au lancement de la présentation, avant la première étape : consigne, question posée à la classe, plan de la séance.
 
+`sequence.presentation` (facultatif) : `"reveal"` (par défaut), les étapes révèlent le schéma, les objets qu'elles montrent restant cachés jusque-là ; `"tour"`, tout le schéma est visible dès le départ et chaque étape cadre (et fait ressortir) les éléments qu'elle montre.
+
 Chaque étape a un `title`, une `narration` facultative (Markdown), une `camera` facultative (`follow`, par défaut : cadrer ce que l'étape montre ; `overview` : tout le schéma visible ; `keep` : ne pas bouger ; `{ "mode": "area", "area": { "x", "y", "w", "h" } }` : un rectangle fixe en coordonnées du canevas, centré, le zoom adapté à sa taille) et des `actions` :
 
 | `do` | Effet |

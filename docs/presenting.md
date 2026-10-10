@@ -7,6 +7,9 @@ How a diagram becomes a presentation: steps, camera, narration and notes; the pr
 ## Overview
 
 - **Steps**: show, dim, hide, restore, highlight or focus shapes, with entrance effects (fade, rise, draw); collapse or expand tree branches; show an object note.
+- **Two ways to present** (Sequence tab, above “▶ Present”, for the whole document): **Reveal** (the default), each step makes shapes appear, hidden at the start; **Tour**, the whole diagram is visible from the start and each step frames the shapes it shows (adding shapes to a step says what it shows), the rest slightly dimmed (“Dim the rest”, on by default).
+- **Click an object to go to its step**: while presenting, a click on a shape goes to the next step that shows it (or highlights it, focuses on it, shows its note), or the first one; nothing happens if it belongs to the current step. A double click still opens its note.
+- **View** (`V`, or ⋯ menu › “View”): over the sequence, show the **whole diagram** (shapes still to come appear, the current step stands out; clicking one goes to its step) or **this step only**. Changing step brings back the sequence; the projector window follows.
 - **Camera per step**: follow the new shapes, show the whole diagram, or stay put.
 - **Narration panel**: a Markdown text for each step, shown next to the diagram (resizable, can be hidden), below it on a phone.
 - **Presentation mode**: keyboard and presentation-remote navigation, overview and recenter, laser pointer (color, width and fade-out delay are configurable), hand-drawn masking layer, legend, and an "unlocked" mode to edit the diagram during the presentation.
@@ -23,9 +26,9 @@ The development of an object (long quote, explanation) does not clutter the diag
 
 ## Presentation shortcuts
 
-`→` / `Space` / `PageDown` next · `←` / `PageUp` previous · `Home` / `End` · `O` overview · `C` recenter · `K` laser · `M` masking layer · `N` narration · `+` / `−` / `0` (or Ctrl + wheel) side panel text size · `Tab` narration / notes · `L` legend · `F` fullscreen · `?` shortcuts help · `Esc` exit (the first `Esc` turns the laser off)
+`→` / `Space` / `PageDown` next · `←` / `PageUp` previous · `Home` / `End` · `O` overview · `C` recenter · `K` laser · `M` masking layer · `N` narration · `+` / `−` / `0` (or Ctrl + wheel) side panel text size · `Tab` narration / notes · `L` legend · `V` view (sequence, whole diagram, this step only) · `F` fullscreen · `?` shortcuts help · `Esc` exit (the first `Esc` turns the laser off)
 
-The ⋯ menu of the presentation bar holds the less frequent actions: recenter, shortcuts help, unlock, project on a second screen, phone remote. Unlocking brings back the tldraw interface to edit the diagram; only `PageUp` / `PageDown` then move between steps.
+The ⋯ menu of the presentation bar holds the less frequent actions: recenter, view, shortcuts help, unlock, project on a second screen, phone remote. Unlocking brings back the tldraw interface to edit the diagram; only `PageUp` / `PageDown` then move between steps.
 
 ## In the classroom
 

@@ -42,6 +42,9 @@ pnpm dev
      Ensuite, chaque déploiement applique les nouvelles migrations avant la compilation (`scripts/migrate.mjs`), avec `DATABASE_URL_UNPOOLED` si elle est définie (l'intégration Neon pour Vercel la pose), sinon `DATABASE_URL`. `SKIP_DB_MIGRATE=1` désactive cette étape.
   3. Sur Vercel, définir `DATABASE_URL` (l'URL **pooled**, hôte en `-pooler`), `APP_PASSWORD`, `SESSION_SECRET` (`openssl rand -base64 48`) et `TLDRAW_LICENSE_KEY`.
   4. Optionnel : créer un store Vercel Blob (`BLOB_READ_WRITE_TOKEN`) pour stocker les images hors du document.
+  5. Optionnel : IA de l'instance. Définir `OPENROUTER_API_KEY` (`AI_MODEL` facultatif), puis, une fois connecté, choisir « L'IA de cette instance » dans ☰ › IA › Réglages de l'IA. La clé reste sur le serveur : personne n'a à la saisir dans l'app.
+
+Sur Vercel, une variable ajoutée ou modifiée ne s'applique qu'au déploiement suivant : redéployez ensuite (Deployments › Redeploy).
 
 `TLDRAW_LICENSE_KEY` est lue à l'exécution : la changer ne demande pas de redéploiement. Sans clé valide pour votre domaine (`www.` compris, s'il est utilisé), tldraw masque l'éditeur quelques secondes après son chargement.
 

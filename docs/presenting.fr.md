@@ -7,6 +7,9 @@ Comment un schéma devient une présentation : étapes, caméra, narration et no
 ## Vue d’ensemble
 
 - **Étapes** : faire apparaître, atténuer, cacher, rétablir, surligner ou mettre en avant des objets, avec des effets d'entrée (fondu, montée, tracé) ; replier ou déplier des branches d'arbre ; afficher une note d'objet.
+- **Deux manières de présenter** (onglet Séquence, au-dessus de « ▶ Présenter », pour tout le document) : **Révélation** (par défaut), chaque étape fait apparaître des objets, cachés au départ ; **Parcours**, tout le schéma est visible dès le départ et chaque étape cadre les objets qu'elle montre (ajouter des objets à une étape dit ce qu'elle montre), le reste légèrement atténué (« Atténuer le reste », coché par défaut).
+- **Cliquer un objet pour aller à son étape** : en présentation, un clic sur un objet mène à la prochaine étape qui le montre (ou le surligne, le met en avant, affiche sa note), ou à la première ; rien ne se passe s'il est de l'étape en cours. Le double-clic ouvre toujours sa note.
+- **Affichage** (`V`, ou menu ⋯ › « Affichage ») : par-dessus la séquence, montrer **tout le schéma** (les objets à venir apparaissent, l'étape en cours ressort ; un clic sur l'un d'eux mène à son étape) ou **l'étape seule**. Changer d'étape ramène à la séquence ; la fenêtre du projecteur suit.
 - **Caméra à chaque étape** : suivre les nouveaux objets, montrer tout le schéma, ou ne pas bouger.
 - **Panneau de narration** : un texte en Markdown pour chaque étape, à côté du schéma (redimensionnable, masquable), en dessous sur téléphone.
 - **Mode présentation** : clavier et télécommande de présentation, vue d'ensemble et recentrage, pointeur laser (couleur, épaisseur et durée réglables), calque occultant tracé à la main, légende, et mode « déverrouillé » pour retoucher le schéma en pleine présentation.
@@ -23,9 +26,9 @@ Le développement d'un objet (citation longue, explication) ne surcharge pas le 
 
 ## Raccourcis en présentation
 
-`→` / `Espace` / `PageDown` suivant · `←` / `PageUp` précédent · `Début` / `Fin` · `O` vue d'ensemble · `C` recentrer · `K` laser · `M` calque occultant · `N` narration · `+` / `−` / `0` (ou Ctrl + molette) taille du texte du panneau · `Tab` narration / notes · `L` légende · `F` plein écran · `?` aide des raccourcis · `Échap` quitter (le premier Échap désactive le laser)
+`→` / `Espace` / `PageDown` suivant · `←` / `PageUp` précédent · `Début` / `Fin` · `O` vue d'ensemble · `C` recentrer · `K` laser · `M` calque occultant · `N` narration · `+` / `−` / `0` (ou Ctrl + molette) taille du texte du panneau · `Tab` narration / notes · `L` légende · `V` affichage (séquence, tout le schéma, étape seule) · `F` plein écran · `?` aide des raccourcis · `Échap` quitter (le premier Échap désactive le laser)
 
-Le menu ⋯ de la barre de présentation regroupe les actions moins fréquentes : recentrer, aide des raccourcis, déverrouiller, projeter sur un second écran, télécommande sur téléphone. Déverrouiller fait réapparaître l'interface tldraw pour retoucher le schéma ; seules `PageUp` / `PageDown` naviguent alors entre les étapes.
+Le menu ⋯ de la barre de présentation regroupe les actions moins fréquentes : recentrer, affichage, aide des raccourcis, déverrouiller, projeter sur un second écran, télécommande sur téléphone. Déverrouiller fait réapparaître l'interface tldraw pour retoucher le schéma ; seules `PageUp` / `PageDown` naviguent alors entre les étapes.
 
 ## En classe
 

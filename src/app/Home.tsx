@@ -19,6 +19,15 @@ import { Logo } from '@/components/Logo'
 import { DESKTOP_DOWNLOAD_URL, isDesktop } from '@/lib/desktop'
 
 const GITHUB_URL = 'https://github.com/fbgallet/unveilboard'
+
+/** Le développeur : sa page, ses réseaux, et de quoi soutenir le projet (pied de page de l'accueil public). */
+const AUTHOR = {
+  profile: 'https://the-thought-experimenter.com/profile',
+  github: 'https://github.com/fbgallet',
+  x: 'https://x.com/fbgallet',
+  bluesky: 'https://bsky.app/profile/fbgallet.bsky.social',
+  coffee: 'https://www.buymeacoffee.com/fbgallet',
+}
 /** Application de bureau : guide d'installation. */
 const desktopGuideUrl = (locale: string) => `${GITHUB_URL}/blob/main/docs/desktop${locale === 'fr' ? '.fr' : ''}.md`
 
@@ -279,8 +288,47 @@ function PublicHome({ docs, legal }: { docs: Documents; legal: boolean }) {
           </span>
           <span>{l.footer.notAffiliated}</span>
         </div>
+        <AuthorLinks />
       </footer>
     </>
+  )
+}
+
+/** Ligne du développeur : sa page, GitHub, X, Bluesky, et Buy me a coffee. */
+function AuthorLinks() {
+  const l = useT().landing
+  const external = { target: '_blank', rel: 'noopener noreferrer' } as const
+  const icon = 'flex items-center transition-colors hover:text-stone-900'
+  return (
+    <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-6 text-xs text-stone-500 sm:px-6">
+      <a href={AUTHOR.profile} {...external} className="hover:text-stone-900">
+        {l.footer.by}
+      </a>
+      <span className="hidden h-3 w-px bg-stone-300 sm:inline-block" aria-hidden="true" />
+      <a href={AUTHOR.github} {...external} className={icon} title="GitHub" aria-label="GitHub">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.26 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z" />
+        </svg>
+      </a>
+      <a href={AUTHOR.x} {...external} className={icon} title={l.footer.followOn('X')} aria-label={l.footer.followOn('X')}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.727l-5.1-6.47-5.829 6.47H2.423l7.723-8.835L1.539 2.25H8.29l4.608 5.955 5.346-5.955zM17.55 19.5h1.828L6.281 3.97H4.25L17.55 19.5z" />
+        </svg>
+      </a>
+      <a href={AUTHOR.bluesky} {...external} className={icon} title={l.footer.followOn('Bluesky')} aria-label={l.footer.followOn('Bluesky')}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.022-.276.04-.415.056-3.912.58-7.387 2.005-2.83 7.078 5.013 5.19 6.87-1.113 7.823-4.308.953 3.195 2.05 9.271 7.733 4.308 4.267-4.308 1.172-6.498-2.74-7.078a8.741 8.741 0 0 1-.415-.056c.14.017.279.036.415.056 2.67.297 5.568-.628 6.383-3.364.246-.828.624-5.79.624-6.478 0-.69-.139-1.861-.902-2.206-.659-.298-1.664-.62-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8Z" />
+        </svg>
+      </a>
+      <a href={AUTHOR.coffee} {...external} className={`${icon} gap-1.5`} title={l.footer.coffeeHint}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M4 8h12v7a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8z" />
+          <path d="M16 10h1.5a2.5 2.5 0 0 1 0 5H16" />
+          <path d="M7 4.5c0 1 .8 1 .8 2M10.5 4.5c0 1 .8 1 .8 2M14 4.5c0 1 .8 1 .8 2" />
+        </svg>
+        {l.footer.coffee}
+      </a>
+    </div>
   )
 }
 

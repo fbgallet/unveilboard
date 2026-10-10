@@ -63,6 +63,16 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Tout sauf les fichiers statiques de Next.
-  matcher: ['/((?!_next/static|_next/image).*)'],
+  // Tout sauf les fichiers statiques de Next, les icônes, l'image d'aperçu et la mesure d'audience
+  // (publics, sans script à protéger), et les préchargements de <Link> : la navigation qui suit repasse
+  // par ici, et les pages privées (/, /d/…) vérifient elles-mêmes la session.
+  matcher: [
+    {
+      source: '/((?!_next/static|_next/image|_vercel|favicon\\.ico|icon\\.svg|apple-icon|opengraph-image).*)',
+      missing: [
+        { type: 'header', key: 'next-router-prefetch' },
+        { type: 'header', key: 'purpose', value: 'prefetch' },
+      ],
+    },
+  ],
 }

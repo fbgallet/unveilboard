@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeStage, stateOf, stepFocusTargets } from './compute'
+import { computeStage, stateOf, stepFocusTargets, stepToJump, stepsOf } from './compute'
 import { migrateSequence } from './migrate'
 import { SEQUENCE_VERSION, type Sequence, type Step, type StepAction } from './types'
 
@@ -166,5 +166,78 @@ describe('migrateSequence', () => {
     const v2 = migrateSequence(v1)
     expect(v2.version).toBe(2)
     expect(v2.steps[0].actions).toEqual([{ type: 'note', targets: ['b'] }, { type: 'show', targets: ['c'] }])
+  })
+})
+
+describe('mode « tour » : tout visible, chaque étape montre (et cadre) ses objets', () => {
+  const base = seq(step({ type: 'show', targets: ['a'] }), step({ type: 'show', targets: ['b'] }), step({ type: 'hide', targets: ['a'] }), step({ type: 'show', targets: ['a'] }))
+  const tour: Sequence = { ...base, mode: 'tour' }
+  const muted = (s: Sequence, index: number, id: string, opts = {}) => !!stateOf(computeStage(s, index, opts), id).muted
+
+  it('rien n’est caché au départ, ni atténué', () => {
+    expect(vis(tour, -1, 'a')).toBe('visible')
+    expect(vis(tour, -1, 'b')).toBe('visible')
+    expect(muted(tour, -1, 'a')).toBe(false)
+  })
+
+  it('les objets de l’étape restent nets, le reste (objets libres compris) est légèrement atténué', () => {
+    expect(muted(tour, 0, 'a')).toBe(false)
+    expect(muted(tour, 0, 'b')).toBe(true)
+    expect(muted(tour, 0, 'libre')).toBe(true)
+    expect(vis(tour, 0, 'b')).toBe('visible')
+  })
+
+  it('sans atténuation si l’auteur l’a désactivée', () => {
+    expect(muted({ ...tour, tourMute: false }, 0, 'b')).toBe(false)
+  })
+
+  it('pas d’effet d’entrée pour un objet déjà visible ; un objet caché par une étape réapparaît avec', () => {
+    expect(computeStage(tour, 0).get('a')?.entering).toBeUndefined()
+    expect(vis(tour, 2, 'a')).toBe('hidden')
+    expect(computeStage(tour, 3).get('a')?.entering).toBe('fade')
+  })
+
+  it('une flèche entre deux objets de l’étape reste nette', () => {
+    const t: Sequence = { ...seq(step({ type: 'show', targets: ['a', 'b'] })), mode: 'tour' }
+    const dependencies = new Map([['ab', ['a', 'b']], ['ac', ['a', 'c']]])
+    expect(muted(t, 0, 'ab', { dependencies })).toBe(false)
+    expect(muted(t, 0, 'ac', { dependencies })).toBe(true)
+  })
+})
+
+describe('affichage par-dessus la séquence (touche V)', () => {
+  const s = seq(step({ type: 'show', targets: ['a'] }), step({ type: 'show', targets: ['b'] }), step({ type: 'show', targets: ['c'] }))
+
+  it('« tout » : ce qui reste caché apparaît, l’étape courante mise en valeur', () => {
+    expect(vis(s, 0, 'c', { view: 'all' })).toBe('visible')
+    expect(stateOf(computeStage(s, 0, { view: 'all' }), 'c').muted).toBe(true)
+    expect(stateOf(computeStage(s, 0, { view: 'all' }), 'a').muted).toBeFalsy()
+  })
+
+  it('« étape seule » : seuls les objets de l’étape, et les flèches entre eux', () => {
+    const dependencies = new Map([['ab', ['a', 'b']], ['bx', ['b', 'x']]])
+    expect(vis(s, 1, 'b', { view: 'step' })).toBe('visible')
+    expect(vis(s, 1, 'a', { view: 'step' })).toBe('hidden')
+    expect(vis(s, 1, 'libre', { view: 'step' })).toBe('hidden')
+    const t = seq(step({ type: 'show', targets: ['a', 'b'] }))
+    expect(vis(t, 0, 'ab', { view: 'step', dependencies })).toBe('visible')
+    expect(vis(t, 0, 'bx', { view: 'step', dependencies })).toBe('hidden')
+  })
+})
+
+describe('aller à l’étape d’un objet cliqué', () => {
+  const s = seq(step({ type: 'show', targets: ['a'] }), step({ type: 'highlight', targets: ['b'] }), step({ type: 'show', targets: ['b'] }), step({ type: 'dim', targets: ['a'] }))
+
+  it('étapes qui concernent un objet (apparition, surlignage…, pas une simple atténuation)', () => {
+    expect(stepsOf(s, 'b')).toEqual([1, 2])
+    expect(stepsOf(s, 'a')).toEqual([0])
+  })
+
+  it('aucune s’il est de l’étape courante ; sinon la suivante qui le concerne, ou la première', () => {
+    expect(stepToJump(s, 1, 'b')).toBeNull()
+    expect(stepToJump(s, -1, 'b')).toBe(1)
+    expect(stepToJump(s, 3, 'b')).toBe(1)
+    expect(stepToJump(s, 3, 'a')).toBe(0)
+    expect(stepToJump(s, 0, 'libre')).toBeNull()
   })
 })
