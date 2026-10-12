@@ -14,7 +14,7 @@ import { MarkdownEditor } from './MarkdownEditor'
 import { QUICK, elementAiAtom, elementAiRequestAtom } from './ElementAi'
 import { openAssistant } from './MapJsonDialog'
 import { ChatPane } from './ChatPane'
-import { ElementStyleControls } from './ElementStyle'
+import { ElementStyleControls, ElementStylePreview } from './ElementStyle'
 import { Markdownish } from './Markdownish'
 import {
   addStep,
@@ -720,13 +720,38 @@ function ElementPane(p: { editor: Editor; selection: TLShapeId[]; usage: string;
   )
 }
 
-/** Couleurs de la sélection : fond et texte. */
+/** Section des couleurs dépliée (cet appareil) : repliée par défaut, pour laisser la place à la note. */
+const STYLE_OPEN_KEY = 'elementStyleOpen'
+function readStyleOpen() {
+  try {
+    return localStorage.getItem(STYLE_OPEN_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+/** Couleurs de la sélection : fond et texte. Repliée, une ligne et l'aperçu des couleurs actuelles. */
 function StyleSection(p: { editor: Editor; ids: TLShapeId[] }) {
   const t = useT()
+  const [open, setOpen] = useState(readStyleOpen)
+  const toggle = () => {
+    setOpen(!open)
+    try {
+      localStorage.setItem(STYLE_OPEN_KEY, String(!open))
+    } catch {
+      // stockage indisponible : le choix vaut pour la séance
+    }
+  }
   return (
-    <section className="mt-2 flex flex-col gap-2 border-t border-zinc-200 px-1 pt-3">
-      <h3 className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{t.elementStyle.title}</h3>
-      <ElementStyleControls editor={p.editor} ids={p.ids} />
+    <section className="mt-2 flex flex-col gap-2 border-t border-zinc-200 px-1 pt-2">
+      <button className="flex items-center gap-2 text-left" onClick={toggle} aria-expanded={open}>
+        <span className={`text-[10px] text-zinc-400 transition-transform ${open ? 'rotate-90' : ''}`} aria-hidden="true">
+          ▶
+        </span>
+        <span className="flex-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">{t.elementStyle.title}</span>
+        <ElementStylePreview editor={p.editor} ids={p.ids} />
+      </button>
+      {open && <ElementStyleControls editor={p.editor} ids={p.ids} />}
     </section>
   )
 }

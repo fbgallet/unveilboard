@@ -1,5 +1,6 @@
 'use client'
 
+import { laserTrailAtom } from '@/lib/canvas/laser'
 import { useEffect } from 'react'
 import { react, type Editor } from 'tldraw'
 import {
@@ -82,10 +83,21 @@ export function useScreenPresenter(editor: Editor, docId: string) {
       post({ type: 'scribbles', scribbles })
     })
 
+    // Point laser au survol : chaque nouveau point est recopié (le projecteur efface la traînée au même rythme).
+    let lastPoint = -1
+    const stopTrail = react('screen laser trail', () => {
+      const points = laserTrailAtom.get()
+      const head = points.at(-1)?.t ?? 0
+      if (head === lastPoint) return
+      lastPoint = head
+      post({ type: 'laserTrail', points })
+    })
+
     return () => {
       post({ type: 'state', state: { ...state(), presenting: false } })
       stopState()
       stopLaser()
+      stopTrail()
       clearInterval(watchdog)
       channel.close()
       screenConnectedAtom.set(false)

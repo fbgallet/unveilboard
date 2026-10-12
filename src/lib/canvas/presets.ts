@@ -4,7 +4,8 @@
 
 import { clientLocale, m } from '@/i18n/client'
 import { LOCALES, messagesFor, type Locale } from '@/i18n/config'
-import { presetLabel } from '../presets/labels'
+import { defaultNamesOf, presetLabel } from '../presets/labels'
+import { needsRelationLabels } from './relationLabels'
 import { viewerAtom } from '@/lib/presentation/store'
 import {
   ArrowShapeArrowheadEndStyle,
@@ -159,6 +160,29 @@ export function applyPresetTo(editor: Editor, preset: Preset, shapes: TLShape[],
     editor.updateShapes(updates)
     keepDocumentCopy(editor, preset)
   })
+}
+
+/**
+ * Étiquettes de flèche écrites avec un nom de départ d'une autre langue, ou d'avant (« distinguishes »
+ * dans un schéma en français) : réécrites dans la langue du contenu, si la relation n'a pas été renommée.
+ * Un texte saisi à la main sur la flèche reste tel quel. Au chargement du document, hors historique.
+ */
+export function localizeArrowLabels(editor: Editor) {
+  const lang = editor.getDocumentSettings().meta.lang
+  // Langue sans libellés de l'app : les noms viennent de l'IA (meta.relationLabels), on n'y touche pas.
+  if (typeof lang === 'string' && needsRelationLabels(lang)) return
+  const messages = messagesFor(typeof lang === 'string' && LOCALES.includes(lang.split('-')[0] as Locale) ? (lang.split('-')[0] as Locale) : clientLocale())
+  const updates: TLShapePartial[] = []
+  for (const record of editor.store.allRecords()) {
+    if (record.typeName !== 'shape' || record.type !== 'arrow' || typeof record.meta.preset !== 'string') continue
+    const preset = presetById(editor, record.meta.preset)
+    const label = preset && presetLabel(preset, messages)
+    const defaults = defaultNamesOf(record.meta.preset)
+    if (!label || !defaults.includes(label)) continue
+    const text = renderPlaintextFromRichText(editor, record.props.richText).trim()
+    if (text && text !== label && defaults.includes(text)) updates.push({ id: record.id, type: 'arrow', props: { richText: toRichText(label) } })
+  }
+  if (updates.length) editor.run(() => editor.updateShapes(updates), { history: 'ignore' })
 }
 
 /** Style de la première forme sélectionnée du bon type, pour créer ou mettre à jour un préréglage. */

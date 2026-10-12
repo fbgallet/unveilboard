@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Tldraw, useValue, type Editor, type TLComponents, type TLPageId } from 'tldraw'
 import 'tldraw/tldraw.css'
 import { useT } from '@/i18n/client'
-import { LaserOverlayUtil } from '@/lib/canvas/laser'
+import { LaserOverlayUtil, setLaserTrail } from '@/lib/canvas/laser'
 import { SpotlightShapeUtil } from '@/lib/canvas/spotlight'
 import {
   foldOverridesAtom,
@@ -83,6 +83,10 @@ export default function ScreenView({ docId, licenseKey }: { docId: string; licen
         setPresenting(message.state.presenting)
       } else if (message.type === 'scribbles') {
         remoteScribblesAtom.set(message.scribbles)
+      } else if (message.type === 'laserTrail') {
+        // Instants du présentateur : recalés sur l'horloge de cette fenêtre pour l'effacement.
+        const shift = performance.now() - (message.points.at(-1)?.t ?? performance.now())
+        setLaserTrail(message.points.map((p) => ({ ...p, t: p.t + shift })))
       }
     }
     post({ type: 'hello' })

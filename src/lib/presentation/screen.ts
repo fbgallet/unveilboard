@@ -7,6 +7,7 @@
 import { atom, type TLScribble } from 'tldraw'
 import type { FoldOverrides, LaserSettings, PageRect } from './store'
 import type { StageView } from '../sequence/compute'
+import type { TrailPoint } from '../canvas/laser'
 
 export interface ScreenState {
   presenting: boolean
@@ -36,6 +37,8 @@ export type ScreenMessage =
   | { type: 'key'; key: string; shiftKey: boolean }
   | { type: 'state'; state: ScreenState }
   | { type: 'scribbles'; scribbles: TLScribble[] }
+  /** Point laser au survol (sans clic) et sa traînée. */
+  | { type: 'laserTrail'; points: TrailPoint[] }
 
 export const screenChannelName = (docId: string) => `unveilboard:screen:${docId}`
 

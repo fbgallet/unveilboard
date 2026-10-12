@@ -4,17 +4,24 @@ import { DefaultColorStyle, getColorValue, useValue, type Editor, type TLDefault
 import { useT } from '@/i18n/client'
 
 const COLORS = DefaultColorStyle.values
-/** Fond pâle (teinte de la couleur) ou vif (couleur pleine), comme les fonds « solid » et « fill » de tldraw. */
-type Intensity = 'solid' | 'fill'
+/**
+ * Fond coloré d'une boîte, comme les remplissages de tldraw : pâle (« solid » : teinte de la
+ * couleur), vif (« fill » : couleur pleine), hachuré (« pattern »).
+ */
+type Intensity = 'solid' | 'fill' | 'pattern'
+const INTENSITIES: Intensity[] = ['solid', 'fill', 'pattern']
 const MIXED = 'mixed'
+/** Fond uni : opaque, de la couleur du canevas (le remplissage « semi » de tldraw, qui n'est pas teinté). */
+const PLAIN = 'plain'
 
 /**
- * Fond d'une forme : sa couleur quand elle est remplie (`none` : sans fond). Pour une boîte, la
- * couleur du fond est aussi celle du contour (tldraw n'en distingue pas). Undefined : pas de fond.
+ * Fond d'une forme : `none` (transparent), `plain` (uni, couleur du canevas) ou sa couleur quand il
+ * est teinté. Pour une boîte, cette couleur est aussi celle du contour (tldraw n'en distingue pas) :
+ * sans fond ou en fond uni, le contour garde sa couleur, qui n'est pas celle du fond. Undefined : pas de fond.
  */
 function backgroundOf(s: TLShape): string | undefined {
   const props = s.props as { color?: string; fill?: string }
-  if (s.type === 'geo') return props.fill === 'none' ? 'none' : props.color
+  if (s.type === 'geo') return props.fill === 'none' ? 'none' : props.fill === 'semi' ? PLAIN : props.color
   if (s.type === 'note') return props.color
 }
 
@@ -27,7 +34,7 @@ function textColorOf(s: TLShape): string | undefined {
 
 function intensityOf(s: TLShape): Intensity | undefined {
   const fill = (s.props as { fill?: string }).fill
-  return s.type === 'geo' && (fill === 'solid' || fill === 'fill') ? fill : undefined
+  return s.type === 'geo' && INTENSITIES.includes(fill as Intensity) ? (fill as Intensity) : undefined
 }
 
 /** Valeur commune aux formes concernées, `mixed` si elles diffèrent, undefined si aucune n'est concernée. */
@@ -36,7 +43,7 @@ function common<T extends string>(shapes: TLShape[], read: (s: TLShape) => T | u
   return values.size > 1 ? MIXED : [...values][0]
 }
 
-function setBackground(editor: Editor, ids: TLShapeId[], color: TLDefaultColorStyle | 'none', intensity?: Intensity) {
+function setBackground(editor: Editor, ids: TLShapeId[], color: TLDefaultColorStyle | 'none' | typeof PLAIN, intensity?: Intensity) {
   editor.markHistoryStoppingPoint('fond')
   editor.updateShapes(
     ids.flatMap((id): TLShapePartial[] => {
@@ -44,10 +51,11 @@ function setBackground(editor: Editor, ids: TLShapeId[], color: TLDefaultColorSt
       if (!s) return []
       if (s.type === 'geo') {
         const fill = s.props.fill
-        const props = color === 'none' ? { fill: 'none' as const } : { color, fill: intensity ?? (fill === 'none' || fill === 'semi' ? 'solid' : fill) }
-        return [{ id, type: 'geo', props }]
+        if (color === 'none' || color === PLAIN) return [{ id, type: 'geo', props: { fill: color === 'none' ? 'none' : 'semi' } }]
+        // Une couleur choisie sur une boîte sans fond (ou au fond uni) la teinte, en pâle.
+        return [{ id, type: 'geo', props: { color, fill: intensity ?? (fill === 'none' || fill === 'semi' ? 'solid' : fill) } }]
       }
-      return s.type === 'note' && color !== 'none' ? [{ id, type: s.type, props: { color } }] : []
+      return s.type === 'note' && color !== 'none' && color !== PLAIN ? [{ id, type: s.type, props: { color } }] : []
     })
   )
 }
@@ -74,6 +82,10 @@ export function useElementStyle(editor: Editor, ids: TLShapeId[]) {
       const intensity = common(shapes, intensityOf)
       return {
         background: common(shapes, backgroundOf),
+        /** Des boîtes dans la sélection : « sans fond » et « fond uni » s'appliquent. */
+        boxes: shapes.some((s) => s.type === 'geo'),
+        /** Couleur du canevas (fond uni). */
+        paper: colors.solid,
         text: common(shapes, textColorOf),
         intensity: intensity === MIXED ? undefined : intensity,
         swatch: (color: string, variant: 'solid' | 'semi' | 'fill') => getColorValue(colors, color as TLDefaultColorStyle, variant),
@@ -92,6 +104,7 @@ export function ElementStyleControls({ editor, ids }: { editor: Editor; ids: TLS
   const style = useElementStyle(editor, ids)
   const intensity = style.intensity ?? 'solid'
   const bgVariant = intensity === 'fill' ? 'fill' : 'semi'
+  const tinted = style.background !== undefined && style.background !== 'none' && style.background !== PLAIN && style.background !== MIXED
   if (style.background === undefined && style.text === undefined) return <p className="text-[11px] text-zinc-400">{t.elementStyle.none}</p>
   return (
     <div className="element-style">
@@ -101,14 +114,27 @@ export function ElementStyleControls({ editor, ids }: { editor: Editor; ids: TLS
             {t.elementStyle.background}
           </span>
           <div className="element-swatches" role="radiogroup" aria-label={t.elementStyle.background}>
-            <button
-              className={`element-swatch element-swatch-none ${style.background === 'none' ? 'element-swatch-on' : ''}`}
-              onClick={() => setBackground(editor, ids, 'none')}
-              role="radio"
-              aria-checked={style.background === 'none'}
-              title={t.elementStyle.noBackground}
-              aria-label={t.elementStyle.noBackground}
-            />
+            {style.boxes && (
+              <>
+                <button
+                  className={`element-swatch element-swatch-none ${style.background === 'none' ? 'element-swatch-on' : ''}`}
+                  onClick={() => setBackground(editor, ids, 'none')}
+                  role="radio"
+                  aria-checked={style.background === 'none'}
+                  title={t.elementStyle.noBackground}
+                  aria-label={t.elementStyle.noBackground}
+                />
+                <button
+                  className={`element-swatch element-swatch-plain ${style.background === PLAIN ? 'element-swatch-on' : ''}`}
+                  style={{ background: style.paper }}
+                  onClick={() => setBackground(editor, ids, PLAIN)}
+                  role="radio"
+                  aria-checked={style.background === PLAIN}
+                  title={t.elementStyle.plainBackground}
+                  aria-label={t.elementStyle.plainBackground}
+                />
+              </>
+            )}
             {COLORS.map((c) => (
               <button
                 key={c}
@@ -122,16 +148,16 @@ export function ElementStyleControls({ editor, ids }: { editor: Editor; ids: TLS
               />
             ))}
           </div>
-          {style.background !== 'none' && style.background !== MIXED && style.intensity !== undefined && (
+          {tinted && style.boxes && (
             <span className="tree-dirs element-intensity" role="group" aria-label={t.elementStyle.intensity}>
-              {(['solid', 'fill'] as const).map((i) => (
+              {INTENSITIES.map((i) => (
                 <button
                   key={i}
                   className={`tree-dir ${intensity === i ? 'tree-dir-active' : ''}`}
                   onClick={() => setBackground(editor, ids, style.background as TLDefaultColorStyle, i)}
                   aria-pressed={intensity === i}
                 >
-                  {t.elementStyle[i === 'solid' ? 'pale' : 'vivid']}
+                  {t.elementStyle.intensities[i]}
                 </button>
               ))}
             </span>
@@ -167,12 +193,12 @@ export function ElementStyleControls({ editor, ids }: { editor: Editor; ids: TLS
 export function ElementStylePreview({ editor, ids }: { editor: Editor; ids: TLShapeId[] }) {
   const style = useElementStyle(editor, ids)
   const bg = style.background
-  const filled = bg !== undefined && bg !== 'none' && bg !== MIXED
+  const filled = bg !== undefined && bg !== 'none' && bg !== PLAIN && bg !== MIXED
   return (
     <span
       className="element-style-preview"
       style={{
-        background: filled ? style.swatch(bg, style.intensity === 'fill' ? 'fill' : 'semi') : undefined,
+        background: filled ? style.swatch(bg, style.intensity === 'fill' ? 'fill' : 'semi') : bg === PLAIN ? style.paper : undefined,
         borderColor: filled ? style.swatch(bg, 'solid') : undefined,
         color: style.text && style.text !== MIXED ? style.swatch(style.text, 'solid') : undefined,
       }}

@@ -491,6 +491,8 @@ export const en = {
   },
 
   presets: {
+    hidePanel: 'Collapse the style panel (it becomes a button at the top right)',
+    showPanel: 'Show the style panel (presets, colors, shapes, strokes)',
     docOnly: (name: string) => `${name} (preset of this diagram)`,
     manage: 'Manage presets…',
     section: 'Presets',
@@ -759,11 +761,11 @@ export const en = {
   elementStyle: {
     title: 'Colors',
     background: 'Fill',
-    backgroundHint: 'Fill color of the box (its outline takes the same color)',
-    noBackground: 'No fill',
+    backgroundHint: 'Fill of the box: none, plain (the canvas color) or tinted. A color also tints the outline; with no fill or a plain one, the outline keeps its color.',
+    noBackground: 'No fill (transparent)',
+    plainBackground: 'Plain fill (canvas color)',
     intensity: 'Fill intensity',
-    pale: 'Pale',
-    vivid: 'Vivid',
+    intensities: { solid: 'Pale', fill: 'Vivid', pattern: 'Hatched' },
     text: 'Text',
     button: 'Fill and text color',
     none: 'No color to set for this selection.',

@@ -12,7 +12,7 @@ Comment un schéma devient une présentation : étapes, caméra, narration et no
 - **Affichage** (`V`, ou menu ⋯ › « Affichage ») : par-dessus la séquence, montrer **tout le schéma** (les objets à venir apparaissent, l'étape en cours ressort ; un clic sur l'un d'eux mène à son étape) ou **l'étape seule**. Changer d'étape ramène à la séquence ; la fenêtre du projecteur suit.
 - **Caméra à chaque étape** : suivre les nouveaux objets, montrer tout le schéma, ou ne pas bouger.
 - **Panneau de narration** : un texte en Markdown pour chaque étape, à côté du schéma (redimensionnable, masquable), en dessous sur téléphone.
-- **Mode présentation** : clavier et télécommande de présentation, vue d'ensemble et recentrage, pointeur laser (couleur, épaisseur et durée réglables), calque occultant tracé à la main, légende, et mode « déverrouillé » pour retoucher le schéma en pleine présentation.
+- **Mode présentation** : clavier et télécommande de présentation, vue d'ensemble et recentrage, pointeur laser (couleur, épaisseur et durée réglables ; sans clic, le curseur devient un point lumineux à la traînée éphémère), calque occultant tracé à la main, légende, et mode « déverrouillé » pour retoucher le schéma en pleine présentation.
 - **Séquençage rapide** : créer des objets et les rattacher à l'étape en cours, ou à une nouvelle étape avant ou après, d'un clic.
 - **Polycopié** : ☰ › « Polycopié (imprimer / PDF)… » donne une partie par étape, le schéma à ce stade (objets atténués en gris) et sa narration, à imprimer ou enregistrer en PDF pour les élèves.
 

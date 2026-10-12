@@ -156,8 +156,14 @@ const V3_RECOLOR: [string, string, string][] = [
 
 /** Anciens noms de départ de la nature « belief » (Présupposé / Assumption depuis la v5). */
 const OLD_BELIEF_NAMES = ['Croyance fondamentale', 'Fundamental belief', 'Postulat']
-/** Ancien nom de départ de « se distingue de » (v6). */
-const OLD_DISTINGUISHES_NAMES = ['distingue']
+/** Anciens noms de départ de « se distingue de » / « is distinct from » (v6). */
+const OLD_DISTINGUISHES_NAMES = ['distingue', 'distinguishes']
+
+/**
+ * Noms de départ d'avant (toutes langues) : un préréglage qui les porte encore n'a pas été renommé
+ * par l'utilisateur, et s'affiche dans la langue courante (src/lib/presets/labels.ts).
+ */
+export const LEGACY_DEFAULT_NAMES: Record<string, string[]> = { belief: OLD_BELIEF_NAMES, distinguishes: OLD_DISTINGUISHES_NAMES }
 
 /**
  * Lecture tolérante d'un réglage enregistré (ou absent), mis au format courant sans écraser

@@ -180,6 +180,17 @@ export function openElementTab(editNoteOf?: string) {
 /** Étape sélectionnée dans le panneau d'édition. */
 export const activeStepIdAtom = atom<string | null>('activeStepId', null)
 
+/**
+ * Panneau de styles entier (préréglages et styles de tldraw) replié en un bouton, sous ceux du haut
+ * à droite (mode sombre, texte source, IA) : plus de place pour le schéma.
+ */
+export const stylePanelHiddenAtom = atom<boolean>('stylePanelHidden', readStoredValue('stylePanelHidden') === 'true')
+
+export function setStylePanelHidden(hidden: boolean) {
+  stylePanelHiddenAtom.set(hidden)
+  storeValue('stylePanelHidden', hidden)
+}
+
 /** Préréglages repliés dans le panneau de styles (seul leur en-tête reste visible). */
 export const presetsCollapsedAtom = atom<boolean>('presetsCollapsed', readStoredValue('presetsCollapsed') === 'true')
 

@@ -10,6 +10,7 @@ import { LaserOverlayUtil } from '@/lib/canvas/laser'
 import { SpotlightShapeUtil } from '@/lib/canvas/spotlight'
 import { registerTreeSideEffects, withBranchesToDelete } from '@/lib/canvas/tree'
 import { convertLegacyDetails } from '@/lib/canvas/notes'
+import { localizeArrowLabels } from '@/lib/canvas/presets'
 import { isHiddenInEdit } from '@/lib/canvas/visibility'
 import { activeStepIdAtom, editUnlockedAtom, modeAtom, quickSequenceAtom, stepIndexAtom } from '@/lib/presentation/store'
 import { assetStore } from '@/lib/sync/assetStore'
@@ -156,7 +157,11 @@ export default function Studio({
     const stop = startDocumentSync(editor, docId, documentStore(storage), {
       demo,
       // Anciens « détails » → notes, séquence au format courant.
-      onLoaded: () => convertLegacyDetails(editor),
+      onLoaded: () => {
+        convertLegacyDetails(editor)
+        // Étiquettes de flèche écrites avec un nom de départ d'une autre langue (ou d'avant).
+        localizeArrowLabels(editor)
+      },
     })
     // Fichier .tldr lié (ouvert ou enregistré depuis ce schéma), tenu à jour automatiquement.
     const stopFile = startFileSync(editor, docId)

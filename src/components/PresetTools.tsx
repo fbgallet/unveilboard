@@ -38,7 +38,7 @@ import {
   type PresetTarget,
 } from '@/lib/presets/presets'
 import { settingsStore } from '@/lib/storage'
-import { presetsCollapsedAtom, storeValue } from '@/lib/presentation/store'
+import { presetsCollapsedAtom, setStylePanelHidden, storeValue, stylePanelHiddenAtom } from '@/lib/presentation/store'
 import { storageModeAtom } from '@/lib/sync/documentSync'
 import { useT } from '@/i18n/client'
 import { presetName, presetRole } from '@/lib/presets/labels'
@@ -58,9 +58,18 @@ const save = (next: PresetSettings) => savePresetSettings(settingsStore(storageM
 
 /** Panneau de styles de tldraw, précédé de la palette des préréglages. */
 export function PresetStylePanel(props: TLUiStylePanelProps) {
+  const t = useT()
   const enabled = useValue('presets enabled', () => presetSettingsAtom.get().enabled, [])
+  // Replié : le panneau devient un bouton sous ceux du haut à droite (AiLauncher).
+  const hidden = useValue(stylePanelHiddenAtom)
+  if (hidden) return null
   return (
     <DefaultStylePanel {...props}>
+      <button className="style-panel-hide" onClick={() => setStylePanelHidden(true)} title={t.presets.hidePanel} aria-label={t.presets.hidePanel}>
+        <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M4.5 11.5 11.5 4.5M6.5 4.5h5v5" />
+        </svg>
+      </button>
       {enabled && <PresetPalette />}
       <DefaultStylePanelContent />
     </DefaultStylePanel>

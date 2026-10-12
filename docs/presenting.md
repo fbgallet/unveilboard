@@ -12,7 +12,7 @@ How a diagram becomes a presentation: steps, camera, narration and notes; the pr
 - **View** (`V`, or ⋯ menu › “View”): over the sequence, show the **whole diagram** (shapes still to come appear, the current step stands out; clicking one goes to its step) or **this step only**. Changing step brings back the sequence; the projector window follows.
 - **Camera per step**: follow the new shapes, show the whole diagram, or stay put.
 - **Narration panel**: a Markdown text for each step, shown next to the diagram (resizable, can be hidden), below it on a phone.
-- **Presentation mode**: keyboard and presentation-remote navigation, overview and recenter, laser pointer (color, width and fade-out delay are configurable), hand-drawn masking layer, legend, and an "unlocked" mode to edit the diagram during the presentation.
+- **Presentation mode**: keyboard and presentation-remote navigation, overview and recenter, laser pointer (color, width and fade-out delay are configurable; without clicking, the cursor becomes a glowing dot with a short fading trail), hand-drawn masking layer, legend, and an "unlocked" mode to edit the diagram during the presentation.
 - **Quick sequencing**: create shapes and add them to the current step, or to a new step before or after it, in one click.
 - **Handout**: ☰ › "Handout (print / PDF)…" gives one section per step, the diagram at that step (dimmed shapes in grey) and its narration, to print or save as PDF for students.
 

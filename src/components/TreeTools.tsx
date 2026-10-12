@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { atom, renderPlaintextFromRichText, useEditor, useValue, type Box, type Editor, type TLRichText, type TLShapeId } from 'tldraw'
 import { readSequence, writeSequence } from '@/lib/canvas/adapter'
 import { addStep, appearanceIndex, showAlongWith } from '@/lib/sequence/edit'
@@ -416,12 +416,28 @@ function ToolbarPopover({ label, title, className = '', children }: { label: Rea
       window.removeEventListener('keydown', onKey, { capture: true })
     }
   }, [open])
+  // Centré sous son bouton, le panneau est recalé pour rester dans le canevas (barre près d'un bord).
+  const panel = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = panel.current
+    if (!open || !el) return
+    el.style.transform = ''
+    const rect = el.getBoundingClientRect()
+    const bounds = el.closest('.tl-container')?.getBoundingClientRect() ?? { left: 0, right: window.innerWidth }
+    const margin = 8
+    const shift = rect.left < bounds.left + margin ? bounds.left + margin - rect.left : Math.min(0, bounds.right - margin - rect.right)
+    if (shift) el.style.transform = `translateX(calc(-50% + ${shift}px))`
+  }, [open])
   return (
     <div ref={root} className="relative">
       <button className={`qa-btn tree-popover-btn ${open ? 'qa-btn-on' : ''}`} onClick={() => setOpen(!open)} title={title} aria-label={title} aria-expanded={open}>
         {label}
       </button>
-      {open && <div className={`tree-popover ${className}`}>{children}</div>}
+      {open && (
+        <div ref={panel} className={`tree-popover ${className}`}>
+          {children}
+        </div>
+      )}
     </div>
   )
 }

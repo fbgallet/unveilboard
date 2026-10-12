@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useEditor, useValue, type TLShapeId } from 'tldraw'
 import { useT } from '@/i18n/client'
 import { reviewAtom, reviewOpenAtom } from '@/lib/canvas/review'
-import { modeAtom } from '@/lib/presentation/store'
+import { modeAtom, setStylePanelHidden, stylePanelHiddenAtom } from '@/lib/presentation/store'
 import { aiSettingsOpenAtom } from './AiSettingsDialog'
 import { elementAiAtom } from './ElementAi'
 import { planPanelOpenAtom } from './PlanPanel'
@@ -118,6 +118,7 @@ export function AiLauncher() {
   const hasSource = useValue('has source', () => !!readPageSource(editor), [editor])
   const sourceOpen = useValue(sourcePanelOpenAtom)
   const dark = useValue('dark mode', () => editor.user.getIsDarkMode(), [editor])
+  const stylesHidden = useValue(stylePanelHiddenAtom)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -231,6 +232,17 @@ export function AiLauncher() {
         {/* Remarques de relecture en attente : un point (le nombre est dans le menu). */}
         {remarks > 0 && <span className="ai-launcher-dot" />}
       </button>
+      {/* Panneau de styles replié : un bouton, sous les autres, pour le rouvrir. */}
+      {stylesHidden && !open && (
+        <button className="ai-launcher-icon ai-launcher-styles" onClick={() => setStylePanelHidden(false)} title={t.presets.showPanel} aria-label={t.presets.showPanel}>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.8-1.9 0-.5-.2-.9-.5-1.3-.3-.3-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z" />
+            <circle cx="7.5" cy="11" r="1" fill="currentColor" />
+            <circle cx="10" cy="7" r="1" fill="currentColor" />
+            <circle cx="15" cy="7" r="1" fill="currentColor" />
+          </svg>
+        </button>
+      )}
       {open && (
         <div className="ai-launcher-menu" role="menu" aria-label={t.launcher.menuLabel}>
           {groups.map((group, g) => (

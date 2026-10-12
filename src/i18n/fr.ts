@@ -489,6 +489,8 @@ export const fr: Messages = {
   },
 
   presets: {
+    hidePanel: 'Replier le panneau des styles (il devient un bouton en haut à droite)',
+    showPanel: 'Afficher le panneau des styles (préréglages, couleurs, formes, traits)',
     docOnly: (name) => `${name} (préréglage de ce schéma)`,
     manage: 'Gérer les préréglages…',
     section: 'Préréglages',
@@ -755,11 +757,11 @@ export const fr: Messages = {
   elementStyle: {
     title: 'Couleurs',
     background: 'Fond',
-    backgroundHint: 'Couleur du fond de la boîte (son contour prend la même couleur)',
-    noBackground: 'Sans fond',
+    backgroundHint: 'Fond de la boîte : sans fond, uni (couleur du canevas) ou teinté. Une couleur teinte aussi le contour ; sans fond ou en fond uni, le contour garde sa couleur.',
+    noBackground: 'Sans fond (transparent)',
+    plainBackground: 'Fond uni (couleur du canevas)',
     intensity: 'Intensité du fond',
-    pale: 'Pâle',
-    vivid: 'Vif',
+    intensities: { solid: 'Pâle', fill: 'Vif', pattern: 'Hachuré' },
     text: 'Texte',
     button: 'Fond et couleur du texte',
     none: 'Aucune couleur à régler pour cette sélection.',

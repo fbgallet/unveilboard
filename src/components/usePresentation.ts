@@ -18,7 +18,7 @@ import { stateOf, stepToJump, stepsOf, type Stage, type StageView } from '@/lib/
 import { branchOf, foldLevelOf, foldsForLevel, getTreeIndex, relayoutAll, setFoldSource, treeDepths, treeRoots } from '@/lib/canvas/tree'
 import { noteOf, panelNoteIds } from '@/lib/canvas/notes'
 import { swallowNextKeyUp } from '@/lib/keyboard'
-import { applyLaserTiming } from '@/lib/canvas/laser'
+import { applyLaserTiming, followLaserPointer } from '@/lib/canvas/laser'
 import {
   activeSpotsAtom,
   activeStepIdAtom,
@@ -381,6 +381,13 @@ export function usePresentation(editor: Editor, { keyboard = true }: { keyboard?
 
   // 4. Durée d'affichage du laser, appliquée dès que le réglage change.
   useEffect(() => react('laser timing', () => applyLaserTiming(editor, laserSettingsAtom.get())), [editor])
+
+  // Laser actif, même sans clic : point lumineux et traînée de survol, en présentation (présentateur
+  // et lecteur) comme en édition (outil laser de tldraw).
+  useEffect(() => {
+    if (!keyboard) return
+    return followLaserPointer(editor, () => editor.getCurrentToolId() === 'laser')
+  }, [editor, keyboard])
 
   // 5. Clavier (compatible avec les télécommandes de présentation : PageUp / PageDown).
   useEffect(() => {

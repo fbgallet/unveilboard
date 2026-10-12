@@ -881,6 +881,9 @@ button.review-badge {
   border-color: var(--color-stone-300);
   background: linear-gradient(to top right, transparent calc(50% - 0.75px), var(--color-red-400) calc(50% - 0.75px), var(--color-red-400) calc(50% + 0.75px), transparent calc(50% + 0.75px));
 }
+.element-swatch-plain {
+  border-color: var(--color-stone-300);
+}
 .element-swatch-text {
   background: var(--color-stone-100);
 }
@@ -1242,6 +1245,13 @@ body.is-resizing {
 .progress .tools:has(.laser-popover),
 .progress .tools:has(.more-menu) {
   opacity: 1;
+}
+
+/* Laser actif au survol du canevas : le point lumineux remplace le curseur du système
+   (pas sur les menus et popovers, où la flèche revient). */
+.tl-container.laser-hover .tl-canvas,
+.tl-container.laser-hover .tl-canvas * {
+  cursor: none !important;
 }
 
 .tl-shape.pres {
@@ -1788,6 +1798,31 @@ svg.preset-swatch {
 .ai-launcher {
   display: flex;
   gap: 2px;
+}
+.ai-launcher-styles {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  border: 1px solid var(--color-stone-200);
+  background: var(--color-white);
+}
+/* Bouton discret qui replie le panneau de styles (en haut à droite du panneau) */
+.style-panel-hide {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  color: var(--color-stone-400);
+}
+.style-panel-hide:hover {
+  background: var(--color-stone-200);
+  color: var(--color-stone-800);
 }
 .ai-launcher-icon-quiet {
   opacity: 0.55;
