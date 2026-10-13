@@ -2341,6 +2341,24 @@ svg.preset-swatch {
   border-color: var(--color-amber-400);
 }
 
+/* Exemple déjà ouvert (ExampleDialog) : dans .site, il en suit le thème. */
+.example-dialog {
+  width: min(540px, calc(100% - 32px));
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--color-stone-200);
+  border-radius: 14px;
+  background: var(--color-white);
+  color: var(--color-stone-900);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.18);
+}
+.example-dialog-body {
+  padding: 20px 24px;
+}
+.example-dialog::backdrop {
+  background: rgb(28 25 23 / 0.35);
+}
+
 /* ---------- Accueil : aperçu animé ---------- */
 
 .hero-demo {

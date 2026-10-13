@@ -53,6 +53,13 @@ export const fr: Messages = {
     },
     empty: 'Aucun schéma pour l’instant. Commencez par l’exemple pour voir le principe.',
     confirmDelete: (title) => `Supprimer « ${title} » ? Cette action est définitive.`,
+    existingExample: {
+      title: 'Vous avez déjà ouvert cet exemple',
+      text: (title) =>
+        `Votre schéma « ${title} » garde vos modifications. Vous pouvez le rouvrir, ou repartir de l’exemple d’origine dans un nouveau schéma.`,
+      reopen: 'Rouvrir mon schéma',
+      restart: 'Recommencer',
+    },
   },
 
   landing: {

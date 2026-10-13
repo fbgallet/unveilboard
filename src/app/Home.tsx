@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useId, useMemo, useState } from 'react'
-import { documentStore, forgetLocalCache } from '@/lib/storage'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { documentStore, forgetLocalCache, settingsStore } from '@/lib/storage'
 import { recentlyOpened } from '@/lib/storage/recent'
 import { MAX_TAG_LENGTH, cleanTag, normalizeTags, sameTag } from '@/lib/tags'
 import { droppedTldrFile, openTldrFile, pickTldrFile, type PickedFile } from '@/lib/storage/tldrFile'
@@ -37,6 +37,10 @@ function exampleTitle(name: DemoName, locale: string) {
   return name === 'liberty' ? 'Démo : La liberté est-elle une illusion ?' : 'Demo: The water cycle'
 }
 
+/** Réglage : le schéma créé pour chaque exemple, rouvert au lieu d'en créer un autre. */
+const EXAMPLE_COPIES = 'example-copies'
+type ExampleCopies = Partial<Record<DemoName, string>>
+
 /**
  * Accueil. Instance publique (mode local) : présentation de l'app, puis les schémas du visiteur.
  * Instance personnelle (mode cloud) : la liste des schémas, sans présentation.
@@ -51,6 +55,7 @@ export function Home({ storage, legal = false }: { storage: StorageMode; legal?:
       {...docs.dropHandlers}
     >
       {storage === 'local' ? <PublicHome docs={docs} legal={legal} /> : <PersonalHome docs={docs} />}
+      {docs.exampleDialog && <ExampleDialog {...docs.exampleDialog} />}
     </main>
   )
 }
@@ -95,14 +100,43 @@ function useDocuments(storage: StorageMode) {
     }
   }
 
+  /** Exemple déjà ouvert : son schéma, en attendant que l'on choisisse de le rouvrir ou de repartir de l'original. */
+  const [existingExample, setExistingExample] = useState<{ example: DemoName; id: string; title: string } | null>(null)
+
   /** demo : true pour l'exemple de la langue (la liberté en français, le cycle de l'eau en anglais), ou un exemple précis. */
   const create = (demo: boolean | DemoName) =>
     run(async () => {
       const example: DemoName | null = demo === true ? (locale === 'fr' ? 'liberty' : 'water') : demo || null
-      const title = example ? exampleTitle(example, locale) : t.common.untitled
-      const id = await store.create(title)
-      router.push(example ? `/d/${id}?demo=${example}` : `/d/${id}`)
+      if (!example) return router.push(`/d/${await store.create(t.common.untitled)}`)
+      // Un exemple déjà ouvert rouvre son schéma, sauf si l'on choisit de repartir de l'original (ExampleDialog).
+      const id = (await settingsStore(storage).get<ExampleCopies>(EXAMPLE_COPIES))?.[example]
+      if (id && (await store.version(id)) !== null) {
+        setExistingExample({ example, id, title: list?.find((d) => d.id === id)?.title ?? exampleTitle(example, locale) })
+        return setBusy(false)
+      }
+      await copyExample(example)
     })
+
+  /** Nouveau schéma à partir de l'exemple d'origine, retenu comme celui de cet exemple. */
+  async function copyExample(example: DemoName) {
+    const settings = settingsStore(storage)
+    const id = await store.create(exampleTitle(example, locale))
+    await settings.set(EXAMPLE_COPIES, { ...(await settings.get<ExampleCopies>(EXAMPLE_COPIES)), [example]: id })
+    router.push(`/d/${id}?demo=${example}`)
+  }
+
+  const exampleDialog = existingExample && {
+    title: existingExample.title,
+    reopen: () => {
+      setBusy(true)
+      router.push(`/d/${existingExample.id}`)
+    },
+    restart: () => {
+      setExistingExample(null)
+      void run(() => copyExample(existingExample.example))
+    },
+    cancel: () => setExistingExample(null),
+  }
 
   // Un fichier déjà ouvert rouvre son schéma ; sinon, il est importé (et lié, sur Chrome et Edge).
   const openFile = (picked: PickedFile) =>
@@ -157,7 +191,47 @@ function useDocuments(storage: StorageMode) {
     },
   }
 
-  return { list, opened, error, busy, dragging, create, chooseFile, remove, setTags, removeTagEverywhere, dropHandlers }
+  return { list, opened, error, busy, dragging, create, exampleDialog, chooseFile, remove, setTags, removeTagEverywhere, dropHandlers }
+}
+
+/** Exemple déjà ouvert : rouvrir son schéma, ou repartir de l'exemple d'origine dans un nouveau schéma. Échap : annuler. */
+function ExampleDialog({ title, reopen, restart, cancel }: { title: string; reopen: () => void; restart: () => void; cancel: () => void }) {
+  const t = useT()
+  const e = t.home.existingExample
+  const ref = useRef<HTMLDialogElement>(null)
+  const titleId = useId()
+  useEffect(() => ref.current?.showModal(), [])
+  return (
+    <dialog
+      ref={ref}
+      aria-labelledby={titleId}
+      className="example-dialog"
+      onCancel={(ev) => {
+        ev.preventDefault()
+        cancel()
+      }}
+      onClick={(ev) => ev.target === ev.currentTarget && cancel()}
+    >
+      {/* Le cadre intérieur : un clic dans la marge du dialogue ne compte pas comme un clic sur le fond. */}
+      <div className="example-dialog-body">
+        <h2 id={titleId} className="font-serif text-xl text-stone-900">
+          {e.title}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-stone-600">{e.text(title)}</p>
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
+          <button className="btn mr-auto" onClick={cancel}>
+            {t.common.cancel}
+          </button>
+          <button className="btn" onClick={restart}>
+            {e.restart}
+          </button>
+          <button className="btn-primary" onClick={reopen} autoFocus>
+            {e.reopen}
+          </button>
+        </div>
+      </div>
+    </dialog>
+  )
 }
 
 // ---------- Instance publique ----------

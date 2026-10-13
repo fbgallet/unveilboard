@@ -54,6 +54,13 @@ export const en = {
     },
     empty: 'No diagrams yet. Start with the example to see how it works.',
     confirmDelete: (title: string) => `Delete “${title}”? This cannot be undone.`,
+    existingExample: {
+      title: 'You already opened this example',
+      text: (title: string) =>
+        `Your diagram “${title}” keeps your changes. You can reopen it, or start over from the original example in a new diagram.`,
+      reopen: 'Reopen my diagram',
+      restart: 'Start over',
+    },
   },
 
   landing: {
