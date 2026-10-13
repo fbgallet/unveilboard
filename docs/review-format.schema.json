@@ -155,6 +155,12 @@
                         "uncertain"
                       ]
                     },
+                    "url": {
+                      "description": "A web page where the source, quotation or fact can be checked (one actually consulted).",
+                      "type": "string",
+                      "maxLength": 2000,
+                      "pattern": "^https?:\\/\\/\\S+$"
+                    },
                     "fallacy": {
                       "description": "A deliberately fallacious argument (an exercise): the name of the fallacy or bias. Shown to the teacher, hidden from the audience.",
                       "type": "string",
@@ -410,6 +416,18 @@
                             "likely",
                             "uncertain"
                           ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "url": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 2000,
+                          "pattern": "^https?:\\/\\/\\S+$"
                         },
                         {
                           "type": "null"
@@ -736,6 +754,60 @@
                       "description": "Text of a plain arrow (without relation).",
                       "type": "string",
                       "maxLength": 300
+                    },
+                    "point": {
+                      "description": "`to` is an image: the arrow points at this spot of it (fractions of its width and height from its top-left corner). A caption of the image.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "y": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "area": {
+                      "description": "`to` is an image: the arrow points at this part of it, which is circled (top-left corner, width and height, in fractions of the image).",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "y": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "w": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "h": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y",
+                        "w",
+                        "h"
+                      ],
+                      "additionalProperties": false
                     },
                     "op": {
                       "type": "string",

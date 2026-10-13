@@ -5,14 +5,16 @@
 
 import { atom, renderPlaintextFromRichText, type Editor, type TLPageId, type TLRichText, type TLShapeId } from 'tldraw'
 import type { Amount } from '../ai/aims'
-import { aiSettingsAtom, askAi, type AiSettings, type CallOptions } from '../ai/client'
-import { estimatedCost } from '../ai/models'
-import type { PromptAim, PromptInput, PromptMethod } from '../ai/prompts'
+import type { Citation } from '../ai/chat'
+import { aiSettingsAtom, askAi, checkSeesImages, serverAiAtom, type AiSettings, type CallOptions } from '../ai/client'
+import { MAX_PROMPT_IMAGE, type PromptAim, type PromptImage, type PromptInput, type PromptMethod } from '../ai/prompts'
 import type { MapIssue } from '../map/check'
 import type { ReadResult } from '../map/read'
 import { findPrompt, promptLibraryAtom } from '../prompts/library'
 import { methodOf, offersTask } from '../prompts/template'
 import { editorPromptInput, readPasted } from './assistant'
+import { imageDataUri, imagesAround, isImage, readingModel, readMissingImages } from './imageReading'
+import { estimatedCost, TRANSCRIPTION_MODEL } from '../ai/models'
 import { applyPatch } from './mapPatch'
 import { reverifyExcerpts } from './passage'
 import { readPageMethod } from './pageMethod'
@@ -30,7 +32,8 @@ export interface ElementRequest {
   withSource: boolean
   /** En suggestions à accepter ou écarter (sinon : ajouté directement). */
   ghost: boolean
-  amount: Amount
+  /** Ampleur ; sans : la visée couvre tout ce qu'il y a à prendre (reproduire un schéma). */
+  amount?: Amount
   aim?: PromptAim
   method?: PromptMethod
   /** Compléter : ce qui a déjà été proposé à partir de l'élément. */
@@ -39,6 +42,10 @@ export interface ElementRequest {
   deepen?: TLShapeId[]
   /** Régénérer une proposition, ou toutes (le temps de cette demande). */
   redo?: PromptInput['redo']
+  /** Chercher sur le web (gardé pour compléter et approfondir). */
+  web?: boolean
+  /** La visée demande de voir l'image (des coordonnées) : un modèle qui la voit. */
+  sees?: boolean
 }
 
 export interface ElementOutcome {
@@ -52,6 +59,8 @@ export interface ElementOutcome {
   texts: string[]
   /** Consommation de la dernière demande (affichée dans la barre). */
   usage?: RunUsage
+  /** Pages consultées sur le web, toutes demandes de ce développement comprises. */
+  citations?: Citation[]
 }
 
 /** Le dernier développement appliqué, sur sa page : la barre des suggestions le prolonge. */
@@ -84,11 +93,12 @@ export function elementPromptInput(editor: Editor, req: ElementRequest, delivery
       ...(req.deepen && { selectionIds: req.deepen }),
     }),
     notes: req.notes,
-    amount: req.amount,
+    ...(req.amount && { amount: req.amount }),
     ...(req.aim && { aim: req.aim }),
     ...(req.method && { method: req.method }),
     ...(req.avoid?.length && { avoid: req.avoid }),
     ...(req.redo && { redo: req.redo }),
+    ...(req.web && { web: true }),
   }
 }
 
@@ -123,7 +133,7 @@ export function applyElementAnswer(
   editor: Editor,
   req: ElementRequest,
   result: ReadResult,
-  opts: { into?: ElementRun; replacing?: () => void; placed?: (boxes: TLShapeId[]) => void; usage?: RunUsage } = {}
+  opts: { into?: ElementRun; replacing?: () => void; placed?: (boxes: TLShapeId[]) => void; usage?: RunUsage; citations?: Citation[] } = {}
 ): { run: ElementRun } | { issues: MapIssue[] } {
   if (!result.ok || result.kind !== 'patch') return { issues: result.issues.filter((i) => i.level === 'error') }
   const mark = editor.markHistoryStoppingPoint('développement par l’IA')
@@ -151,36 +161,79 @@ export function applyElementAnswer(
           boxes: [...into.outcome.boxes, ...boxes],
           texts: [...into.outcome.texts, ...texts],
           ...usage,
+          ...citationsOf(into.outcome.citations, opts.citations),
         },
       }
-    : { page: editor.getCurrentPageId(), request, outcome: { added, skipped, ...(result.patch.summary && { summary: result.patch.summary }), boxes, texts, ...usage } }
+    : {
+        page: editor.getCurrentPageId(),
+        request,
+        outcome: { added, skipped, ...(result.patch.summary && { summary: result.patch.summary }), boxes, texts, ...usage, ...citationsOf(opts.citations) },
+      }
   lastElementRunAtom.set(run)
   return { run }
 }
 
-/** Options d'un appel : `settings` remplace les réglages de l'IA le temps de la demande (modèle, réflexion). */
-export type ElementCallOptions = CallOptions & { settings?: AiSettings }
+/** Pages consultées, une fois chacune. */
+function citationsOf(...lists: (Citation[] | undefined)[]): { citations?: Citation[] } {
+  const all = new Map(lists.flatMap((l) => l ?? []).map((c) => [c.url, c]))
+  return all.size ? { citations: [...all.values()] } : {}
+}
+
+/**
+ * Options d'un appel : `settings` remplace les réglages de l'IA le temps de la demande (modèle,
+ * réflexion) ; `web` (régénérer) active ou coupe la recherche sur le web.
+ */
+export type ElementCallOptions = CallOptions & { settings?: AiSettings; web?: boolean }
 
 /** Modèle demandé, selon le fournisseur (pour estimer le coût quand le fournisseur ne le donne pas). */
 function modelOf(settings: AiSettings) {
   return settings.kind === 'openrouter' ? settings.openrouterModel : settings.kind === 'server' ? settings.serverModel : settings.kind === 'custom' ? settings.customModel : ''
 }
 
-async function ask(editor: Editor, req: ElementRequest, opts: ElementCallOptions): Promise<{ result: ReadResult; usage: RunUsage }> {
+async function ask(editor: Editor, req: ElementRequest, opts: ElementCallOptions): Promise<{ result: ReadResult; usage: RunUsage; citations?: Citation[] }> {
   const { settings: override, ...call } = opts
-  const settings = override ?? aiSettingsAtom.get()
-  const run = await askAi(settings, elementPromptInput(editor, req, 'api'), (answer) => readElementAnswer(editor, answer), call)
+  const chosen = override ?? aiSettingsAtom.get()
+  const settings = req.sees ? await seeingSettings(chosen) : chosen
+  // Les images envoyées avec la demande : lues d'abord, si elles ne l'ont pas été.
+  await readMissingImages(editor, imagesAround(editor, req.focus, req.wholeMap), { settings, signal: call.signal })
+  const input = elementPromptInput(editor, req, 'api')
+  const image = await focusImage(editor, req.focus, input.focus, settings)
+  const run = await askAi(settings, { ...input, ...(image && { images: [image] }) }, (answer) => readElementAnswer(editor, answer), call)
   const tokens = (run.usage.promptTokens ?? 0) + (run.usage.completionTokens ?? 0)
   // Forfait ChatGPT : pas de coût par demande. Sinon, celui du fournisseur, ou estimé d'après le catalogue.
   const estimate = settings.kind === 'chatgpt' || run.usage.cost !== undefined ? undefined : estimatedCost(run.model || modelOf(settings), run.usage)
   const cost = settings.kind === 'chatgpt' ? undefined : (run.usage.cost ?? estimate)
-  return { result: run.result, usage: { tokens, ...(cost !== undefined && { cost }), ...(estimate !== undefined && { estimated: true }) } }
+  return { result: run.result, usage: { tokens, ...(cost !== undefined && { cost }), ...(estimate !== undefined && { estimated: true }) }, citations: run.citations }
+}
+
+/**
+ * L'image de l'élément d'où l'on part, jointe à la demande si le modèle la voit ; sinon (ou trop
+ * lourde), il travaille sur sa lecture.
+ */
+async function focusImage(editor: Editor, focus: TLShapeId, ref: string | undefined, settings: AiSettings): Promise<PromptImage | undefined> {
+  const shape = editor.getShape(focus)
+  if (!ref || !isImage(shape) || !(await checkSeesImages(settings, serverAiAtom.get()))) return undefined
+  const dataUri = await imageDataUri(editor, shape).catch(() => undefined)
+  return dataUri && dataUri.length <= MAX_PROMPT_IMAGE ? { ref, dataUri } : undefined
+}
+
+/**
+ * Réglages d'une demande qui doit voir l'image : ceux choisis si le modèle la voit, sinon le modèle
+ * de lecture des images (OpenRouter, instance) ; un serveur compatible OpenAI garde le sien.
+ */
+export async function seeingSettings(settings: AiSettings): Promise<AiSettings> {
+  const server = serverAiAtom.get()
+  if (await checkSeesImages(settings, server)) return settings
+  const model = readingModel(settings, server) ?? TRANSCRIPTION_MODEL
+  if (settings.kind === 'openrouter') return { ...settings, openrouterModel: model }
+  if (settings.kind === 'server' && server?.models.includes(model)) return { ...settings, serverModel: model }
+  return settings
 }
 
 /** Demande à l'IA (réglée), puis applique sa réponse. */
 export async function runElementRequest(editor: Editor, req: ElementRequest, opts: ElementCallOptions = {}) {
-  const { result, usage } = await ask(editor, req, opts)
-  return applyElementAnswer(editor, req, result, { usage })
+  const { result, usage, citations } = await ask(editor, req, opts)
+  return applyElementAnswer(editor, req, result, { usage, citations })
 }
 
 /** La suggestion en tête de sa branche suggérée : celle qui est rattachée à un élément du schéma. */
@@ -247,6 +300,7 @@ export async function regenerateSuggestion(editor: Editor, id: TLShapeId, direct
     ...base,
     ghost: true,
     deepen: undefined,
+    ...(opts.web !== undefined && { web: opts.web }),
     avoid: unique([...(base.avoid ?? []), ...(into?.outcome.texts ?? []), ...pendingTexts(editor, parent)]),
     redo: {
       direction,
@@ -262,12 +316,13 @@ export async function regenerateSuggestion(editor: Editor, id: TLShapeId, direct
     for (const m of marked) still.delete(m)
     regeneratingAtom.set(still)
   }
-  const { result, usage } = answer
+  const { result, usage, citations } = answer
   // La nouvelle proposition prend la place de l'ancienne parmi ses frères.
   const place = childPlace(editor, head)
   return applyElementAnswer(editor, req, result, {
     into,
     usage,
+    citations,
     replacing: () => rejectSuggestion(editor, head),
     placed: (boxes) => {
       const newHead = boxes.find((b) => getTreeIndex(editor).parent.get(b) === parent)
@@ -282,12 +337,13 @@ export async function regenerateSuggestion(editor: Editor, id: TLShapeId, direct
  */
 export async function regenerateRun(editor: Editor, run: ElementRun, direction: string, opts: ElementCallOptions = {}) {
   const avoid = unique([...(run.request.avoid ?? []), ...run.outcome.texts, ...pendingTexts(editor, run.request.focus)])
-  const req: ElementRequest = { ...run.request, avoid, redo: { direction } }
+  const req: ElementRequest = { ...run.request, avoid, redo: { direction }, ...(opts.web !== undefined && { web: opts.web }) }
   const replaced = run.request.ghost ? run.outcome.boxes.filter((b) => isSuggestion(editor.getShape(b))) : run.outcome.boxes
   const kept = run.outcome.boxes.filter((b) => !replaced.includes(b) && editor.getShape(b))
-  const { result, usage } = await ask(editor, req, opts)
+  const { result, usage, citations } = await ask(editor, req, opts)
   const outcome = applyElementAnswer(editor, req, result, {
     usage,
+    citations,
     replacing: () => (run.request.ghost ? replaced.forEach((b) => editor.getShape(b) && rejectSuggestion(editor, b)) : removeAdded(editor, replaced)),
   })
   // Ce qui avait été accepté reste du développement (à approfondir avec le reste).

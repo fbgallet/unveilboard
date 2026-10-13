@@ -70,6 +70,7 @@ Les identifiants (`id`) sont courts et libres (sans espace), uniques dans tout l
 | `reasoning` | Type de raisonnement de cette relation : `deduction`, `induction`, `analogy`, `abduction` (meilleure explication), `absurd`, `afortiori`, `authority`, `example`. |
 | `source` | Source : auteur, théorie, position, référence. |
 | `certainty` | Une source ou une citation donnée de mémoire (par une IA) : `established`, `likely` (étiquetée « source à vérifier ») ou `uncertain` (« source incertaine ») ; absent : non évalué. Masqué pour le public. |
+| `url` | Une page web (`http` ou `https`) où vérifier la source, la citation ou le fait, donnée par une IA après une recherche sur le web (affichée « Page web » dans l'onglet Élément). |
 | `fallacy` | Un argument fallacieux à dessein (un exercice) : le nom du sophisme ou du biais, affiché sur la boîte pour l'enseignant, masqué pour le public. |
 | `modality` | Énoncés et présupposés : `descriptive` ou `prescriptive` (normatif). |
 | `note` | Développement en Markdown, affiché à côté du schéma pendant la présentation. |
@@ -79,6 +80,7 @@ Les identifiants (`id`) sont courts et libres (sans espace), uniques dans tout l
 | `tree` | Sur une racine : `{ "kind": "argument" \| "mindmap", "direction": "right" \| "left" \| "down" \| "up" \| "both" }` (direction par défaut : `right`). Une carte d'argument donne leur fonction et leur couleur aux éléments reliés. |
 | `side` | Arbre `both` : côté (`left`, `right`) d'un enfant de la racine. |
 | `origin`, `excerpt` | Schéma tiré d'un texte : l'élément y est `text` (énoncé) ou `reconstruction` (reconstruit par l'analyse, comme un présupposé implicite) ; `excerpt` cite le passage mot pour mot. |
+| `image` | En lecture seule : l'élément est une image, donnée par ce qu'un modèle multimodal y a lu (`kind`, `description`, `text` visible, `identification` avec sa `certainty`), que l'utilisateur peut corriger. L'image elle-même n'est pas dans le JSON : à l'import, une boîte portant sa description la remplace. |
 | `function` | Lecture seule, à l'export : fonction de l'élément dans une carte d'argument (Objection, Justification…). Ignorée à l'import. |
 
 ### Sens de lecture des relations
@@ -86,6 +88,8 @@ Les identifiants (`id`) sont courts et libres (sans espace), uniques dans tout l
 Une relation se lit **« élément RELATION parent »** : « la prémisse *soutient* la thèse », « l'exemple *illustre* l'énoncé ». Certaines relations de départ se lisent dans l'autre sens, **« parent RELATION élément »** : `implies`, `presupposes`, `raises`, `fallsUnder`, `dividesInto`, `hasFeature`, `causes`, `hasStake` (« la thèse *présuppose*… », « le courage *relève des* vertus »). Le vocabulaire l'indique pour chaque relation (`direction` : `toParent` ou `toChild`).
 
 Dans un lien (`links`), la relation se lit toujours **« from RELATION to »**.
+
+Un lien d'une boîte vers une image, sans relation, est une **légende** de l'image : `point` (`{ "x", "y" }`) est l'endroit que vise la flèche, `area` (`{ "x", "y", "w", "h" }`) une partie de l'image qui est entourée, en fractions de la largeur et de la hauteur de l'image depuis son coin supérieur gauche (de 0 à 1).
 
 ## Le vocabulaire
 
@@ -148,7 +152,7 @@ Pour modifier un schéma existant, une IA (ou un outil) n'a pas à le réécrire
 | `op` | Effet |
 |---|---|
 | `add` | Ajoute un élément (tous les champs d'un élément ; `id` nouveau). Son `parent` est un élément existant ou ajouté plus haut. `rationale` : pourquoi l'IA le propose (une phrase), affiché pour une suggestion. |
-| `update` | Change des champs d'un élément (`text`, `type`, `relation`, `reasoning`, `source`, `certainty`, `fallacy`, `modality`, `note`, `folded`, `task`, `style`, `origin`, `excerpt`, `tree`) ; `null` retire un champ (`style` : seules les clés données changent ; `null` rend l'aspect du type). |
+| `update` | Change des champs d'un élément (`text`, `type`, `relation`, `reasoning`, `source`, `certainty`, `url`, `fallacy`, `modality`, `note`, `folded`, `task`, `style`, `origin`, `excerpt`, `tree`) ; `null` retire un champ (`style` : seules les clés données changent ; `null` rend l'aspect du type). |
 | `move` | Rattache un élément, avec sa branche, à un autre parent (`relation` facultative : sinon, il garde la sienne). |
 | `remove` | Supprime un élément avec toute sa branche (et les liens qui les touchent), ou un lien. Les étapes ne le visent plus. |
 | `link` | Ajoute un lien transversal. |

@@ -44,6 +44,8 @@ import { unfoldBranchLive } from './usePresentation'
 import { useT } from '@/i18n/client'
 import { swallowNextKeyUp } from '@/lib/keyboard'
 import { elementAiAtom } from './ElementAi'
+import { openSourceDialogWithImage } from './SourceDialog'
+import { imageGenAtom } from './ImageGen'
 import { openAssistant } from './MapJsonDialog'
 import { ElementStyleControls, ElementStylePreview } from './ElementStyle'
 
@@ -190,6 +192,30 @@ export function TreeToolbar({ editor }: { editor: Editor }) {
     },
     [editor]
   )
+  // Une image sélectionnée : ses actions d'IA (la développer, en tirer un nouveau schéma).
+  const image = useValue(
+    'image toolbar',
+    () => {
+      const shape = editor.getOnlySelectedShape()
+      return shape?.type === 'image' && editor.isIn('select.idle') ? shape.id : null
+    },
+    [editor]
+  )
+  if (image) {
+    return (
+      <div className="tree-toolbar" ref={clearOfStylePanel}>
+        <button className="qa-btn" onClick={() => elementAiAtom.set(image)} title={t.imageReading.aiHint}>
+          {t.elementAi.button}
+        </button>
+        <button className="qa-btn" onClick={() => openSourceDialogWithImage(image)} title={t.imageReading.newDiagramHint}>
+          {t.imageReading.newDiagram}
+        </button>
+        <button className="qa-btn" onClick={() => imageGenAtom.set({ sources: [image] })} title={t.imageGen.editHint}>
+          {t.imageGen.editButton}
+        </button>
+      </div>
+    )
+  }
   if (!info) return null
   const id = info.id as TLShapeId
 

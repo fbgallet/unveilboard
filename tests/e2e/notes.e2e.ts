@@ -50,11 +50,13 @@ test('note en édition : onglet Élément, marque ¶, menu contextuel', async ({
   await panel.getByRole('button', { name: '110 %' }).click()
   expect(await size()).toBe(before)
 
-  // Menu IA : une demande toute faite ouvre le panneau de l'IA prérempli.
+  // Menu IA : une visée (famille dépliée au besoin) ouvre le panneau de l'IA, la visée choisie.
   await panel.getByRole('button', { name: 'AI', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Argue' }).click()
   await page.getByRole('menuitem', { name: 'Objections' }).click()
-  await expect(page.locator('textarea').filter({ hasText: /objections/i }).first()).toBeVisible()
-  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  const elementAi = page.getByRole('dialog', { name: 'Ask the AI from this element' })
+  await expect(elementAi.getByRole('button', { name: 'Objections' })).toHaveAttribute('aria-pressed', 'true')
+  await elementAi.getByRole('button', { name: 'Close', exact: true }).click()
 
   // Onglet Séquence, objet désélectionné : la marque ¶ le resélectionne et rouvre l'onglet Élément.
   await tabs.getByRole('tab', { name: 'Sequence' }).click()

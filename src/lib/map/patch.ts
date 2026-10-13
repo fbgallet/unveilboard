@@ -9,7 +9,7 @@ import { z } from 'zod'
 import { MODALITIES, REASONINGS } from '../presets/presets'
 import { TREE_DIRECTIONS } from '../tree/layout'
 import { checkMap, type KnownVocabulary, type MapIssue } from './check'
-import { CERTAINTIES, ElementSchema, ElementStyleSchema, LinkSchema, StepSchema, TASK_STATES, VocabularySchema, type MapElement, type UnveilMap } from './format'
+import { CERTAINTIES, ElementSchema, ElementStyleSchema, LinkSchema, StepSchema, TASK_STATES, VocabularySchema, WebUrl, type MapElement, type UnveilMap } from './format'
 
 export const PATCH_FORMAT = 'unveilboard/patch'
 export const PATCH_VERSION = 1
@@ -19,7 +19,7 @@ const VocabularyId = z.string().min(1).max(64).regex(/^\S+$/)
 
 const Rationale = z.string().max(500).optional().describe('Why you propose it, in one sentence, for the user.')
 
-const AddOp = ElementSchema.omit({ function: true })
+const AddOp = ElementSchema.omit({ function: true, image: true })
   .extend({ op: z.literal('add'), rationale: Rationale })
   .describe('Add an element (a new id). With `parent` (an existing element or one added earlier), it joins that tree.')
 
@@ -33,6 +33,7 @@ const UpdateOp = z
     reasoning: z.enum(REASONINGS).nullable().optional(),
     source: z.string().max(300).nullable().optional(),
     certainty: z.enum(CERTAINTIES).nullable().optional(),
+    url: WebUrl.nullable().optional(),
     fallacy: z.string().max(100).nullable().optional(),
     modality: z.enum(MODALITIES).nullable().optional(),
     note: z.string().max(20000).nullable().optional(),
@@ -251,7 +252,9 @@ export function mapAsBranch(map: UnveilMap, parent: string, taken: Set<string>):
   const ids = new Set(map.elements.map((e) => e.id))
   const operations: PatchOperation[] = map.elements.map((e) => {
     const root = !e.parent || !ids.has(e.parent)
-    return { op: 'add', ...omit(e, ['function', 'tree', 'side']), id: rename.get(e.id)!, parent: root ? parent : rename.get(e.parent!)! }
+    // Une image (dont le JSON ne porte que la lecture) : une boîte avec sa description.
+    const text = e.text.trim() || e.image?.description || ''
+    return { op: 'add', ...omit(e, ['function', 'tree', 'side', 'image']), text, id: rename.get(e.id)!, parent: root ? parent : rename.get(e.parent!)! }
   })
   for (const l of map.links ?? []) {
     if (rename.has(l.from) && rename.has(l.to)) operations.push({ op: 'link', ...l, id: rename.get(l.id)!, from: rename.get(l.from)!, to: rename.get(l.to)! })

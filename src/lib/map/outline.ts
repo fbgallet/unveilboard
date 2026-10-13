@@ -327,7 +327,9 @@ export function mapToMarkdownList(
     const glyphs = opts.checkboxes === 'glyphs'
     const box = e.task === 'done' ? (glyphs ? '☑ ' : '[x] ') : e.task === 'todo' ? (glyphs ? '☐ ' : '[ ] ') : ''
     // Une boîte de plusieurs lignes (ou une liste) tient sur une ligne.
-    const text = e.text
+    // Une image sans légende : ce qu'elle est, ou le début de sa description.
+    const caption = e.text.trim() || (e.image && (e.image.identification || e.image.description.split('\n')[0].slice(0, 200))) || ''
+    const text = caption
       .split('\n')
       .map((l) => l.replace(/^\s*(?:[-*+]|\d+[.)])\s+/, '').trim())
       .filter(Boolean)

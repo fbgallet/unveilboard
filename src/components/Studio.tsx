@@ -9,6 +9,7 @@ import 'tldraw/tldraw.css'
 import { LaserOverlayUtil } from '@/lib/canvas/laser'
 import { SpotlightShapeUtil } from '@/lib/canvas/spotlight'
 import { registerTreeSideEffects, withBranchesToDelete } from '@/lib/canvas/tree'
+import { registerImageAreaSideEffects } from '@/lib/canvas/imageLabels'
 import { convertLegacyDetails } from '@/lib/canvas/notes'
 import { localizeArrowLabels } from '@/lib/canvas/presets'
 import { isHiddenInEdit } from '@/lib/canvas/visibility'
@@ -42,12 +43,15 @@ import { Handout, handoutOpenAtom } from './Handout'
 import { AssistantDialog, MapImportDialog, assistantOpenAtom, mapImportOpenAtom } from './MapJsonDialog'
 import { loadPresetSettings, registerPresetSideEffects } from '@/lib/canvas/presets'
 import { installPageApi } from '@/lib/canvas/assistant'
-import { loadAiSettings, serverAiAtom } from '@/lib/ai/client'
+import { loadAiSettings, serverAiAtom, type ServerAi } from '@/lib/ai/client'
 import { AiSettingsDialog, aiSettingsOpenAtom } from './AiSettingsDialog'
 import { PromptLibraryDialog } from './PromptLibraryDialog'
 import { loadPromptLibrary, promptLibraryOpenAtom } from '@/lib/prompts/library'
 import { SuggestionBadges, SuggestionBar } from './Suggestions'
 import { ElementAiPanel, elementAiAtom } from './ElementAi'
+import { ImageBadges, ImageGenPanel, imageGenAtom } from './ImageGen'
+import { InsertImageMenu, insertImageMenuAtom, setInsertFile } from './InsertImageMenu'
+import { ImageSearchPanel, imageSearchAtom } from './ImageSearch'
 import { SourceDialog, sourceDialogOpenAtom } from './SourceDialog'
 import { ReviewBadges, ReviewPanel } from './ReviewPanel'
 import { PlanPanel } from './PlanPanel'
@@ -67,6 +71,7 @@ function CanvasBadges() {
       <StepBadges />
       <FoldBadges />
       <SuggestionBadges />
+      <ImageBadges />
       <ReviewBadges />
       <NoteMarkers />
     </>
@@ -76,6 +81,7 @@ function CanvasBadges() {
 function InFrontOfTheCanvas() {
   return (
     <>
+      <InsertImageMenu />
       <CameraAreaEditor />
       <SpotlightOverlay />
     </>
@@ -107,6 +113,22 @@ const overrides: TLUiOverrides = {
     }
     return actions
   },
+  // Bouton « image » de la barre d'outils : un choix (fichier, Wikimedia Commons, IA) ; au clavier
+  // (Ctrl/⌘ + U), le sélecteur de fichiers, comme avant.
+  tools(_editor, tools, helpers) {
+    const asset = tools['asset']
+    if (asset) {
+      setInsertFile(() => helpers.insertMedia())
+      tools['asset'] = {
+        ...asset,
+        onSelect(source) {
+          if (source === 'kbd') return asset.onSelect(source)
+          insertImageMenuAtom.set(!insertImageMenuAtom.get())
+        },
+      }
+    }
+    return tools
+  },
 }
 
 // En édition, une branche ou un détail repliés sont réellement masqués (ni affichés, ni sélectionnables).
@@ -132,7 +154,7 @@ export default function Studio({
   /** Instance publique : publication d'un lien court ouverte à tous (partages publics). */
   publicSharing: boolean
   /** IA de l'instance (clé côté serveur), si elle en a une. */
-  serverAi: { model: string; models: string[] } | null
+  serverAi: ServerAi | null
 }) {
   const t = useT()
   const router = useRouter()
@@ -166,6 +188,8 @@ export default function Studio({
     // Fichier .tldr lié (ouvert ou enregistré depuis ce schéma), tenu à jour automatiquement.
     const stopFile = startFileSync(editor, docId)
     const stopTree = registerTreeSideEffects(editor)
+    // Zones entourées par les légendes d'une image : elles suivent l'image.
+    const stopImageAreas = registerImageAreaSideEffects(editor)
     const stopPresets = registerPresetSideEffects(editor)
     // Une liste collée devient une carte mentale (ou des branches de la boîte sur laquelle on la colle).
     const stopPaste = registerListPaste(editor)
@@ -180,6 +204,7 @@ export default function Studio({
     return () => {
       stop()
       stopFile()
+      stopImageAreas()
       stopTree()
       stopPresets()
       stopPaste()
@@ -197,6 +222,8 @@ export default function Studio({
       aiSettingsOpenAtom.set(false)
       promptLibraryOpenAtom.set(false)
       elementAiAtom.set(null)
+      imageGenAtom.set(null)
+      imageSearchAtom.set(null)
       sourceDialogOpenAtom.set(false)
       reviewOpenAtom.set(false)
       stopRemote()
@@ -254,6 +281,8 @@ export default function Studio({
         {editor && (mode === 'edit' || unlocked) && <RelationPicker editor={editor} />}
         {editor && mode === 'edit' && <SuggestionBar editor={editor} />}
         {editor && mode === 'edit' && <ElementAiPanel editor={editor} />}
+        {editor && mode === 'edit' && <ImageGenPanel editor={editor} />}
+        {editor && mode === 'edit' && <ImageSearchPanel editor={editor} />}
         {editor && mode === 'edit' && <ReviewPanel editor={editor} />}
         {editor && mode === 'edit' && <PlanPanel editor={editor} />}
         {editor && mode === 'edit' && <PasteListDialog editor={editor} />}

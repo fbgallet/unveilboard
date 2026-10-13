@@ -1,7 +1,15 @@
 {
-  "about": "OpenRouter models offered in the AI settings and allowed for the instance's AI. Edit freely: `default` is used when nothing is chosen (and when AI_MODEL is not set); `transcription` (a multimodal model) reads photos and scanned PDFs; prices are in US dollars per million tokens (input / output), for information only. List taken from bac-philo-agent (model-catalog.ts), 2026-09.",
+  "about": "OpenRouter models offered in the AI settings and allowed for the instance's AI. Edit freely: `default` is used when nothing is chosen (and when AI_MODEL is not set); `transcription` (a multimodal model) reads photos, scanned PDFs and the images of a diagram; `image` and `imageModels`: models that draw images (`perImage`: rough cost of one image, in US dollars, for information); prices are in US dollars per million tokens (input / output), for information only. List taken from bac-philo-agent (model-catalog.ts), 2026-09.",
   "default": "deepseek/deepseek-v4.1-flash",
   "transcription": "openai/gpt-6-luna",
+  "image": "openai/gpt-image-2.5-flare",
+  "imageModels": [
+    { "id": "openai/gpt-image-2.5-flare", "label": "GPT Image 2.5 Flare", "perImage": 0.01 },
+    { "id": "openai/gpt-image-2.5-sunburst", "label": "GPT Image 2.5 Sunburst", "perImage": 0.015 },
+    { "id": "x-ai/grok-imagine-image-2.0", "label": "Grok Imagine 2.0", "perImage": 0.06 },
+    { "id": "google/gemini-3.1-flash-lite-image", "label": "Gemini 3.1 flash lite image", "perImage": 0.035 },
+    { "id": "google/gemini-3.1-flash-image", "label": "Gemini 3.1 flash image", "perImage": 0.07 }
+  ],
   "models": [
     {
       "id": "deepseek/deepseek-v4.1-flash",

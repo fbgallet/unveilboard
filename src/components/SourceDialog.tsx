@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
-import { atom, useValue, type Editor } from 'tldraw'
+import { atom, useValue, type Editor, type TLShapeId } from 'tldraw'
 import { clientLocale, useT } from '@/i18n/client'
 import { aiSettingsAtom, askAi, isAiReady, modelName, serverAiAtom, transcribeFile } from '@/lib/ai/client'
 import { toAiError } from '@/lib/ai/errors'
@@ -22,6 +22,8 @@ import { PromptPicker, usePromptChoice } from './PromptPicker'
 import { planPanelOpenAtom } from './PlanPanel'
 import { openSourcePanel } from './SourcePanel'
 import { readPageSource } from '@/lib/canvas/source'
+import { imageDataUri, imageReadingOf, isImage, readImageShape, readingImagesAtom } from '@/lib/canvas/imageReading'
+import { readingAsText } from '@/lib/ai/imageReading'
 import { StagedCreate } from './StagedCreate'
 import { skeletonMap } from '@/lib/map/plan'
 
@@ -33,6 +35,13 @@ export function openSourceDialogWithPageText() {
   sourceDialogOpenAtom.set(true)
 }
 const prefillPageTextAtom = atom<boolean>('sourceDialogPrefill', false)
+
+/** Ouvre la boîte avec une image du schéma pour source : son texte (transcrit), ou sa description. */
+export function openSourceDialogWithImage(id: TLShapeId) {
+  sourceImageAtom.set(id)
+  sourceDialogOpenAtom.set(true)
+}
+const sourceImageAtom = atom<TLShapeId | null>('sourceDialogImage', null)
 
 type Checked = ReadResult & { excerpts?: ExcerptCheck }
 
@@ -62,6 +71,13 @@ function SourceView({ editor }: { editor: Editor }) {
     prefillPageTextAtom.set(false)
     return on ? readPageSource(editor) : null
   })
+  // Ouverte depuis une image du schéma.
+  const [image] = useState(() => {
+    const id = sourceImageAtom.get()
+    sourceImageAtom.set(null)
+    return id && isImage(editor.getShape(id)) ? id : null
+  })
+  const imageBusy = useValue('source image being read', () => !!image && readingImagesAtom.get().has(image), [image])
   const [text, setText] = useState(prefilled?.text ?? '')
   const [label, setLabel] = useState(prefilled?.label ?? '')
   const [fileNote, setFileNote] = useState<string | null>(null)
@@ -139,24 +155,56 @@ function SourceView({ editor }: { editor: Editor }) {
 
   async function transcribe() {
     if (!toTranscribe) return
+    const { file } = toTranscribe
+    if (await transcribeData({ name: file.name, type: file.type || 'application/pdf', dataUri: await fileToDataUri(file) })) {
+      setToTranscribe(null)
+      setFileNote(t.source.transcribed(file.name))
+    }
+  }
+
+  /** Transcrit un fichier (ou une image du schéma) ; true si c'est fait. */
+  async function transcribeData(file: { name: string; type: string; dataUri: string }): Promise<boolean> {
     setFailure(null)
     const abort = new AbortController()
     setRun({ what: 'transcribe', chars: 0, thinking: 0, abort })
     try {
-      const { file } = toTranscribe
-      const dataUri = await fileToDataUri(file)
-      const result = await transcribeFile(settings, { name: file.name, type: file.type || 'application/pdf', dataUri }, {
+      const result = await transcribeFile(settings, file, {
         signal: abort.signal,
         onText: (s, thinking) => setRun((r) => r && { ...r, chars: s.length, thinking }),
       })
       setText(result.text)
       if (result.reference && !label.trim()) setLabel(result.reference)
-      setToTranscribe(null)
-      setFileNote(t.source.transcribed(file.name))
+      return true
     } catch (e) {
       setFailure(errorText(e))
+      return false
     } finally {
       setRun(null)
+    }
+  }
+
+  /** Image du schéma : son texte, transcrit. */
+  async function transcribeImage() {
+    const shape = image ? editor.getShape(image) : undefined
+    if (!isImage(shape)) return
+    try {
+      if (await transcribeData({ name: 'image.jpg', type: 'image/jpeg', dataUri: await imageDataUri(editor, shape) })) setFileNote(t.source.imageTranscribed)
+    } catch (e) {
+      setFailure(errorText(e))
+    }
+  }
+
+  /** Image du schéma : sa lecture (lue d'abord s'il le faut), comme texte source. */
+  async function describeImage() {
+    if (!image) return
+    setFailure(null)
+    try {
+      const reading = imageReadingOf(editor.getShape(image)) ?? (await readImageShape(editor, image))
+      setText(readingAsText(reading))
+      if (reading.identification && !label.trim()) setLabel(reading.identification)
+      setFileNote(t.source.imageDescribed)
+    } catch (e) {
+      setFailure(errorText(e))
     }
   }
 
@@ -281,6 +329,19 @@ function SourceView({ editor }: { editor: Editor }) {
                 {t.source.usePageText}
               </button>
             )}
+            {image &&
+              (ready ? (
+                <>
+                  <button className="btn-xs" disabled={!!run || imageBusy} onClick={() => void transcribeImage()} title={t.source.imageTextHint}>
+                    {t.source.imageText}
+                  </button>
+                  <button className="btn-xs" disabled={!!run || imageBusy} onClick={() => void describeImage()} title={t.source.imageDescriptionHint}>
+                    {imageBusy ? t.imageReading.reading : t.source.imageDescription}
+                  </button>
+                </>
+              ) : (
+                <span className="text-xs text-amber-700">{t.source.transcribeNeedsAi}</span>
+              ))}
             {fileNote && <span className="text-xs text-zinc-600">{fileNote}</span>}
             {toTranscribe &&
               (ready ? (

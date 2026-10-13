@@ -56,7 +56,7 @@ Services et réglages facultatifs (détails dans `.env.example`) :
 | `SHARING=off`, `SHARE_BLOCKLIST` | Arrêter les publications ; termes refusés en plus |
 | `RESEND_API_KEY`, `REPORT_EMAIL`, `REPORT_FROM` | Signalements et formulaire de contact, envoyés par e-mail |
 | `LEGAL_PUBLISHER`, `LEGAL_LINKS`, `LEGAL_HOST` | Page mentions légales et confidentialité (`/legal`) ; sans `LEGAL_PUBLISHER`, pas de page |
-| `OPENROUTER_API_KEY` (ou `AI_BASE_URL`, `AI_API_KEY`), `AI_MODEL`, `AI_MAX_TOKENS`, `AI_JSON_MODE` | IA de l’instance, côté serveur (mode cloud ; en mode local seulement avec `AI_PUBLIC=on` et Upstash, avec des limites par adresse IP ; toujours, sans limite, en développement). Voir [Travailler avec une IA](ai.fr.md) |
+| `OPENROUTER_API_KEY` (ou `AI_BASE_URL`, `AI_API_KEY`), `AI_MODEL`, `AI_MAX_TOKENS`, `AI_JSON_MODE`, `AI_WEB_SEARCH`, `AI_IMAGE` | IA de l’instance, côté serveur (mode cloud ; en mode local seulement avec `AI_PUBLIC=on` et Upstash, avec des limites par adresse IP ; toujours, sans limite, en développement). Voir [Travailler avec une IA](ai.fr.md) |
 | `SITE_URL` | Adresse des aperçus de lien (par défaut `https://unveilboard.com`) |
 
 Le site envoie une politique de sécurité du contenu (CSP, `src/proxy.ts`) : si vous ajoutez un script, une police ou une iframe d'une autre origine, autorisez-la là. Modèle de sécurité : voir [SECURITY.md](../SECURITY.md) (en anglais).

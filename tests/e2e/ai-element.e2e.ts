@@ -56,13 +56,15 @@ test('à partir d’un élément : suggestions fantômes, accepter, écarter, ho
   await page.getByRole('button', { name: '✦ AI…' }).click()
   const panel = page.getByRole('dialog', { name: 'Ask the AI from this element' })
   await expect(panel.getByRole('heading')).toHaveText(/^AI, from “A lie cannot become a universal law: it would destroy all t…”$/)
+  // Une visée : le bouton reste enfoncé, la demande écrite devient facultative.
   await panel.getByRole('button', { name: 'Objections' }).click()
-  await expect(panel.getByRole('textbox', { name: 'Your request' })).toHaveValue('Propose the strongest objections to this element.')
+  await expect(panel.getByRole('button', { name: 'Objections' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(panel.getByRole('textbox', { name: 'Your request' })).toHaveValue('')
   await panel.getByRole('checkbox', { name: /Take the whole diagram into account/ }).uncheck()
   await panel.getByRole('button', { name: 'Ask the AI' }).click()
-  await expect(panel.getByRole('status')).toHaveText(
-    '3 suggestions added: accept (✓) or reject (✕) each one on the diagram. 1 change to existing elements ignored.'
-  )
+  // La réponse appliquée, la boîte se ferme : la barre des suggestions prend le relais.
+  await expect(panel).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'AI suggestions' })).toContainText('3 AI suggestions')
   // La consigne : tâche « expand », élément de départ, extrait du schéma.
   const prompt = bodies[0].messages[0].content
   expect(prompt).toContain('task: expand')
@@ -78,7 +80,6 @@ test('à partir d’un élément : suggestions fantômes, accepter, écarter, ho
   const map = await page.evaluate(() => (window as unknown as Win).unveilboard.getMap())
   expect(map.elements).toHaveLength(8)
   expect(map.elements.find((e) => e.id === 'thesis')?.text).toBe('Yes: truthfulness is an unconditional duty')
-  await page.keyboard.press('Escape')
   await page.evaluate(() => void (window as unknown as Win).editor.zoomToFit())
   await page.waitForTimeout(400)
   await page.screenshot({ path: 'test-results/ai-suggestions.png' })
@@ -91,8 +92,7 @@ test('à partir d’un élément : suggestions fantômes, accepter, écarter, ho
 
   // Accepter la réponse accepte aussi l'objection dont elle dépend ; écarter le lien.
   // Boutons dans l'ordre des suggestions : obj2, ans2, lk1. Chaque suggestion est centrée à l'écran,
-  // la boîte de l'IA fermée : ailleurs, ses boutons peuvent passer sous un panneau.
-  await panel.getByRole('button', { name: 'Close' }).click()
+  // ailleurs, ses boutons peuvent passer sous un panneau.
   const centerOn = (ref: string) =>
     page.evaluate((r) => {
       const { editor } = window as unknown as Win
@@ -106,7 +106,9 @@ test('à partir d’un élément : suggestions fantômes, accepter, écarter, ho
   await centerOn('lk1')
   await page.getByRole('button', { name: 'Reject', exact: true }).click()
   await expect.poll(() => pending(page)).toEqual([])
-  await expect(page.getByRole('region', { name: 'AI suggestions' })).toHaveCount(0)
+  // Plus rien en attente : la barre ne garde que le suivi du développement.
+  await expect(page.getByRole('region', { name: 'AI suggestions' })).not.toContainText(/AI suggestion/)
+  await expect(page.getByRole('region', { name: 'AI suggestions' })).toContainText('2 elements added')
   const after = await page.evaluate(() => (window as unknown as Win).unveilboard.getMap())
   expect(after.elements.map((e) => e.id)).toEqual(expect.arrayContaining(['obj2', 'ans2']))
   expect(after.links ?? []).toEqual([])
@@ -133,7 +135,8 @@ test('sans IA branchée : copier la consigne, coller la réponse, ajouter en sug
   const answer = { format: 'unveilboard/patch', version: 1, operations: [{ op: 'add', id: 'ex2', text: 'A doctor’s lie', parent: 'objection', relation: 'illustrates' }] }
   await panel.getByRole('textbox', { name: 'JSON to paste' }).fill(JSON.stringify(answer))
   await panel.getByRole('button', { name: 'Add as suggestions' }).click()
-  await expect(panel.getByRole('status')).toHaveText('1 suggestion added: accept (✓) or reject (✕) each one on the diagram.')
+  await expect(panel).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'AI suggestions' })).toContainText('1 AI suggestion')
   expect((await pending(page)).sort()).toEqual(['arrow', 'ex2'])
 })
 
@@ -166,6 +169,7 @@ test('accès permanent à l’IA : une icône, un menu (relecture, à partir de 
     'Structure with a plan…',
     'New diagram from a text…',
     'Import a list, Markdown or JSON…',
+    'Generate an image…',
     'Prompt library…',
     'AI settings…',
   ])

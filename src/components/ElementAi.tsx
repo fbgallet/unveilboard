@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react'
 import { atom, renderPlaintextFromRichText, useValue, type Editor, type TLRichText, type TLShapeId } from 'tldraw'
 import { useT } from '@/i18n/client'
 import type { Messages } from '@/i18n/config'
-import { AIM_FAMILIES, AIM_TEXT, AMOUNTS, DEFAULT_AMOUNT, FAMILY_AIMS, familyFor, type AimFamily, type Amount } from '@/lib/ai/aims'
-import { aiSettingsAtom, isAiReady, serverAiAtom } from '@/lib/ai/client'
+import { AIM_FAMILIES, AIM_SEES, AIM_TEXT, AIM_WEB, AIM_WHOLE, AMOUNTS, DEFAULT_AMOUNT, FAMILY_AIMS, familyFor, IMAGE_FAMILY, type AimFamily, type AimId, type Amount } from '@/lib/ai/aims'
+import { aiSettingsAtom, checkSeesImages, imageGenerationAvailable, isAiReady, seesImages, serverAiAtom, webSearchAvailable } from '@/lib/ai/client'
+import { visionAtom } from '@/lib/ai/vision'
 import { toAiError } from '@/lib/ai/errors'
 import { buildPrompt } from '@/lib/ai/prompts'
 import { applyElementAnswer, elementPromptInput, readElementAnswer, runElementRequest, type ElementRequest } from '@/lib/canvas/elementAi'
+import { isImage } from '@/lib/canvas/imageReading'
 import { readPageSource } from '@/lib/canvas/source'
 import { isArgumentTree } from '@/lib/canvas/tree'
 import type { MapIssue } from '@/lib/map/check'
@@ -16,6 +18,11 @@ import type { PromptTemplate } from '@/lib/prompts/template'
 import { aiSettingsOpenAtom } from './AiSettingsDialog'
 import { AiProgress, progressCallbacks, startProgress, type AiProgressState } from './AiProgress'
 import { PromptPicker, usePromptChoice } from './PromptPicker'
+import { ImageReadingBox } from './ImageReading'
+import { imageGenAtom } from './ImageGen'
+import { imageSearchAtom } from './ImageSearch'
+import { pictureSubject } from '@/lib/canvas/imageGen'
+import { WebToggle, webUnavailableText } from './WebSearch'
 
 /** Élément d'où partir (panneau ouvert), ou null. */
 export const elementAiAtom = atom<TLShapeId | null>('elementAi', null)
@@ -31,6 +38,12 @@ export interface AimOption {
   label: string
   hint?: string
   text: string
+  /** S'appuie sur le web (visées de l'app, AIM_WEB). */
+  web?: 'required' | 'useful'
+  /** Couvre tout ce qu'il y a à prendre (AIM_WHOLE) : sans ampleur. */
+  whole?: boolean
+  /** Demande de voir l'image (AIM_SEES). */
+  sees?: boolean
 }
 
 /** Un groupe de visées : une famille de l'app, ou celles de la méthode choisie (« method »). */
@@ -40,21 +53,36 @@ export interface AimGroup {
   aims: AimOption[]
 }
 
-/** Visées proposées : celles de la méthode choisie d'abord, puis les familles de l'app. */
-export function aimGroups(template: PromptTemplate | undefined, t: Messages): AimGroup[] {
+/**
+ * Visées proposées : celles de la méthode choisie d'abord, puis les familles de l'app ; « Observer »
+ * seulement pour une image.
+ */
+export function aimGroups(template: PromptTemplate | undefined, t: Messages, image = false): AimGroup[] {
   const method: AimGroup[] = template?.quick?.length
     ? [{ id: 'method', title: template.title, aims: template.quick.map((q, i) => ({ key: `method:${i}`, label: q.label, text: q.request })) }]
     : []
-  const families = AIM_FAMILIES.map((f) => ({
+  const families = AIM_FAMILIES.filter((f) => image || f !== IMAGE_FAMILY).map((f) => ({
     id: f,
     title: t.elementAi.families[f],
-    aims: FAMILY_AIMS[f].map((a) => ({ key: a, label: t.elementAi.aims[a].label, hint: t.elementAi.aims[a].hint, text: AIM_TEXT[a] })),
+    aims: FAMILY_AIMS[f].map((a) => ({
+      key: a,
+      label: t.elementAi.aims[a].label,
+      hint: t.elementAi.aims[a].hint,
+      text: AIM_TEXT[a],
+      ...(AIM_WEB[a] && { web: AIM_WEB[a] }),
+      ...(AIM_WHOLE.includes(a) && { whole: true }),
+      ...(AIM_SEES.includes(a) && { sees: true }),
+    })),
   }))
   return [...method, ...families]
 }
 
-/** Groupe proposé d'abord pour un élément : la méthode, sinon la famille de son type (ou de son arbre). */
+/**
+ * Groupe proposé d'abord pour un élément : « Observer » pour une image, puis la méthode, sinon la
+ * famille de son type (ou de son arbre).
+ */
 export function firstAimGroup(editor: Editor, id: TLShapeId, groups: AimGroup[]): AimGroup['id'] {
+  if (isImage(editor.getShape(id))) return IMAGE_FAMILY
   if (groups[0]?.id === 'method') return 'method'
   const type = editor.getShape(id)?.meta.preset
   return familyFor(typeof type === 'string' ? type : undefined, isArgumentTree(editor, id))
@@ -110,6 +138,12 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
     },
     [editor, id]
   )
+  const image = useValue('element is image', () => isImage(editor.getShape(id)), [editor, id])
+  // Une image : on demande à OpenRouter si le modèle choisi la voit (l'indication suit sa réponse).
+  useValue(visionAtom)
+  useEffect(() => {
+    if (image) void checkSeesImages(settings, server)
+  }, [image, settings, server])
   const [instruction, setInstruction] = useState(() => {
     const request = elementAiRequestAtom.get()
     elementAiRequestAtom.set('')
@@ -133,13 +167,17 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
     elementAiAimAtom.set(null)
     return aim
   })
-  const groups = aimGroups(prompt.template, t)
+  const groups = aimGroups(prompt.template, t, image)
   const [groupId, setGroupId] = useState<string | null>(preset?.group ?? null)
   const first = firstAimGroup(editor, id, groups)
   const shown = groups.find((g) => g.id === groupId) ?? groups.find((g) => g.id === first) ?? groups[0]
   const [aimKey, setAimKey] = useState<string | null>(preset?.key ?? null)
   const aim = aimKey ? (shown.aims.find((a) => a.key === aimKey) ?? groups.flatMap((g) => g.aims).find((a) => a.key === aimKey)) : undefined
   const [amount, setAmount] = useState(readAmount)
+  // Recherche sur le web : demandée par le bouton globe, ou par la visée.
+  const canSearch = webSearchAvailable(settings, server)
+  const [web, setWeb] = useState(() => !!preset && canSearch && !!AIM_WEB[preset.key as AimId])
+  const webRequired = aim?.web === 'required'
   const request = (): ElementRequest => ({
     focus: id,
     instruction,
@@ -147,9 +185,11 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
     notes,
     withSource: useSource,
     ghost,
-    amount,
+    ...(!aim?.whole && { amount }),
+    ...(aim?.sees && { sees: true }),
     ...(aim && { aim: { label: aim.label, text: aim.text } }),
     ...(prompt.method && { method: prompt.method }),
+    ...(canSearch && (web || webRequired) && { web: true }),
   })
   const reset = () => {
     setIssues([])
@@ -202,6 +242,7 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
           ✕
         </button>
       </header>
+      {image && <ImageReadingBox editor={editor} id={id} />}
       <PromptPicker choice={prompt} disabled={!!run} />
       <div className="grid gap-1.5">
         <div className="panel-tabs" role="tablist">
@@ -224,15 +265,44 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
               key={a.key}
               className={`btn-xs ${aimKey === a.key ? 'btn-xs-on' : ''}`}
               aria-pressed={aimKey === a.key}
-              title={a.hint ?? a.text}
+              // Sans recherche possible, une visée qui en dépend n'a pas de sens.
+              disabled={a.web === 'required' && !canSearch}
+              title={a.web === 'required' && !canSearch ? webUnavailableText(settings.kind, t) : (a.hint ?? a.text)}
               onClick={() => {
-                setAimKey(aimKey === a.key ? null : a.key)
+                const next = aimKey === a.key ? null : a.key
+                setAimKey(next)
+                if (next && a.web && canSearch) setWeb(true)
                 reset()
               }}
             >
               {a.label}
             </button>
           ))}
+          {/* Illustrer : aussi par une vraie image (cherchée), ou générée (ce qui est imaginaire seulement). */}
+          {shown.id === 'illustrate' && !image && (
+            <button
+              className="btn-xs"
+              title={t.imageSearch.searchHint}
+              onClick={() => {
+                close()
+                imageSearchAtom.set({ target: id, query: pictureSubject(editor, id).subject })
+              }}
+            >
+              {t.imageSearch.searchButton}
+            </button>
+          )}
+          {shown.id === 'illustrate' && !image && imageGenerationAvailable(settings, server) && (
+            <button
+              className="btn-xs"
+              title={t.imageGen.pictureHint}
+              onClick={() => {
+                close()
+                imageGenAtom.set({ target: id, sources: [] })
+              }}
+            >
+              {t.imageGen.pictureButton}
+            </button>
+          )}
         </div>
       </div>
       <textarea
@@ -247,24 +317,38 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
         aria-label={t.elementAi.instructionLabel}
         autoFocus
       />
-      <div className="flex flex-wrap items-center gap-2 text-xs" title={t.elementAi.amountHint}>
-        <span className="text-zinc-600">{t.elementAi.amountLabel}</span>
-        <div className="seq-mode" role="radiogroup" aria-label={t.elementAi.amountLabel}>
-          {AMOUNTS.map((a) => (
-            <button
-              key={a}
-              role="radio"
-              aria-checked={amount === a}
-              className={`seq-mode-btn ${amount === a ? 'seq-mode-on' : ''}`}
-              onClick={() => {
-                setAmount(a)
-                writeAmount(a)
-              }}
-            >
-              {t.elementAi.amounts[a]}
-            </button>
-          ))}
+      {image && ready && (
+        // Ce que le modèle reçoit : l'image elle-même, ou seulement sa lecture.
+        <p className="text-xs text-zinc-500">
+          {seesImages(settings, server) ? t.elementAi.imageSent : aim?.sees ? t.elementAi.imageReadingModel : t.elementAi.imageReadingOnly}
+        </p>
+      )}
+      {aim?.whole ? (
+        <p className="text-xs text-zinc-500">{t.elementAi.wholeAim}</p>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2 text-xs" title={t.elementAi.amountHint}>
+          <span className="text-zinc-600">{t.elementAi.amountLabel}</span>
+          <div className="seq-mode" role="radiogroup" aria-label={t.elementAi.amountLabel}>
+            {AMOUNTS.map((a) => (
+              <button
+                key={a}
+                role="radio"
+                aria-checked={amount === a}
+                className={`seq-mode-btn ${amount === a ? 'seq-mode-on' : ''}`}
+                onClick={() => {
+                  setAmount(a)
+                  writeAmount(a)
+                }}
+              >
+                {t.elementAi.amounts[a]}
+              </button>
+            ))}
+          </div>
         </div>
+      )}
+      <div className="flex items-center gap-2 text-xs">
+        <WebToggle on={web} onChange={setWeb} required={webRequired} clipboard={!ready} unavailable={canSearch ? undefined : webUnavailableText(settings.kind, t)} />
+        <span className="text-zinc-500">{webRequired && canSearch ? t.web.required : ''}</span>
       </div>
       <label className="flex items-center gap-2 text-xs">
         <input type="checkbox" checked={wholeMap} onChange={(e) => setWholeMap(e.target.checked)} />

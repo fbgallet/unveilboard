@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import type { Components } from 'react-markdown'
 import { useValue, type Editor, type TLShapeId } from 'tldraw'
 import { useT } from '@/i18n/client'
-import { aiSettingsAtom, askAi, isAiReady, modelName, serverAiAtom } from '@/lib/ai/client'
+import { aiSettingsAtom, askAi, isAiReady, modelName, serverAiAtom, webSearchAvailable } from '@/lib/ai/client'
 import { conversationMarkdown, historyForModel, partialReply, plainRefs, readChatAnswer, type ChatAnswer } from '@/lib/ai/chatAnswer'
 import { toAiError } from '@/lib/ai/errors'
 import type { MapIssue } from '@/lib/map/check'
@@ -23,6 +23,7 @@ import {
   updateChatChanges,
   type ChatEntry,
 } from '@/lib/canvas/chat'
+import { pageImages, readMissingImages } from '@/lib/canvas/imageReading'
 import { reverifyExcerpts } from '@/lib/canvas/passage'
 import { readPageSource } from '@/lib/canvas/source'
 import { noteOf, resolveTextImage, setNote, shapeLabel } from '@/lib/canvas/notes'
@@ -30,6 +31,7 @@ import { openElementTab } from '@/lib/presentation/store'
 import { aiSettingsOpenAtom } from './AiSettingsDialog'
 import { Markdownish } from './Markdownish'
 import { PromptPicker, usePromptChoice } from './PromptPicker'
+import { Citations, GlobeIcon, WebToggle, webUnavailableText } from './WebSearch'
 
 /** Réponse contrôlée : le message, et les modifications lues sur le schéma actuel. */
 interface Checked {
@@ -71,6 +73,10 @@ export function ChatPane({ editor }: { editor: Editor }) {
   const [draft, setDraft] = useState('')
   const [withSelection, setWithSelection] = useState(true)
   const [withSource, setWithSource] = useState(true)
+  // Recherche sur le web : pour les messages suivants, jusqu'à ce qu'on la coupe.
+  const canSearch = ready && webSearchAvailable(settings, server)
+  const [withWeb, setWithWeb] = useState(false)
+  const web = canSearch && withWeb
   const [run, setRun] = useState<{ text: string; thinking: number; abort: AbortController } | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -138,37 +144,43 @@ export function ChatPane({ editor }: { editor: Editor }) {
     const message = text.trim()
     if (!message || run) return
     const history = historyForModel(chatEntriesAtom.get().filter((e) => !e.error))
-    addChatEntry({ role: 'user', text: message })
+    addChatEntry({ role: 'user', text: message, ...(web && { web: true }) })
     setDraft('')
     const abort = new AbortController()
     setRun({ text: '', thinking: 0, abort })
     try {
+      // Les images du schéma : lues avant la première demande qui les envoie.
+      await readMissingImages(editor, pageImages(editor), { settings, signal: abort.signal })
       const promptInput = {
         ...editorPromptInput(editor, 'chat', message, { selection: withSelection && selectionCount > 0, delivery: 'api', withSource: withSource && hasSource }),
         history,
         ...(prompt.method && { method: prompt.method }),
+        ...(web && { web: true }),
       }
-      const { result } = await askAi(settings, promptInput, (answer) => checkAnswer(editor, answer), {
+      const { result, citations } = await askAi(settings, promptInput, (answer) => checkAnswer(editor, answer), {
         signal: abort.signal,
         onText: (answer, thinking) => setRun((r) => r && { ...r, text: answer, thinking }),
       })
       const { answer, patch } = result
+      const cited = citations?.length ? { citations } : {}
       if (!result.ok) {
         addChatEntry({
           role: 'assistant',
           text: answer.reply,
+          ...cited,
           ...(answer.patch !== undefined && { changes: { summary: '', status: 'failed', operations: 0 } }),
           ...(!answer.reply && answer.patch === undefined && { error: t.chat.unreadable }),
         })
         return
       }
       if (!patch) {
-        addChatEntry({ role: 'assistant', text: answer.reply })
+        addChatEntry({ role: 'assistant', text: answer.reply, ...cited })
         return
       }
       const entry = addChatEntry({
         role: 'assistant',
         text: answer.reply,
+        ...cited,
         changes: { summary: patch.summary ?? '', status: ghost ? 'suggested' : 'applied', operations: patch.operations.length },
       })
       const { skipped } = applyChatChanges(editor, entry.id, patch, ghost)
@@ -270,20 +282,25 @@ export function ChatPane({ editor }: { editor: Editor }) {
         {ready ? (
           <>
             <PromptPicker choice={prompt} disabled={!!run} />
-            {(selectionCount > 0 || hasSource) && (
-              <div className="flex flex-wrap gap-1 text-[11px]">
-                {selectionCount > 0 && (
-                  <button className={`chat-chip ${withSelection ? 'chat-chip-on' : ''}`} onClick={() => setWithSelection(!withSelection)} aria-pressed={withSelection} title={t.chat.selectionHint}>
-                    {t.chat.selection(selectionCount)}
-                  </button>
-                )}
-                {hasSource && (
-                  <button className={`chat-chip ${withSource ? 'chat-chip-on' : ''}`} onClick={() => setWithSource(!withSource)} aria-pressed={withSource} title={t.chat.sourceHint}>
-                    {t.chat.source}
-                  </button>
-                )}
-              </div>
-            )}
+            <div className="flex flex-wrap gap-1 text-[11px]">
+              {selectionCount > 0 && (
+                <button className={`chat-chip ${withSelection ? 'chat-chip-on' : ''}`} onClick={() => setWithSelection(!withSelection)} aria-pressed={withSelection} title={t.chat.selectionHint}>
+                  {t.chat.selection(selectionCount)}
+                </button>
+              )}
+              {hasSource && (
+                <button className={`chat-chip ${withSource ? 'chat-chip-on' : ''}`} onClick={() => setWithSource(!withSource)} aria-pressed={withSource} title={t.chat.sourceHint}>
+                  {t.chat.source}
+                </button>
+              )}
+              <WebToggle
+                on={withWeb}
+                onChange={setWithWeb}
+                className="chat-chip"
+                onClass="chat-chip-on"
+                unavailable={canSearch ? undefined : webUnavailableText(settings.kind, t)}
+              />
+            </div>
             <div className="flex items-end gap-1.5">
               <textarea
                 ref={input}
@@ -360,7 +377,17 @@ function Message({
 }) {
   const t = useT()
   const [added, setAdded] = useState<string | null>(null)
-  if (entry.role === 'user') return <div className="chat-bubble chat-bubble-user">{entry.text}</div>
+  if (entry.role === 'user')
+    return (
+      <div className="chat-bubble chat-bubble-user">
+        {entry.web && (
+          <span className="float-right ml-1.5 mt-0.5 opacity-60" title={t.web.hint}>
+            <GlobeIcon />
+          </span>
+        )}
+        {entry.text}
+      </div>
+    )
   const changes = entry.changes
   // Annuler / rétablir : seulement pendant la séance où les modifications ont été appliquées.
   const revertible = !!changes && changes.status !== 'failed' && canRevert(entry.id)
@@ -368,6 +395,12 @@ function Message({
     <div className="chat-bubble chat-bubble-ai">
       {entry.error && <p className="text-red-700">{entry.error}</p>}
       {entry.text && <Markdownish text={entry.text} components={components} resolveSrc={resolveSrc} />}
+      {!!entry.citations?.length && (
+        <details className="mt-1.5 text-[11px] text-zinc-500">
+          <summary className="cursor-pointer select-none">{t.web.sources(entry.citations.length)}</summary>
+          <Citations citations={entry.citations} className="mt-1" />
+        </details>
+      )}
       {changes && (
         <div className={`chat-changes chat-changes-${changes.status}`}>
           <div className="flex items-start gap-2">

@@ -38,6 +38,8 @@ import {
   type PresetTarget,
 } from '@/lib/presets/presets'
 import { settingsStore } from '@/lib/storage'
+import { isWebUrl } from '@/lib/map/format'
+import { siteOf } from './WebSearch'
 import { presetsCollapsedAtom, setStylePanelHidden, storeValue, stylePanelHiddenAtom } from '@/lib/presentation/store'
 import { storageModeAtom } from '@/lib/sync/documentSync'
 import { useT } from '@/i18n/client'
@@ -544,6 +546,47 @@ export function CertaintyField({ editor, id }: { editor: Editor; id: TLShapeId }
           }}
         >
           {t.certainty.markVerified}
+        </button>
+      </span>
+    </div>
+  )
+}
+
+/** Page web où vérifier la source de l'élément (donnée par l'IA après une recherche) : lien, ou retirée. */
+export function WebPageField({ editor, id }: { editor: Editor; id: TLShapeId }) {
+  const t = useT()
+  const url = useValue(
+    'web page',
+    () => {
+      const value = editor.getShape(id)?.meta.url
+      return isWebUrl(value) ? value : null
+    },
+    [editor, id]
+  )
+  if (!url) return null
+  return (
+    <div className="provenance">
+      <span className="flex min-w-0 items-center gap-2">
+        <span className="shrink-0 font-semibold uppercase tracking-wide">{t.web.page}</span>
+        <a
+          className="min-w-0 truncate text-amber-700 underline decoration-amber-300 underline-offset-2"
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`${t.web.pageHint} · ${url}`}
+        >
+          {siteOf(url)}
+        </a>
+        <button
+          className="preset-icon"
+          aria-label={t.web.removePage}
+          title={t.web.removePage}
+          onClick={() => {
+            const shape = editor.getShape(id)
+            if (shape) editor.updateShape({ id, type: shape.type, meta: { ...shape.meta, url: null } })
+          }}
+        >
+          ✕
         </button>
       </span>
     </div>

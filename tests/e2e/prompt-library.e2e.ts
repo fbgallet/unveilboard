@@ -76,7 +76,8 @@ test('bibliothèque de prompts : collection partagée, méthode choisie, prompt 
 
   await dialog.getByRole('button', { name: 'Close' }).click()
 
-  // À partir d'un élément : la méthode suffit, la demande écrite devient facultative.
+  // À partir d'un élément : la méthode de la page (choisie pour enrichir) est reprise ;
+  // elle suffit, la demande écrite devient facultative.
   await page.evaluate(() => {
     const { editor } = window as unknown as { editor: import('tldraw').Editor }
     editor.select(editor.getCurrentPageShapes().find((s) => s.meta.ref === 'thesis')!.id)
@@ -84,9 +85,13 @@ test('bibliothèque de prompts : collection partagée, méthode choisie, prompt 
   await openFromLauncher(page, 'Develop the selected element…')
   const panel = page.getByRole('dialog', { name: 'Ask the AI from this element' })
   const ask = panel.getByRole('button', { name: /Ask the AI|Copy the prompt/ })
-  await expect(ask).toBeDisabled()
-  await panel.getByRole('combobox', { name: 'Method' }).selectOption({ label: 'Réseau conceptuel du sujet' })
+  const method = panel.getByRole('combobox', { name: 'Method' })
+  await expect(method.locator('option:checked')).toHaveText('Counter-examples')
   await expect(panel.getByRole('textbox', { name: 'Your request' })).toHaveAttribute('placeholder', /the method is enough/)
+  await expect(ask).toBeEnabled()
+  await method.selectOption({ value: '' })
+  await expect(ask).toBeDisabled()
+  await method.selectOption({ label: 'Réseau conceptuel du sujet' })
   await expect(ask).toBeEnabled()
 
   await panel.getByRole('button', { name: 'Close' }).click()

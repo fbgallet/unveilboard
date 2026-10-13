@@ -11,12 +11,16 @@
 
 import { atom } from 'tldraw'
 import { extractJson } from '../map/read'
-import { REASONING_EFFORTS, chat, readChatStream, type ChatResult, type ReasoningEffort } from './chat'
+import { REASONING_EFFORTS, chat, readChatStream, type ChatMessage, type ChatResult, type ReasoningEffort } from './chat'
 import { AiError, errorFromResponse, toAiError, type AiErrorKind } from './errors'
 import type { PromptInput } from './prompts'
 import { promptMessages, runWithRepair, type AiRun, type Repair } from './run'
-import { DEFAULT_MODEL, TRANSCRIPTION_MODEL } from './models'
+import { DEFAULT_MODEL, IMAGE_MODEL, TRANSCRIPTION_MODEL } from './models'
+import { imageRequestBody, readImageResponse, type ImageRequest } from './imageGen'
+import { checkVision, knownVision } from './vision'
 import { OPENROUTER_PDF_PLUGIN, readTranscription, transcriptionMessages } from './transcribe'
+import { identificationMessages, imageReadingMessages, readIdentification, readImageAnswer, type ImageIdentification } from './imageReading'
+import type { ImageReading } from '../map/format'
 import { normalizeSize, type DiagramSize } from '../map/size'
 import type { MapIssue } from '../map/check'
 import { chatGptAvailable, chatGptChat, initChatGpt } from './chatgpt'
@@ -67,6 +71,12 @@ export interface ServerAi {
   model: string
   /** Modèles permis. */
   models: string[]
+  /** Recherche sur le web permise (AI_WEB_SEARCH=on, sur OpenRouter). */
+  web?: boolean
+  /** Les modèles sont ceux d'OpenRouter (on peut lui demander lesquels voient les images). */
+  openrouter?: boolean
+  /** Génération d'images permise (AI_IMAGE=on, sur OpenRouter). */
+  image?: boolean
 }
 
 /** IA de l'instance (null : aucune), transmise par la page. */
@@ -157,6 +167,28 @@ export function isAiReady(settings: AiSettings, server: ServerAi | null) {
   }
 }
 
+/**
+ * Recherche sur le web possible avec ce fournisseur : par l'outil d'OpenRouter (clé de l'utilisateur,
+ * ou IA de l'instance qui le permet), ou par l'assistant où l'on colle la consigne. Pas encore avec
+ * le forfait ChatGPT (non essayé), ni avec un serveur compatible OpenAI (pas d'outil commun).
+ */
+export function webSearchAvailable(settings: AiSettings, server: ServerAi | null): boolean {
+  if (settings.kind === 'clipboard') return true
+  if (settings.kind === 'openrouter') return true
+  if (settings.kind === 'server') return !!server?.web
+  return false
+}
+
+/**
+ * Génération d'images : avec OpenRouter (la clé de l'utilisateur), ou l'IA de l'instance si elle la
+ * permet (AI_IMAGE=on). Pas avec ChatGPT ni un serveur compatible OpenAI.
+ */
+export function imageGenerationAvailable(settings: AiSettings, server: ServerAi | null): boolean {
+  if (settings.kind === 'openrouter') return !!readKey('openrouter')
+  if (settings.kind === 'server') return !!server?.image
+  return false
+}
+
 /** Nom du modèle utilisé, pour l'afficher. */
 export function modelName(settings: AiSettings, server: ServerAi | null) {
   if (settings.kind === 'server') return serverModelOf(settings, server) ?? ''
@@ -164,6 +196,28 @@ export function modelName(settings: AiSettings, server: ServerAi | null) {
   if (settings.kind === 'custom') return settings.customModel
   if (settings.kind === 'chatgpt') return settings.chatgptModel
   return ''
+}
+
+/** Modèle d'OpenRouter utilisé (pour lui demander s'il voit les images), s'il en est un. */
+export function openRouterModel(settings: AiSettings, server: ServerAi | null): string | undefined {
+  if (settings.kind === 'openrouter' || (settings.kind === 'server' && server?.openrouter)) return modelName(settings, server) || undefined
+  return undefined
+}
+
+/**
+ * Le modèle choisi voit les images (on peut lui envoyer celle d'un élément) : d'après OpenRouter
+ * (vision.ts ; tant qu'on ne le sait pas : non) ; ChatGPT, oui ; un serveur compatible OpenAI, on
+ * ne le sait pas : non (il travaille sur la lecture des images).
+ */
+export function seesImages(settings: AiSettings, server: ServerAi | null): boolean {
+  if (settings.kind === 'chatgpt') return true
+  return !!knownVision(openRouterModel(settings, server))
+}
+
+/** Comme seesImages, après l'avoir demandé à OpenRouter si on ne le sait pas encore. */
+export async function checkSeesImages(settings: AiSettings, server: ServerAi | null): Promise<boolean> {
+  if (settings.kind === 'chatgpt') return true
+  return !!(await checkVision(openRouterModel(settings, server)))
 }
 
 /** Modèle de l'IA de l'instance : celui choisi s'il est permis, sinon celui par défaut. */
@@ -227,7 +281,7 @@ async function sendOnce(settings: AiSettings, input: PromptInput, opts: CallOpti
     }
     const messages = promptMessages(input, repair)
     if (settings.kind === 'chatgpt') return await chatGptChat({ model: settings.chatgptModel, messages, reasoning: settings.reasoning, signal: opts.signal }, opts.onText)
-    return await chat({ ...endpoint(settings), messages, reasoning: settings.reasoning, signal: opts.signal }, opts.onText)
+    return await chat({ ...endpoint(settings), messages, reasoning: settings.reasoning, web: input.web && settings.kind === 'openrouter', signal: opts.signal }, opts.onText)
   } catch (e) {
     throw toAiError(e)
   }
@@ -271,41 +325,110 @@ export async function transcribeFile(
   opts: CallOptions = {}
 ): Promise<{ text: string; reference: string }> {
   try {
-    const result = await withRetry(() => transcribeOnce(settings, file, opts), opts)
+    const pdf = file.type === 'application/pdf'
+    const result = await withRetry(() => visionOnce(settings, transcriptionMessages(file), { file }, opts, pdf ? OPENROUTER_PDF_PLUGIN : undefined), opts)
     return readTranscription(result.text)
   } catch (e) {
     throw toAiError(e)
   }
 }
 
-async function transcribeOnce(settings: AiSettings, file: { name: string; type: string; dataUri: string }, opts: CallOptions): Promise<ChatResult> {
+/**
+ * Lit une image du schéma (`dataUri` : réduite, en JPEG) avec un modèle multimodal, comme une
+ * transcription ; `lang` : la langue dans laquelle la décrire ; `model` : le modèle choisi pour la
+ * lire (OpenRouter, instance, ChatGPT), sinon celui de transcription.
+ */
+export async function readImage(settings: AiSettings, dataUri: string, lang: string, opts: CallOptions & { model?: string } = {}): Promise<ImageReading> {
+  try {
+    const body = { image: { dataUri }, lang, task: 'read', ...(opts.model && { model: opts.model }) }
+    const result = await withRetry(() => visionOnce(settings, imageReadingMessages(dataUri, lang), body, opts, undefined, opts.model), opts)
+    return readImageAnswer(result.text)
+  } catch (e) {
+    throw toAiError(e)
+  }
+}
+
+/** Identifie une image (une œuvre, un document, un lieu…) : la meilleure proposition, et d'autres possibles. */
+export async function identifyImage(settings: AiSettings, dataUri: string, lang: string, opts: CallOptions & { model?: string } = {}): Promise<ImageIdentification> {
+  try {
+    const body = { image: { dataUri }, lang, task: 'identify', ...(opts.model && { model: opts.model }) }
+    const result = await withRetry(() => visionOnce(settings, identificationMessages(dataUri, lang), body, opts, undefined, opts.model), opts)
+    return readIdentification(result.text)
+  } catch (e) {
+    throw toAiError(e)
+  }
+}
+
+/** Demande à un modèle multimodal (instance : `serverBody` pour la route /api/ai/transcribe). */
+async function visionOnce(
+  settings: AiSettings,
+  messages: ChatMessage[],
+  serverBody: object,
+  opts: CallOptions,
+  extraBody?: Record<string, unknown>,
+  model?: string
+): Promise<ChatResult> {
   if (settings.kind === 'server') {
     const res = await fetch('/api/ai/transcribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file }),
+      body: JSON.stringify(serverBody),
       signal: opts.signal,
     })
     if (!res.ok) throw await errorFromResponse(res)
     return readChatStream(res, opts.onText)
   }
   if (settings.kind === 'chatgpt') {
-    return chatGptChat({ model: settings.chatgptModel, messages: transcriptionMessages(file), reasoning: 'off', signal: opts.signal }, opts.onText)
+    return chatGptChat({ model: model || settings.chatgptModel, messages, reasoning: model ? 'default' : 'off', signal: opts.signal }, opts.onText)
   }
   const target = endpoint(settings)
   const openRouter = settings.kind === 'openrouter'
   return chat(
     {
       ...target,
-      model: openRouter ? TRANSCRIPTION_MODEL : target.model,
-      messages: transcriptionMessages(file),
-      // Transcrire ne se réfléchit pas (comme dans bac-philo-agent).
-      reasoning: 'off',
-      ...(openRouter && file.type === 'application/pdf' && { extraBody: OPENROUTER_PDF_PLUGIN }),
+      model: openRouter ? model || TRANSCRIPTION_MODEL : target.model,
+      messages,
+      // Transcrire ou décrire ne se réfléchit pas (comme dans bac-philo-agent) ; un modèle choisi garde
+      // son réglage (certains exigent de réfléchir).
+      reasoning: model ? 'default' : 'off',
+      ...(openRouter && extraBody && { extraBody }),
       signal: opts.signal,
     },
     opts.onText
   )
+}
+
+/** Génère (ou modifie) une image : la « data: » URI, et le coût s'il est donné. */
+export async function generateImage(
+  settings: AiSettings,
+  req: ImageRequest,
+  opts: { model?: string; signal?: AbortSignal } = {}
+): Promise<{ dataUri: string; cost?: number }> {
+  const model = opts.model || IMAGE_MODEL
+  try {
+    if (settings.kind === 'server') {
+      const res = await fetch('/api/ai/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request: req, model }),
+        signal: opts.signal,
+      })
+      if (!res.ok) throw await errorFromResponse(res)
+      return (await res.json()) as { dataUri: string; cost?: number }
+    }
+    if (settings.kind !== 'openrouter') throw new AiError('unavailable')
+    const target = endpoint(settings)
+    const res = await fetch(`${OPENROUTER_URL}/images`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${target.apiKey}`, ...target.headers },
+      body: JSON.stringify(imageRequestBody(model, req)),
+      signal: opts.signal,
+    })
+    if (!res.ok) throw await errorFromResponse(res)
+    return readImageResponse(await res.json())
+  } catch (e) {
+    throw toAiError(e)
+  }
 }
 
 /** Essai du fournisseur : une demande minuscule, dont la réponse doit être un JSON donné. */

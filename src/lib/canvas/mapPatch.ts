@@ -10,6 +10,8 @@ import { SEQUENCE_VERSION, emptySequence, newId } from '../sequence/types'
 import { m } from '@/i18n/client'
 import { readSequence, writeSequence } from './adapter'
 import { exportMap } from './mapExport'
+import { isImage } from './imageReading'
+import { createImageMark, markPoint, placeLabels, type ImageMark, type ImagePoint } from './imageLabels'
 import { applyType, attachToParent, contentLocale, createElementBox, createLink, presetResolver, type PresetOf } from './mapImport'
 import type { Locale } from '@/i18n/config'
 import { applyPresetTo, setReasoning } from './presets'
@@ -29,6 +31,13 @@ import {
 /** Écart entre le contenu de la page et un élément isolé ajouté. */
 const GAP = 200
 
+/** Légende ajoutée : sa boîte, l'image, et le point visé. */
+interface Caption {
+  image: TLShapeId
+  box: TLShapeId
+  at: ImagePoint
+}
+
 /**
  * Applique des modifications contrôlées au schéma ouvert. `ghost` : les éléments et liens ajoutés
  * sont des suggestions en attente (src/lib/canvas/suggestions.ts) ; les autres opérations sont
@@ -42,6 +51,9 @@ export function applyPatch(editor: Editor, patch: MapPatch, opts: { ghost?: bool
   const lang = contentLocale(exported.map.lang)
   /** Nœuds dont l'arbre est à remettre en page. */
   const touched = new Set<TLShapeId>()
+  /** Légendes ajoutées à une image, à ranger autour d'elle. */
+  const captions: Caption[] = []
+  const added = new Set<TLShapeId>()
   let skipped = 0
   editor.run(() => {
     rememberRelationLabels(editor, relationLabels(editor, patch.vocabulary, exported.map.lang))
@@ -50,9 +62,13 @@ export function applyPatch(editor: Editor, patch: MapPatch, opts: { ghost?: bool
         skipped++
         continue
       }
-      applyOperation(editor, op, shapes, presetOf, touched, lang)
+      applyOperation(editor, op, shapes, presetOf, touched, lang, captions)
+      if (op.op === 'add') added.add(shapes.get(op.id)?.node as TLShapeId)
       if (opts.ghost) markSuggestion(editor, op, shapes)
     }
+    // Les boîtes ajoutées pour légender une image se rangent autour d'elle (pas celles qui existaient).
+    const fresh = captions.filter((c) => added.has(c.box) && !getTreeIndex(editor).parent.has(c.box))
+    for (const image of new Set(fresh.map((c) => c.image))) placeLabels(editor, image, fresh.filter((c) => c.image === image))
     const roots = new Set([...touched].filter((id) => editor.getShape(id)).map((id) => rootOf(editor, id)))
     for (const root of roots) relayout(editor, root)
   })
@@ -78,7 +94,8 @@ function applyOperation(
   shapes: Map<string, RefShapes>,
   presetOf: PresetOf,
   touched: Set<TLShapeId>,
-  lang: Locale
+  lang: Locale,
+  captions: Caption[]
 ) {
   const nodeOf = (ref: string) => shapes.get(ref)?.node as TLShapeId | undefined
   switch (op.op) {
@@ -154,6 +171,14 @@ function applyOperation(
       const from = nodeOf(op.from)
       const to = nodeOf(op.to)
       if (!from || !to) return
+      // Vers un point ou une zone d'une image : une légende.
+      const mark: ImageMark | undefined = isImage(editor.getShape(to)) ? (op.point ? { point: op.point } : op.area ? { area: op.area } : undefined) : undefined
+      if (mark) {
+        const { arrow, area } = createImageMark(editor, op.id, from, to, mark)
+        shapes.set(op.id, { kind: 'link', node: arrow, ...(area && { edge: area }) })
+        captions.push({ image: to, box: from, at: markPoint(mark) })
+        return
+      }
       shapes.set(op.id, { kind: 'link', node: createLink(editor, op, from, to, presetOf, lang) })
       return
     }
@@ -195,6 +220,7 @@ function applyUpdate(
   }
   setMeta('author', op.source)
   setMeta('certainty', op.certainty === 'established' ? null : op.certainty)
+  setMeta('url', op.url)
   setMeta('fallacy', op.fallacy === null ? null : op.fallacy?.trim() || undefined)
   setMeta('modality', op.modality)
   setMeta('note', op.note)
@@ -203,11 +229,13 @@ function applyUpdate(
   if (op.folded !== undefined) meta.folded = op.folded
   if (op.task !== undefined) meta.task = op.task
   if (op.type === null) meta.preset = null
+  // Une image n'a ni texte, ni forme, ni style de boîte : ses champs de meta et son type seulement.
+  const box = !isImage(shape)
   editor.updateShape({
     id,
     type: shape.type,
     meta: meta as JsonObject,
-    ...(op.text !== undefined && { props: { richText: markdownToRichText(op.text) as TLRichText } }),
+    ...(box && op.text !== undefined && { props: { richText: markdownToRichText(op.text) as TLRichText } }),
   } as TLShapePartial)
   if (op.type) applyType(editor, id, presetOf(op.type, 'shape'))
 
@@ -238,8 +266,10 @@ function applyUpdate(
   }
 
   // Aspect propre, après le type (qui donne le sien) ; null : celui du type.
-  if (op.style === null) resetOwnStyle(editor, id)
-  else applyOwnStyle(editor, id, op.style)
+  if (box) {
+    if (op.style === null) resetOwnStyle(editor, id)
+    else applyOwnStyle(editor, id, op.style)
+  }
 
   // Réglages d'arbre, sur une racine.
   if (op.tree === null) {

@@ -6,8 +6,8 @@
 // Les consignes sont en anglais, comme le reste de ce qui est envoyé au modèle ; les libellés et
 // les infobulles sont traduits (t.elementAi.aims). Toute modification d'une consigne change PROMPT_VERSION.
 
-/** Familles de visées : argumenter, analyser un concept, questionner, illustrer. */
-export const AIM_FAMILIES = ['argue', 'analyse', 'question', 'illustrate'] as const
+/** Familles de visées : argumenter, analyser un concept, questionner, illustrer, observer (une image). */
+export const AIM_FAMILIES = ['argue', 'analyse', 'question', 'illustrate', 'observe'] as const
 export type AimFamily = (typeof AIM_FAMILIES)[number]
 
 /** Consigne de chaque visée de l'app. */
@@ -60,16 +60,51 @@ export const AIM_TEXT = {
     'Borderline cases: cases where one hesitates to apply the element (“is it still …?”), as `example` elements connected with `tests`, each saying in one sentence what makes it borderline. They test the boundaries of the element.',
   analogies:
     'Analogies: comparisons that help to grasp the element (“just as …, so …”), as `example` elements connected with `illustrates`, each with its limit: where the analogy stops working.',
+  news:
+    'Current cases: recent, real and dated cases (events, decisions, debates, scientific findings) that illustrate the element, put it to the test or show what is at stake, as `example` elements connected with `illustrates` (or `objects` when the case goes against it), each saying in a few words what it shows, with its date, and its `source` (the publication) and `url`. Prefer cases documented by reliable sources, which an audience can grasp without a long explanation.',
+  figures:
+    'Facts and figures: precise, sourced data (statistics, measurements, results of studies, dates) that support the element or put it in question, as `fact` elements connected with `supports` or `objects`, each with its figure, its date and its scope (where, who, how it was measured), its `source` and `url`. Give the figures as the source gives them, without stretching them into a stronger claim; when sources disagree, say so.',
+  describe:
+    'Description of the image, as elements under it: what is seen, without interpretation. Its subject first, then its main parts in a clear order (foreground, background; left, right; or the order in which the eye reads it), each a short `statement` (plain branch, no relation) saying where it is and what it shows, with under it the details that matter (gestures, expressions, objects, light, colours, contrasts). Note what is striking or unexpected. No meaning, no symbol, no intention of the author: only what anyone can check by looking.',
+  interpret:
+    'Interpretation of the image: what it means, shows or argues beyond what is seen. Each reading is a `statement` (plain branch) under the image, justified by the visible details it rests on, as `fact` children connected with `supports` (“the light falls only on …”). When the image is a known work, its context (author, period, movement) may support a reading: give it with its `source` and `certainty`. When several readings are possible, give the competing ones, and an objection (`objects`) to a reading that the image itself puts in doubt. Keep observation and interpretation apart: a detail is in a `fact`, a meaning in a `statement`.',
+  problematize:
+    'From the image to philosophy: the concepts at stake in what it shows (each a `concept`, plain branch, with in its note the detail of the image that brings it out), then the philosophical questions it raises (`question` connected with `raises`), each a real question that could be discussed, not a question about the image itself (who painted it, what it represents). Under the most fruitful question, two opposed answers (`statement` connected with `answers`). The image is a starting point: each question must arise from something it really shows.',
+  caption:
+    'Captions: name the parts of the image that matter (the figures, objects, places, organs, components or symbols that one must be able to point at to understand or explain it), each as a short box (a few words: “Marianne”, “the barricade”, “left ventricle”), with no `parent`, linked to the image by a `link` without relation whose `point` is the spot it designates or, for a part that spreads over a region (a crowd, the sky, a group of figures), whose `area` circles it. Coordinates are fractions of the image (0 to 1, from its top-left corner): place them precisely on what is named, by looking at the image. Name only what is really visible; when an identification is uncertain, give it as such in the box (“Delacroix himself?”). A box may carry a note of one or two sentences when the part needs an explanation.',
+  reproduce:
+    'Reproduce the diagram shown in the image (a mind map, a scheme, a table, a blackboard, handwritten notes, a chart turned into a tree), faithfully, as a tree under the image: its main box as a child of the image (plain branch, no relation), every other box beneath, following its hierarchy and the order of its branches. Copy the text of each box word for word, in its own language; an illegible word is written [illegible]. When an arrow or a layout clearly means a relation (an arrow labelled “because”: `supports`; “but”, “however”: `objects`; “e.g.”: `illustrates`), use it, with the matching type; otherwise a plain branch. Do not add, correct, complete or summarise anything: reproduce every box, whatever the amount asked. If the image is not a diagram but a text, reproduce its outline (headings, then the points under each).',
 } as const satisfies Record<string, string>
 
 export type AimId = keyof typeof AIM_TEXT
 
 /** Visées de chaque famille, dans l'ordre des boutons (une visée peut être de deux familles). */
 export const FAMILY_AIMS: Record<AimFamily, AimId[]> = {
-  argue: ['arguments', 'objections', 'answers', 'assumptions', 'consequences', 'references', 'fallacies'],
+  argue: ['arguments', 'objections', 'answers', 'assumptions', 'consequences', 'references', 'figures', 'fallacies'],
   analyse: ['senses', 'confusions', 'opposites', 'category', 'species', 'features', 'conditions', 'consequences', 'definition'],
   question: ['questions', 'difficulties', 'tensions', 'problem', 'stakes'],
-  illustrate: ['examples', 'counterexamples', 'borderline', 'analogies'],
+  illustrate: ['examples', 'counterexamples', 'borderline', 'analogies', 'news'],
+  observe: ['describe', 'caption', 'interpret', 'problematize', 'reproduce'],
+}
+
+/** Famille proposée seulement pour une image (et d'abord pour elle). */
+export const IMAGE_FAMILY: AimFamily = 'observe'
+
+/** Visées qui couvrent tout ce qu'il y a à prendre (reproduire un schéma) : l'ampleur n'a pas de sens. */
+export const AIM_WHOLE: AimId[] = ['reproduce']
+
+/** Visées qui demandent de voir l'image (des coordonnées) : un modèle qui la voit, à défaut celui de lecture. */
+export const AIM_SEES: AimId[] = ['caption']
+
+/**
+ * Visées qui s'appuient sur le web : « required », sans lui elles n'ont pas de sens (l'actualité,
+ * des chiffres sourcés), la recherche s'active et reste active ; « useful », elle s'active quand le
+ * fournisseur le permet (vérifier les références), et peut être coupée.
+ */
+export const AIM_WEB: Partial<Record<AimId, 'required' | 'useful'>> = {
+  references: 'useful',
+  news: 'required',
+  figures: 'required',
 }
 
 /**

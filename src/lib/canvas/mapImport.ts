@@ -154,6 +154,7 @@ export function createElementBox(editor: Editor, e: MapElement, at: Vec, extraMe
     ref: e.id,
     ...(e.source && { author: e.source }),
     ...(e.certainty && e.certainty !== 'established' && { certainty: e.certainty }),
+    ...(e.url && { url: e.url }),
     ...(e.fallacy?.trim() && { fallacy: e.fallacy.trim() }),
     ...(e.modality && { modality: e.modality }),
     ...(e.note && { note: e.note }),
@@ -168,7 +169,8 @@ export function createElementBox(editor: Editor, e: MapElement, at: Vec, extraMe
     type: 'geo',
     x: at.x,
     y: at.y,
-    props: { geo: 'rectangle', ...NODE, richText: markdownToRichText(e.text) as TLRichText, font: 'sans', size: 'm' },
+    // Une image (dont le JSON ne porte que la lecture) : une boîte avec sa description.
+    props: { geo: 'rectangle', ...NODE, richText: markdownToRichText(e.text.trim() || e.image?.description || '') as TLRichText, font: 'sans', size: 'm' },
     meta,
   })
   return id

@@ -3,6 +3,7 @@
 // appliquées aussitôt et annulables une à une, même après d'autres changements du schéma.
 
 import { atom, type Editor, type TLRecord, type TLShapeId } from 'tldraw'
+import type { Citation } from '../ai/chat'
 import type { ChangeStatus, ChatEntryForModel } from '../ai/chatAnswer'
 import type { MapPatch } from '../map/patch'
 import { exportMap } from './mapExport'
@@ -16,6 +17,9 @@ export interface ChatEntry extends ChatEntryForModel {
   changes?: { summary: string; status: ChangeStatus; operations: number; skipped?: number; warnings?: number }
   /** Échec de la demande (message déjà traduit). */
   error?: string
+  /** Message de l'utilisateur : envoyé avec la recherche sur le web. Réponse : les pages consultées. */
+  web?: boolean
+  citations?: Citation[]
 }
 
 export const chatEntriesAtom = atom<ChatEntry[]>('chatEntries', [])

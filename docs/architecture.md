@@ -13,6 +13,7 @@ For contributors: how the code is organised, tests, languages and dark mode.
 - `src/lib/tree/` and `src/lib/canvas/tree.ts`: trees (mind maps) on regular tldraw shapes, connected by arrows marked `meta.branch`. Without this module, the document stays a normal tldraw diagram.
 - `src/lib/share/`: shared links (compression into the link, checks before public publication); `src/lib/presentation/screen.ts` and `src/lib/remote/`: dual screen and phone remote.
 - `src/lib/map/`: the JSON diagram format (Zod schema, checks, sequence conversion), without tldraw; `src/lib/canvas/mapExport.ts` and `mapImport.ts`: conversion to and from the tldraw document.
+- Images: `src/lib/ai/imageReading.ts` (reading and identifying an image), `src/lib/ai/vision.ts` (which OpenRouter models see images), `src/lib/ai/imageGen.ts` (generation prompt and request), `src/lib/images/commons.ts` (Wikimedia Commons search), all without tldraw; `src/lib/canvas/imageReading.ts`, `imageLabels.ts` (captions pointing at a spot or an area) and `imageGen.ts` (adding images, opening images, sketches of a selection) on the canvas.
 
 The sequence is stored in the tldraw document: it benefits from undo/redo and local persistence (IndexedDB).
 

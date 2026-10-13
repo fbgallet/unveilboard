@@ -5,7 +5,7 @@ import { atom, renderPlaintextFromRichText, useEditor, useValue, type Editor, ty
 import { useT } from '@/i18n/client'
 import { deepenText } from '@/lib/ai/aims'
 import { REASONING_EFFORTS, type ReasoningEffort } from '@/lib/ai/chat'
-import { aiSettingsAtom, isAiReady, serverAiAtom, type AiSettings } from '@/lib/ai/client'
+import { aiSettingsAtom, isAiReady, serverAiAtom, webSearchAvailable, type AiSettings } from '@/lib/ai/client'
 import { MODELS } from '@/lib/ai/models'
 import { toAiError } from '@/lib/ai/errors'
 import {
@@ -35,6 +35,7 @@ import {
 import { modelLabel } from './AiSettingsDialog'
 import { AiProgress, progressCallbacks, startProgress, type AiProgressState } from './AiProgress'
 import { Markdownish } from './Markdownish'
+import { Citations, WebToggle, webUnavailableText } from './WebSearch'
 
 /** Régénération demandée : une suggestion (boîte), ou tout le dernier développement. */
 type RedoTarget = { kind: 'one'; id: TLShapeId } | { kind: 'all' }
@@ -137,9 +138,10 @@ export function SuggestionBar({ editor }: { editor: Editor }) {
   const ready = isAiReady(settings, server)
   const [busy, setBusy] = useState<{ progress: AiProgressState; abort: AbortController } | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
-  // Résumé déplié pour ce développement-là (replié pour le suivant).
-  const [summaryOf, setSummaryOf] = useState<ElementRun | null>(null)
-  const summaryOpen = !!run && summaryOf === run
+  // Résumé, ou pages consultées, dépliés pour ce développement-là (repliés pour le suivant).
+  const [opened, setOpened] = useState<{ run: ElementRun; what: 'summary' | 'sources' } | null>(null)
+  const summaryOpen = !!run && opened?.run === run && opened.what === 'summary'
+  const sourcesOpen = !!run && opened?.run === run && opened.what === 'sources'
   // Régénération demandée (sur une suggestion qui existe encore, ou sur le dernier développement).
   const redo = useValue(
     'redo target',
@@ -174,13 +176,13 @@ export function SuggestionBar({ editor }: { editor: Editor }) {
 
   const follow = (req: ElementRequest) => track((opts) => runElementRequest(editor, req, opts))
 
-  function regenerate(target: RedoTarget, direction: string, settings: AiSettings) {
+  function regenerate(target: RedoTarget, direction: string, settings: AiSettings, web: boolean) {
     redoTargetAtom.set(null)
     void track((opts) =>
       target.kind === 'one'
-        ? regenerateSuggestion(editor, target.id, direction, { ...opts, settings })
+        ? regenerateSuggestion(editor, target.id, direction, { ...opts, settings, web })
         : run
-          ? regenerateRun(editor, run, direction, { ...opts, settings })
+          ? regenerateRun(editor, run, direction, { ...opts, settings, web })
           : Promise.resolve({ issues: [] })
     )
   }
@@ -223,8 +225,18 @@ export function SuggestionBar({ editor }: { editor: Editor }) {
           )}
           {info && <span className="suggestion-bar-sep" aria-hidden />}
           {run.outcome.summary && (
-            <button className={`btn-xs ${summaryOpen ? 'btn-xs-on' : ''}`} aria-expanded={summaryOpen} onClick={() => setSummaryOf(summaryOpen ? null : run)}>
+            <button className={`btn-xs ${summaryOpen ? 'btn-xs-on' : ''}`} aria-expanded={summaryOpen} onClick={() => setOpened(summaryOpen ? null : { run, what: 'summary' })}>
               {f.summary}
+            </button>
+          )}
+          {!!run.outcome.citations?.length && (
+            <button
+              className={`btn-xs ${sourcesOpen ? 'btn-xs-on' : ''}`}
+              aria-expanded={sourcesOpen}
+              title={t.web.sourcesHint}
+              onClick={() => setOpened(sourcesOpen ? null : { run, what: 'sources' })}
+            >
+              {t.web.sources(run.outcome.citations.length)}
             </button>
           )}
           {!run.request.ghost && remaining > 0 && (
@@ -281,10 +293,15 @@ export function SuggestionBar({ editor }: { editor: Editor }) {
           )}
         </>
       )}
-      {redo && !busy && <RedoPanel editor={editor} target={redo} onRedo={regenerate} />}
+      {redo && !busy && <RedoPanel editor={editor} target={redo} web={!!run?.request.web} onRedo={regenerate} />}
       {!redo && summaryOpen && run?.outcome.summary && (
         <div className="suggestion-summary patch-summary-text">
           <Markdownish text={run.outcome.summary} />
+        </div>
+      )}
+      {!redo && sourcesOpen && run?.outcome.citations && (
+        <div className="suggestion-summary">
+          <Citations citations={run.outcome.citations} />
         </div>
       )}
     </div>
@@ -302,7 +319,18 @@ function shortText(editor: Editor, id: TLShapeId) {
  * Régénérer une suggestion, ou tout le dernier développement : une direction facultative (sinon,
  * mieux), et le modèle et la réflexion pour cette demande seulement.
  */
-function RedoPanel({ editor, target, onRedo }: { editor: Editor; target: RedoTarget; onRedo(target: RedoTarget, direction: string, settings: AiSettings): void }) {
+function RedoPanel({
+  editor,
+  target,
+  web: webBefore,
+  onRedo,
+}: {
+  editor: Editor
+  target: RedoTarget
+  /** La recherche sur le web de la demande d'origine (proposée de nouveau). */
+  web: boolean
+  onRedo(target: RedoTarget, direction: string, settings: AiSettings, web: boolean): void
+}) {
   const t = useT()
   const f = t.elementAi.follow
   const settings = useValue(aiSettingsAtom)
@@ -318,6 +346,8 @@ function RedoPanel({ editor, target, onRedo }: { editor: Editor; target: RedoTar
   const current = settings.kind === 'server' ? settings.serverModel || server?.model || '' : settings.openrouterModel
   const [model, setModel] = useState(current)
   const [effort, setEffort] = useState<ReasoningEffort>(settings.reasoning)
+  const canSearch = webSearchAvailable(settings, server)
+  const [web, setWeb] = useState(webBefore && canSearch)
   const go = () => {
     const override: AiSettings = {
       ...settings,
@@ -325,7 +355,7 @@ function RedoPanel({ editor, target, onRedo }: { editor: Editor; target: RedoTar
       ...(settings.kind === 'server' && { serverModel: model }),
       ...(settings.kind === 'openrouter' && { openrouterModel: model }),
     }
-    onRedo(target, direction.trim(), override)
+    onRedo(target, direction.trim(), override, web && canSearch)
   }
   return (
     <div className="suggestion-summary redo-panel" role="dialog" aria-label={f.redo} onKeyDown={(e) => e.key === 'Escape' && redoTargetAtom.set(null)}>
@@ -363,6 +393,7 @@ function RedoPanel({ editor, target, onRedo }: { editor: Editor; target: RedoTar
             ))}
           </select>
         </label>
+        <WebToggle on={web} onChange={setWeb} unavailable={canSearch ? undefined : webUnavailableText(settings.kind, t)} />
       </div>
       <div className="flex items-center gap-2">
         <button className="btn-primary" onClick={go}>

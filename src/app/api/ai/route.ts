@@ -15,7 +15,8 @@ import { allowAiRequest, serverAiAvailable, serverAiConfig, serverModels } from 
 // Une génération de schéma peut prendre plus d'une minute.
 export const maxDuration = 300
 
-const MAX_BODY = 2_000_000
+// Une image jointe (MAX_PROMPT_IMAGE) en plus de la demande : sous la limite de ~4,5 Mo de Vercel.
+const MAX_BODY = 4_400_000
 
 const BodySchema = z.object({
   input: PromptInputSchema,
@@ -53,6 +54,8 @@ export async function POST(request: Request) {
       messages: promptMessages(body.input, body.repair),
       jsonMode: config.jsonMode,
       reasoning: body.reasoning,
+      // Recherche sur le web : seulement si l'instance la permet (son coût est pour sa clé).
+      web: !!body.input.web && config.web,
       maxTokens: config.maxTokens + REASONING_HEADROOM[body.reasoning ?? 'default'],
       headers: { 'HTTP-Referer': process.env.SITE_URL || 'https://unveilboard.com', 'X-Title': 'Unveilboard' },
       signal: request.signal,

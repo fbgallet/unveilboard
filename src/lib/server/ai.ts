@@ -20,7 +20,19 @@ export interface ServerAiConfig {
   model: string
   maxTokens: number
   jsonMode: boolean
+  /**
+   * Recherche sur le web (outil d'OpenRouter), à la charge de la clé de l'instance : AI_WEB_SEARCH=on
+   * (en développement, par défaut, comme l'IA elle-même ; AI_WEB_SEARCH=off la coupe).
+   */
+  web: boolean
+  /**
+   * Génération d'images (OpenRouter), à la charge de la clé de l'instance, environ 4 centimes par
+   * image : AI_IMAGE=on (en développement, par défaut ; AI_IMAGE=off la coupe).
+   */
+  image: boolean
 }
+
+const isDev = () => process.env.NODE_ENV === 'development'
 
 /** Configuration (variables d'environnement) ; null si l'instance n'a pas d'IA. */
 export function serverAiConfig(): ServerAiConfig | null {
@@ -36,6 +48,8 @@ export function serverAiConfig(): ServerAiConfig | null {
     maxTokens: Number(process.env.AI_MAX_TOKENS) || 64000,
     // json_object : accepté par OpenRouter et par la plupart des serveurs ; AI_JSON_MODE=off sinon.
     jsonMode: process.env.AI_JSON_MODE !== 'off',
+    web: isOpenRouter(baseUrl) && (process.env.AI_WEB_SEARCH === 'on' || (isDev() && process.env.AI_WEB_SEARCH !== 'off')),
+    image: isOpenRouter(baseUrl) && (process.env.AI_IMAGE === 'on' || (isDev() && process.env.AI_IMAGE !== 'off')),
   }
 }
 
@@ -47,14 +61,12 @@ export function serverModels(config: ServerAiConfig): string[] {
   return [...new Set([config.model, ...(isOpenRouter(config.baseUrl) ? MODELS.map((m) => m.id) : [])])]
 }
 
-const isDev = () => process.env.NODE_ENV === 'development'
-
 /** Ouverte à cette instance : configurée, et en mode cloud, en développement ou publique par choix (AI_PUBLIC=on). */
-export function serverAiAvailable(): { model: string; models: string[] } | null {
+export function serverAiAvailable(): { model: string; models: string[]; web: boolean; openrouter: boolean; image: boolean } | null {
   const config = serverAiConfig()
   if (!config) return null
   if (storageMode() === 'local' && !isDev() && !(process.env.AI_PUBLIC === 'on' && kvConfigured())) return null
-  return { model: config.model, models: serverModels(config) }
+  return { model: config.model, models: serverModels(config), web: config.web, openrouter: isOpenRouter(config.baseUrl), image: config.image }
 }
 
 /** Mode local (AI_PUBLIC) : compte une demande de cette adresse ; false si une limite est atteinte. */

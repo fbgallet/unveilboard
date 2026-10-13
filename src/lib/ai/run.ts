@@ -3,8 +3,8 @@
 // fournis par l'appelant (navigateur, serveur, tests).
 
 import { formatIssue, type MapIssue } from '../map/check'
-import type { ChatMessage, ChatResult, ChatUsage } from './chat'
-import { MAX_CHAT_HISTORY, buildPrompt, repairMessage, type PromptInput } from './prompts'
+import type { ChatMessage, ChatResult, ChatUsage, Citation } from './chat'
+import { MAX_CHAT_HISTORY, buildPrompt, repairMessage, type PromptImage, type PromptInput } from './prompts'
 
 export interface Repair {
   /** Réponse précédente du modèle. */
@@ -22,6 +22,8 @@ export interface AiRun<R> {
   usage: ChatUsage
   /** 1, ou 2 après une demande de correction. */
   attempts: number
+  /** Pages consultées sur le web (recherche), des deux appels. */
+  citations?: Citation[]
 }
 
 export async function runWithRepair<R extends { ok: boolean; issues: MapIssue[] }>(
@@ -31,7 +33,7 @@ export async function runWithRepair<R extends { ok: boolean; issues: MapIssue[] 
 ): Promise<AiRun<R>> {
   const first = await send()
   const firstResult = check(first.text, 1)
-  if (firstResult.ok) return { text: first.text, result: firstResult, model: first.model, usage: first.usage ?? {}, attempts: 1 }
+  if (firstResult.ok) return { text: first.text, result: firstResult, model: first.model, usage: first.usage ?? {}, attempts: 1, ...citationsOf(first) }
   const problems = firstResult.issues.filter((i) => i.level === 'error').map(formatIssue).slice(0, 40)
   const second = await send({ answer: first.text, problems })
   return {
@@ -40,7 +42,13 @@ export async function runWithRepair<R extends { ok: boolean; issues: MapIssue[] 
     model: second.model ?? first.model,
     usage: addUsage(first.usage, second.usage),
     attempts: 2,
+    ...citationsOf(first, second),
   }
+}
+
+function citationsOf(...results: ChatResult[]): { citations?: Citation[] } {
+  const all = new Map(results.flatMap((r) => r.citations ?? []).map((c) => [c.url, c]))
+  return all.size ? { citations: [...all.values()] } : {}
 }
 
 function addUsage(a: ChatUsage = {}, b: ChatUsage = {}): ChatUsage {
@@ -55,7 +63,7 @@ function addUsage(a: ChatUsage = {}, b: ChatUsage = {}): ChatUsage {
  */
 export function promptMessages(input: PromptInput, repair?: Repair): ChatMessage[] {
   const prompt = buildPrompt({ ...input, delivery: 'api' })
-  if (input.task !== 'chat') return chatMessages(prompt, repair)
+  if (input.task !== 'chat') return chatMessages(prompt, repair, input.images)
   return [
     { role: 'system', content: prompt },
     ...(input.history ?? []).slice(-MAX_CHAT_HISTORY),
@@ -63,10 +71,16 @@ export function promptMessages(input: PromptInput, repair?: Repair): ChatMessage
   ]
 }
 
-/** Messages d'une demande : la consigne, puis, pour une correction, la réponse et les problèmes. */
-export function chatMessages(prompt: string, repair?: Repair): ChatMessage[] {
+/**
+ * Messages d'une demande : la consigne (avec les images jointes), puis, pour une correction, la
+ * réponse et les problèmes.
+ */
+export function chatMessages(prompt: string, repair?: Repair, images?: PromptImage[]): ChatMessage[] {
+  const content: ChatMessage['content'] = images?.length
+    ? [{ type: 'text', text: prompt }, ...images.map((i) => ({ type: 'image_url' as const, image_url: { url: i.dataUri } }))]
+    : prompt
   return [
-    { role: 'user', content: prompt },
+    { role: 'user', content },
     ...(repair ? [{ role: 'assistant' as const, content: repair.answer }, { role: 'user' as const, content: repairMessage(repair.problems) }] : []),
   ]
 }

@@ -56,7 +56,7 @@ Optional services and settings (details in `.env.example`):
 | `SHARING=off`, `SHARE_BLOCKLIST` | Stop publications; extra blocked terms |
 | `RESEND_API_KEY`, `REPORT_EMAIL`, `REPORT_FROM` | Reports and contact form, sent by email |
 | `LEGAL_PUBLISHER`, `LEGAL_LINKS`, `LEGAL_HOST` | Legal notice and privacy page (`/legal`); without `LEGAL_PUBLISHER`, no page |
-| `OPENROUTER_API_KEY` (or `AI_BASE_URL`, `AI_API_KEY`), `AI_MODEL`, `AI_MAX_TOKENS`, `AI_JSON_MODE` | AI of the instance, server side (cloud mode; local mode only with `AI_PUBLIC=on` and Upstash, with per-IP limits; always, without limits, in development). See [Working with an AI](ai.md) |
+| `OPENROUTER_API_KEY` (or `AI_BASE_URL`, `AI_API_KEY`), `AI_MODEL`, `AI_MAX_TOKENS`, `AI_JSON_MODE`, `AI_WEB_SEARCH`, `AI_IMAGE` | AI of the instance, server side (cloud mode; local mode only with `AI_PUBLIC=on` and Upstash, with per-IP limits; always, without limits, in development). See [Working with an AI](ai.md) |
 | `SITE_URL` | Address used in link previews (default `https://unveilboard.com`) |
 
 The site sends a Content Security Policy (`src/proxy.ts`): if you add a script, a font or an iframe from another origin, allow it there. Security model: see [SECURITY.md](../SECURITY.md).

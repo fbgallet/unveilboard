@@ -28,6 +28,7 @@ import { reviewOpenAtom } from '@/lib/canvas/review'
 import { assistantOpenAtom, downloadMapJson, mapImportOpenAtom, mapJsonText } from './MapJsonDialog'
 import { markdownListOf } from '@/lib/canvas/listExport'
 import { useT } from '@/i18n/client'
+import { imageSearchAtom } from './ImageSearch'
 
 /**
  * Menu principal de tldraw (en haut à gauche), précédé de nos entrées : navigation entre schémas,
@@ -110,6 +111,10 @@ export function MainMenu() {
             <TldrawUiMenuItem id="copy-json" label={t.mapJson.menuCopy} readonlyOk onSelect={() => void copyJson()} />
             <TldrawUiMenuItem id="copy-list" label={t.listExport.menu} readonlyOk onSelect={() => void copyList()} />
             <TldrawUiMenuItem id="import-json" label={t.mapJson.menuImport} onSelect={() => void mapImportOpenAtom.set(true)} />
+          </TldrawUiMenuGroup>
+          {/* Une vraie image, citée (sans IA) : au milieu de l'écran. */}
+          <TldrawUiMenuGroup id="schema-images">
+            <TldrawUiMenuItem id="image-search" label={t.imageSearch.menu} onSelect={() => void imageSearchAtom.set({ query: '' })} />
           </TldrawUiMenuGroup>
         </TldrawUiMenuSubmenu>
         <TldrawUiMenuItem id="share" label={t.share.menu} readonlyOk onSelect={() => void shareDialogOpenAtom.set(true)} />

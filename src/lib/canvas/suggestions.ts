@@ -4,6 +4,7 @@
 // hors de la présentation, de l'export JSON, du dévoilement de la carte et des partages.
 
 import type { Editor, TLArrowBinding, TLShape, TLShapeId, TLShapePartial } from 'tldraw'
+import { isImageArea, isImageMark, marksOfLabel } from './imageLabels'
 import { getTreeIndex, relayout, rootOf, withBranchesToDelete } from './tree'
 
 export interface SuggestionMeta {
@@ -18,10 +19,13 @@ export function suggestionOf(shape: TLShape | undefined): SuggestionMeta | null 
   return s && typeof s === 'object' ? (s as SuggestionMeta) : s ? {} : null
 }
 
-/** Suggestions à trancher : les boîtes, et les liens transversaux (les branches suivent leur boîte). */
+/**
+ * Suggestions à trancher : les boîtes, et les liens transversaux (les branches, et les flèches et
+ * zones d'une légende, suivent leur boîte).
+ */
 export function pendingSuggestions(editor: Editor): TLShape[] {
   const edges = new Set(getTreeIndex(editor).edge.values())
-  return editor.getCurrentPageShapes().filter((s) => isSuggestion(s) && !edges.has(s.id))
+  return editor.getCurrentPageShapes().filter((s) => isSuggestion(s) && !edges.has(s.id) && !isImageMark(s) && !isImageArea(s))
 }
 
 const unmark = (editor: Editor, ids: TLShapeId[]) => {
@@ -55,7 +59,8 @@ export function acceptSuggestion(editor: Editor, id: TLShapeId) {
   editor.markHistoryStoppingPoint('accepter une suggestion')
   const shape = editor.getShape(id)
   const ids = shape?.type === 'arrow' ? [id, ...endpoints(editor, id).flatMap((n) => withAncestors(editor, n))] : withAncestors(editor, id)
-  unmark(editor, ids)
+  // Une légende acceptée garde sa flèche et sa zone.
+  unmark(editor, [...ids, ...ids.flatMap((n) => marksOfLabel(editor, n))])
 }
 
 /** Écarte une suggestion : une boîte part avec sa branche et les liens qui la touchent. */

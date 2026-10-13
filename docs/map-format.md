@@ -70,6 +70,7 @@ Identifiers (`id`) are short and free (no spaces), unique in the whole diagram: 
 | `reasoning` | Type of reasoning of that relation: `deduction`, `induction`, `analogy`, `abduction` (best explanation), `absurd` (reductio), `afortiori`, `authority`, `example`. |
 | `source` | Source: author, theory, position, reference. |
 | `certainty` | A source or quotation given from memory (by an AI): `established`, `likely` (labelled “source to check”) or `uncertain` (“uncertain source”); omitted: not assessed. Hidden from the audience. |
+| `url` | A web page (`http` or `https`) where the source, quotation or fact can be checked, given by an AI after a web search (shown as “Web page” in the Element tab). |
 | `fallacy` | An argument fallacious on purpose (an exercise): the name of the fallacy or bias, shown to the teacher on the box, hidden from the audience. |
 | `modality` | Statements and assumptions: `descriptive` or `prescriptive`. |
 | `note` | Markdown development, shown beside the diagram while presenting. |
@@ -79,6 +80,7 @@ Identifiers (`id`) are short and free (no spaces), unique in the whole diagram: 
 | `tree` | On a root: `{ "kind": "argument" \| "mindmap", "direction": "right" \| "left" \| "down" \| "up" \| "both" }` (default direction: `right`). An argument map gives connected elements their function and color. |
 | `side` | `both` trees: side (`left`, `right`) of a child of the root. |
 | `origin`, `excerpt` | Diagram drawn from a text: the element is stated in it (`text`) or reconstructed by the analysis (`reconstruction`, e.g. an implicit assumption); `excerpt` quotes the passage verbatim. |
+| `image` | Read-only: the element is an image, given by what a multimodal model read in it (`kind`, `description`, visible `text`, `identification` with its `certainty`), which the user can correct. The picture itself is not in the JSON: on import, a box with its description takes its place. |
 | `function` | Read-only, on export: function of the element in an argument map (Objection, Justification…). Ignored on import. |
 
 ### Reading direction of relations
@@ -86,6 +88,8 @@ Identifiers (`id`) are short and free (no spaces), unique in the whole diagram: 
 A relation reads **“element RELATION parent”**: “the premise *supports* the thesis”, “the example *illustrates* the statement”. Some default relations read the other way, **“parent RELATION element”**: `implies`, `presupposes`, `raises`, `fallsUnder`, `dividesInto`, `hasFeature`, `causes`, `hasStake` (“the thesis *presupposes*…”, “courage *falls under* the virtues”). The vocabulary gives it for each relation (`direction`: `toParent` or `toChild`).
 
 In a link (`links`), the relation always reads **“from RELATION to”**.
+
+A link from a box to an image, without relation, is a **caption** of the image: `point` (`{ "x", "y" }`) is the spot the arrow points at, `area` (`{ "x", "y", "w", "h" }`) a part of the image that is circled, in fractions of the image's width and height from its top-left corner (0 to 1).
 
 ## Vocabulary
 
@@ -148,7 +152,7 @@ To change an existing diagram, an AI (or a tool) does not rewrite it: it sends c
 | `op` | Effect |
 |---|---|
 | `add` | Adds an element (any element field; a new `id`). Its `parent` is an existing element or one added earlier. `rationale`: why the AI proposes it (one sentence), shown for a suggestion. |
-| `update` | Changes fields of an element (`text`, `type`, `relation`, `reasoning`, `source`, `certainty`, `fallacy`, `modality`, `note`, `folded`, `task`, `style`, `origin`, `excerpt`, `tree`); `null` removes a field (`style`: only the keys given change; `null` returns to the look of the type). |
+| `update` | Changes fields of an element (`text`, `type`, `relation`, `reasoning`, `source`, `certainty`, `url`, `fallacy`, `modality`, `note`, `folded`, `task`, `style`, `origin`, `excerpt`, `tree`); `null` removes a field (`style`: only the keys given change; `null` returns to the look of the type). |
 | `move` | Attaches an element, with its branch, to another parent (optional `relation`: otherwise it keeps its own). |
 | `remove` | Removes an element with its whole branch (and the links touching them), or a link. Steps no longer target it. |
 | `link` | Adds a cross-link. |

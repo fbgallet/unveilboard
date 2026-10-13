@@ -13,6 +13,7 @@ Pour contribuer : l’organisation du code, les tests, les langues et le mode so
 - `src/lib/tree/` et `src/lib/canvas/tree.ts` : arbres (cartes mentales) sur des formes tldraw ordinaires, reliées par des flèches marquées `meta.branch`. Sans ce module, le document reste un schéma tldraw normal.
 - `src/lib/share/` : liens partagés (compression dans le lien, contrôles avant publication publique) ; `src/lib/presentation/screen.ts` et `src/lib/remote/` : double affichage et télécommande.
 - `src/lib/map/` : le format JSON des schémas (schéma Zod, contrôles, conversion de la séquence), sans tldraw ; `src/lib/canvas/mapExport.ts` et `mapImport.ts` : conversion depuis et vers le document tldraw.
+- Images : `src/lib/ai/imageReading.ts` (lire et identifier une image), `src/lib/ai/vision.ts` (quels modèles d'OpenRouter voient les images), `src/lib/ai/imageGen.ts` (consigne et demande de génération), `src/lib/images/commons.ts` (recherche sur Wikimedia Commons), tous sans tldraw ; `src/lib/canvas/imageReading.ts`, `imageLabels.ts` (légendes pointant un endroit ou une zone) et `imageGen.ts` (ajout d'images, images d'ouverture, croquis d'une sélection) sur le canevas.
 
 La séquence est stockée dans le document tldraw : elle bénéficie de l'annuler/rétablir et de la persistance locale (IndexedDB).
 

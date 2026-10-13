@@ -14,8 +14,10 @@ import { setSourcePanelOpen, sourcePanelOpenAtom } from './SourcePanel'
 import { mapImportOpenAtom, openAssistant } from './MapJsonDialog'
 import { sourceDialogOpenAtom } from './SourceDialog'
 import { promptLibraryOpenAtom } from '@/lib/prompts/library'
+import { aiSettingsAtom, imageGenerationAvailable, serverAiAtom } from '@/lib/ai/client'
+import { imageGenAtom } from './ImageGen'
 
-type IconName = 'branch' | 'wand' | 'steps' | 'review' | 'document' | 'braces' | 'gear' | 'plan' | 'library' | 'palette'
+type IconName = 'branch' | 'wand' | 'steps' | 'review' | 'document' | 'braces' | 'gear' | 'plan' | 'library' | 'palette' | 'image'
 
 interface Item {
   id: string
@@ -76,6 +78,14 @@ const ICONS: Record<IconName, React.ReactNode> = {
   ),
   braces: <path d="M9 4c-2 0-2.5 1-2.5 3v2c0 1.5-.8 2.5-2.5 3 1.7.5 2.5 1.5 2.5 3v2c0 2 .5 3 2.5 3M15 4c2 0 2.5 1 2.5 3v2c0 1.5.8 2.5 2.5 3-1.7.5-2.5 1.5-2.5 3v2c0 2-.5 3-2.5 3" />,
   plan: <path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" />,
+  // Un cadre, une montagne et un soleil.
+  image: (
+    <>
+      <rect x="3.5" y="5" width="17" height="14" rx="2" />
+      <path d="M3.5 16l5-5 4 4 2.5-2.5 5.5 5.5" />
+      <circle cx="15.5" cy="9" r="1.5" />
+    </>
+  ),
   // Livres sur une étagère : la bibliothèque de prompts.
   library: <path d="M4 4h3v16H4zM9 4h3v16H9zM14.5 4.8l2.9-.8 4 15.4-2.9.8zM3 20.5h18" />,
   gear: (
@@ -110,10 +120,13 @@ export function AiLauncher() {
     'ai selection',
     () => {
       const shape = editor.getOnlySelectedShape()
-      return shape?.type === 'geo' ? shape.id : null
+      // Une boîte, ou une image (lue par l'IA).
+      return shape?.type === 'geo' || shape?.type === 'image' ? shape.id : null
     },
     [editor]
   )
+  const settings = useValue(aiSettingsAtom)
+  const server = useValue(serverAiAtom)
   const hasPlan = useValue('has plan', () => !!readPlanRecord(editor), [editor])
   const hasSource = useValue('has source', () => !!readPageSource(editor), [editor])
   const sourceOpen = useValue(sourcePanelOpenAtom)
@@ -137,11 +150,12 @@ export function AiLauncher() {
   }, [open])
 
   if (mode !== 'edit') return null
+  const canDraw = imageGenerationAvailable(settings, server)
   const run = (action: () => void) => () => {
     setOpen(false)
     action()
   }
-  // Trois groupes : ce schéma ; un nouveau schéma ; prompts et réglages.
+  // Quatre groupes : ce schéma ; un nouveau schéma ; une image ; prompts et réglages.
   const groups: Item[][] = [
     [
       {
@@ -177,6 +191,17 @@ export function AiLauncher() {
     [
       { id: 'source', icon: 'document', label: t.source.menu, action: () => sourceDialogOpenAtom.set(true) },
       { id: 'json', icon: 'braces', label: t.mapJson.menuImport, action: () => mapImportOpenAtom.set(true) },
+    ],
+    // Une image générée, sans élément de départ : à côté du contenu de la page.
+    [
+      {
+        id: 'image',
+        icon: 'image',
+        label: t.imageGen.menu,
+        action: () => imageGenAtom.set({ sources: [] }),
+        disabled: !canDraw,
+        hint: canDraw ? undefined : t.imageGen.unavailable,
+      },
     ],
     [
       { id: 'prompts', icon: 'library', label: t.prompts.menu, action: () => promptLibraryOpenAtom.set(true) },

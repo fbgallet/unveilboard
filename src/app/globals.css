@@ -497,6 +497,118 @@ body {
   font-style: italic;
   color: var(--color-zinc-700);
 }
+/* Pages consultées par l'IA (recherche sur le web) : titre en lien, puis le site. */
+.citations {
+  display: grid;
+  gap: 2px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.citations li {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 6px;
+}
+.citations a {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-amber-700);
+  text-decoration: underline;
+  text-decoration-color: var(--color-amber-300);
+  text-underline-offset: 2px;
+}
+.citations-site {
+  flex-shrink: 0;
+  color: var(--color-zinc-400);
+}
+/* Bouton « image » de la barre d'outils : fichier, Wikimedia Commons ou IA (InsertImageMenu.tsx). */
+.insert-image-menu {
+  position: fixed;
+  z-index: 700;
+  display: grid;
+  min-width: 220px;
+  padding: 4px;
+  border: 1px solid var(--color-stone-200);
+  border-radius: 10px;
+  background: var(--color-white);
+  color: var(--color-zinc-800);
+  font-size: 13px;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.15);
+  transform: translate(-50%, -100%);
+  pointer-events: auto;
+}
+.insert-image-menu button {
+  padding: 6px 10px;
+  border-radius: 6px;
+  text-align: left;
+}
+.insert-image-menu button:hover:not(:disabled) {
+  background: var(--color-stone-100);
+}
+.insert-image-menu button:disabled {
+  color: var(--color-zinc-400);
+  cursor: default;
+}
+
+/* Recherche d'images (Wikimedia Commons) : vignettes, crédit dessous. */
+.image-search-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+.image-search-item {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--color-zinc-200);
+  border-radius: 8px;
+  background: var(--color-white);
+  text-align: left;
+  cursor: pointer;
+}
+.image-search-item:hover {
+  border-color: var(--color-amber-400);
+}
+.image-search-item img {
+  width: 100%;
+  height: 110px;
+  object-fit: contain;
+  background: var(--color-stone-50);
+}
+.image-search-caption {
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--color-zinc-500);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Image générée par l'IA : signalée en édition comme en présentation (ImageGen.tsx). */
+.generated-badge {
+  position: absolute;
+  z-index: 100000;
+  transform-origin: 0 0;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgb(24 24 27 / 0.75);
+  color: white;
+  font: 600 11px/16px system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: default;
+}
+a.generated-badge {
+  cursor: pointer;
+}
+
 .suggestion-badges {
   position: absolute;
   z-index: 100000;
@@ -869,6 +981,38 @@ button.review-badge {
   font-size: 13px;
   box-shadow: 0 12px 40px rgb(0 0 0 / 0.15);
   pointer-events: auto;
+  /* Jamais plus haute que la zone de dessin : le contenu défile. */
+  max-height: calc(100% - 72px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Ce que l'IA voit dans une image (panneau IA d'un élément image). */
+.image-reading {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--color-stone-200);
+  border-radius: 8px;
+  background: var(--color-stone-50);
+}
+
+/* Champs à la hauteur de leur contenu (ImageReading.tsx) ; au-delà, ils défilent. */
+.image-reading-field {
+  min-height: 0;
+  max-height: 40vh;
+  overflow-y: auto;
+  resize: none;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.image-reading-kind {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--color-stone-200);
+  font-weight: 400;
 }
 
 /* Sous la rangée du haut (le menu de tldraw s'y élargit quand un objet est sélectionné), jusqu'à

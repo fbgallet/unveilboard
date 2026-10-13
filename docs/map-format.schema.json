@@ -161,6 +161,12 @@
               "uncertain"
             ]
           },
+          "url": {
+            "description": "A web page where the source, quotation or fact can be checked (one actually consulted).",
+            "type": "string",
+            "maxLength": 2000,
+            "pattern": "^https?:\\/\\/\\S+$"
+          },
           "fallacy": {
             "description": "A deliberately fallacious argument (an exercise): the name of the fallacy or bias. Shown to the teacher, hidden from the audience.",
             "type": "string",
@@ -286,6 +292,55 @@
             "type": "string",
             "maxLength": 4000
           },
+          "image": {
+            "description": "Read-only: the element is an image (its `text`, a caption if any). On import, a box with its description takes its place.",
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "photo",
+                  "artwork",
+                  "illustration",
+                  "diagram",
+                  "chart",
+                  "map",
+                  "document",
+                  "handwriting",
+                  "screenshot",
+                  "other"
+                ]
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 8000,
+                "description": "What the image shows, as seen, without interpretation. A diagram: its structure as an indented list. Empty: the image has not been read."
+              },
+              "text": {
+                "description": "Text visible in the image, transcribed.",
+                "type": "string",
+                "maxLength": 8000
+              },
+              "identification": {
+                "description": "What the image is, when it is known: a work (author, title, date), a historical document, a public figure.",
+                "type": "string",
+                "maxLength": 300
+              },
+              "certainty": {
+                "description": "How sure the identification is.",
+                "type": "string",
+                "enum": [
+                  "established",
+                  "likely",
+                  "uncertain"
+                ]
+              }
+            },
+            "required": [
+              "description"
+            ],
+            "additionalProperties": false
+          },
           "function": {
             "description": "Read-only, derived: function of the element in an argument map (Objection, Justification…). Ignored on import.",
             "type": "string"
@@ -379,6 +434,60 @@
             "description": "Text of a plain arrow (without relation).",
             "type": "string",
             "maxLength": 300
+          },
+          "point": {
+            "description": "`to` is an image: the arrow points at this spot of it (fractions of its width and height from its top-left corner). A caption of the image.",
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "x",
+              "y"
+            ],
+            "additionalProperties": false
+          },
+          "area": {
+            "description": "`to` is an image: the arrow points at this part of it, which is circled (top-left corner, width and height, in fractions of the image).",
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "w": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "h": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "x",
+              "y",
+              "w",
+              "h"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -387,7 +496,7 @@
           "to"
         ],
         "additionalProperties": false,
-        "description": "An arrow between two elements outside the trees (a cross-link)."
+        "description": "An arrow between two elements outside the trees (a cross-link), or from a caption to an image."
       }
     },
     "others": {

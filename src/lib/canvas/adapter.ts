@@ -6,6 +6,7 @@ import { computeStage, latestShown, stateOf, stepFocusTargets, type ComputeOptio
 import { migrateSequence } from '../sequence/migrate'
 import { toJson } from '../json'
 import type { Sequence, ShapeRef, Step, StepCamera } from '../sequence/types'
+import { areaMetaOf } from './imageLabels'
 import { SPOTLIGHT_TYPE } from './spotlight'
 import { getTreeIndex } from './tree'
 
@@ -131,6 +132,9 @@ export function resolveTargets(editor: Editor) {
 function arrowDependencies(editor: Editor): Map<ShapeRef, ShapeRef[]> {
   const deps = new Map<ShapeRef, ShapeRef[]>()
   for (const shape of editor.getCurrentPageShapes()) {
+    // La zone entourée par une légende suit sa boîte.
+    const area = areaMetaOf(shape)
+    if (area) deps.set(shape.id, [area.label])
     if (shape.type !== 'arrow') continue
     const bindings = editor.getBindingsFromShape<TLArrowBinding>(shape, 'arrow')
     if (bindings.length) deps.set(shape.id, bindings.map((b) => b.toId))

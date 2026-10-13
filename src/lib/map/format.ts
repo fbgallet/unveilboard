@@ -29,9 +29,16 @@ const Ref = z
 
 const VocabularyId = z.string().min(1).max(64).regex(/^\S+$/)
 
+/** Fraction de la largeur ou de la hauteur d'une image. */
+const Fraction = z.number().min(0).max(1)
+
 /** Case à cocher d'un élément. */
 export const TASK_STATES = ['todo', 'done'] as const
 export type TaskState = (typeof TASK_STATES)[number]
+
+/** Adresse d'une page web (http ou https). */
+export const WebUrl = z.string().max(2000).regex(/^https?:\/\/\S+$/)
+export const isWebUrl = (value: unknown): value is string => WebUrl.safeParse(value).success
 
 /** Fiabilité d'une source ou d'une citation donnée de mémoire (par une IA) : sûre, probable, incertaine. */
 export const CERTAINTIES = ['established', 'likely', 'uncertain'] as const
@@ -59,6 +66,28 @@ export const ElementStyleSchema = z
   )
 export type ElementStyle = z.infer<typeof ElementStyleSchema>
 
+/** Nature d'une image, d'après sa lecture. */
+export const IMAGE_KINDS = ['photo', 'artwork', 'illustration', 'diagram', 'chart', 'map', 'document', 'handwriting', 'screenshot', 'other'] as const
+export type ImageKind = (typeof IMAGE_KINDS)[number]
+
+export const ImageReadingSchema = z
+  .object({
+    kind: z.enum(IMAGE_KINDS).optional(),
+    description: z
+      .string()
+      .max(8000)
+      .describe('What the image shows, as seen, without interpretation. A diagram: its structure as an indented list. Empty: the image has not been read.'),
+    text: z.string().max(8000).optional().describe('Text visible in the image, transcribed.'),
+    identification: z
+      .string()
+      .max(300)
+      .optional()
+      .describe('What the image is, when it is known: a work (author, title, date), a historical document, a public figure.'),
+    certainty: z.enum(CERTAINTIES).optional().describe('How sure the identification is.'),
+  })
+  .describe('Read-only: an image, as read by a multimodal model and checked by the user (the picture itself is not in the JSON).')
+export type ImageReading = z.infer<typeof ImageReadingSchema>
+
 export const ElementSchema = z
   .object({
     id: Ref,
@@ -85,6 +114,7 @@ export const ElementSchema = z
       .enum(CERTAINTIES)
       .optional()
       .describe('A source or quotation given from memory: how sure it is (established, likely: to check, uncertain: to check before use).'),
+    url: WebUrl.optional().describe('A web page where the source, quotation or fact can be checked (one actually consulted).'),
     fallacy: z
       .string()
       .max(100)
@@ -106,6 +136,9 @@ export const ElementSchema = z
       .optional()
       .describe('Generated from a source: stated in the text, or reconstructed by the analysis (an implicit assumption, a link left unsaid).'),
     excerpt: z.string().max(4000).optional().describe('Generated from a source: the passage it comes from, quoted verbatim.'),
+    image: ImageReadingSchema.optional().describe(
+      'Read-only: the element is an image (its `text`, a caption if any). On import, a box with its description takes its place.'
+    ),
     function: z
       .string()
       .optional()
@@ -128,8 +161,16 @@ export const LinkSchema = z
     relation: VocabularyId.optional().describe('Reads "from RELATION to". Omitted: a plain arrow.'),
     reasoning: z.enum(REASONINGS).optional(),
     label: z.string().max(300).optional().describe('Text of a plain arrow (without relation).'),
+    point: z
+      .object({ x: Fraction, y: Fraction })
+      .optional()
+      .describe('`to` is an image: the arrow points at this spot of it (fractions of its width and height from its top-left corner). A caption of the image.'),
+    area: z
+      .object({ x: Fraction, y: Fraction, w: Fraction, h: Fraction })
+      .optional()
+      .describe('`to` is an image: the arrow points at this part of it, which is circled (top-left corner, width and height, in fractions of the image).'),
   })
-  .describe('An arrow between two elements outside the trees (a cross-link).')
+  .describe('An arrow between two elements outside the trees (a cross-link), or from a caption to an image.')
 
 export const OtherSchema = z
   .object({

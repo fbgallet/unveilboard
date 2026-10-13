@@ -6,7 +6,7 @@
 import { renderPlaintextFromRichText, type Editor, type TLArrowBinding, type TLRichText, type TLShape, type TLShapeId } from 'tldraw'
 import { m } from '@/i18n/client'
 import { richTextToMarkdown, type RichNode } from '../map/markdown'
-import { CERTAINTIES, MAP_FORMAT, MAP_VERSION, TASK_STATES, type Certainty, type MapElement, type MapLink, type MapOther, type MapVocabulary, type TaskState, type UnveilMap } from '../map/format'
+import { CERTAINTIES, isWebUrl, MAP_FORMAT, MAP_VERSION, TASK_STATES, type Certainty, type MapElement, type MapLink, type MapOther, type MapVocabulary, type TaskState, type UnveilMap } from '../map/format'
 import { fromEngineSteps, type RefShapes, type ShapeOwner } from '../map/sequence'
 import { defaultPresets, MODALITIES, REASONINGS, type Modality, type Preset, type Reasoning } from '../presets/presets'
 import { treeAxis } from '../tree/layout'
@@ -14,6 +14,8 @@ import { readSequence } from './adapter'
 import { presetById } from './presets'
 import { directionOf, functionOf, getTreeIndex } from './tree'
 import { ownStyle } from './elementStyle'
+import { imageReadingOf, isImage } from './imageReading'
+import { isImageArea, markOf } from './imageLabels'
 import { documentRelationLabels } from './relationLabels'
 
 export interface MapExport {
@@ -37,12 +39,13 @@ function markdownOf(shape: TLShape): string {
 export function exportMap(editor: Editor): MapExport {
   const { parent, children, edge } = getTreeIndex(editor)
   // Les suggestions de l'IA en attente ne font pas partie du schéma.
-  const pageShapes = editor.getCurrentPageShapes().filter((s) => !s.meta.suggestion)
+  // Les zones entourées par une légende vont avec son lien (son champ `area`).
+  const pageShapes = editor.getCurrentPageShapes().filter((s) => !s.meta.suggestion && !isImageArea(s))
   const pending = (id: TLShapeId) => !!editor.getShape(id)?.meta.suggestion
   const bounds = (id: TLShapeId) => editor.getShapePageBounds(id)
 
-  // Éléments : les nœuds d'arbre et les boîtes (formes géométriques).
-  const isElement = (s: TLShape) => s.type === 'geo' || parent.has(s.id) || children.has(s.id)
+  // Éléments : les nœuds d'arbre, les boîtes (formes géométriques) et les images.
+  const isElement = (s: TLShape) => s.type === 'geo' || isImage(s) || parent.has(s.id) || children.has(s.id)
   const elementShapes = pageShapes.filter(isElement)
   const edgeIds = new Set(edge.values())
 
@@ -116,6 +119,7 @@ export function exportMap(editor: Editor): MapExport {
       ...(p && !parent.has(p) && directionOf(editor, p) === 'both' && (side === 'left' || side === 'right') && { side }),
       ...(str(shape.meta.author) && { source: shape.meta.author as string }),
       ...(certainty && CERTAINTIES.includes(certainty) && { certainty }),
+      ...(isWebUrl(shape.meta.url) && { url: shape.meta.url }),
       ...(str(shape.meta.fallacy) && { fallacy: shape.meta.fallacy as string }),
       ...(modality && MODALITIES.includes(modality) && { modality }),
       ...(str(shape.meta.note) && { note: shape.meta.note as string }),
@@ -124,6 +128,8 @@ export function exportMap(editor: Editor): MapExport {
       ...(style && { style }),
       ...((origin === 'text' || origin === 'reconstruction') && { origin }),
       ...(str(shape.meta.excerpt) && { excerpt: shape.meta.excerpt as string }),
+      // Une image : sa lecture (description vide : pas encore lue).
+      ...(isImage(shape) && { image: imageReadingOf(shape) ?? { description: '' } }),
       ...(role && { function: role }),
       ...((isRoot || shape.meta.argument) && {
         tree: { kind: shape.meta.argument ? 'argument' : 'mindmap', ...(dir && dir !== 'right' && { direction: dir }) },
@@ -136,6 +142,15 @@ export function exportMap(editor: Editor): MapExport {
   const others: MapOther[] = []
   for (const shape of pageShapes) {
     if (refOf.has(shape.id) || edgeIds.has(shape.id)) continue
+    // Légende d'une image : un lien vers l'image, avec le point ou la zone visés.
+    const marked = markOf(editor, shape)
+    const caption = marked && refOf.get(marked.from)
+    const pictured = marked && refOf.get(marked.image)
+    if (marked && caption && pictured) {
+      const label = textOf(editor, shape)
+      links.push({ id: name(shape.id, 'l', 'link'), from: caption, to: pictured, ...(label && { label }), ...(marked.mark.point ? { point: marked.mark.point } : { area: marked.mark.area }) })
+      continue
+    }
     if (shape.type === 'arrow') {
       const bindings = editor.getBindingsFromShape<TLArrowBinding>(shape, 'arrow')
       const from = refOf.get(bindings.find((b) => b.props.terminal === 'start')?.toId as TLShapeId)
@@ -164,7 +179,8 @@ export function exportMap(editor: Editor): MapExport {
   const owners = new Map<string, ShapeOwner>()
   for (const [shapeId, ref] of refOf) {
     const kind = kindOf.get(ref)!
-    const e = kind === 'element' ? edge.get(shapeId) : undefined
+    // Un élément : la flèche vers son parent ; une légende : la zone qu'elle entoure.
+    const e = kind === 'element' ? edge.get(shapeId) : kind === 'link' ? markOf(editor, editor.getShape(shapeId)!)?.area : undefined
     shapes.set(ref, { kind, node: shapeId, ...(e && { edge: e }) })
     owners.set(shapeId, { ref, part: 'node' })
     if (e) owners.set(e, { ref, part: 'edge' })

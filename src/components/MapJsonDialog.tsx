@@ -12,6 +12,7 @@ import { toAiError } from '@/lib/ai/errors'
 import type { AiRun } from '@/lib/ai/run'
 import { aiSettingsOpenAtom } from './AiSettingsDialog'
 import { sourceDialogOpenAtom } from './SourceDialog'
+import { pageImages, readMissingImages } from '@/lib/canvas/imageReading'
 import { exportMap } from '@/lib/canvas/mapExport'
 import { applyPatch } from '@/lib/canvas/mapPatch'
 import { setReview } from '@/lib/canvas/review'
@@ -439,6 +440,7 @@ function AssistantView({ editor }: { editor: Editor }) {
     setRun({ chars: 0, thinking: 0, seconds: 0, abort })
     const timer = setInterval(() => setRun((r) => r && { ...r, seconds: seconds() }), 1000)
     try {
+      if (task !== 'create') await readMissingImages(editor, pageImages(editor), { settings, signal: abort.signal })
       const result = await askAi(settings, input(), check, {
         signal: abort.signal,
         onText: (text, thinking) => setRun((r) => r && { ...r, chars: text.length, thinking }),

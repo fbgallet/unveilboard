@@ -8,6 +8,7 @@ import { aiSettingsAtom, askAi, isAiReady, modelName, serverAiAtom } from '@/lib
 import { toAiError } from '@/lib/ai/errors'
 import { buildPrompt } from '@/lib/ai/prompts'
 import { editorPromptInput, selectedRefs } from '@/lib/canvas/assistant'
+import { pageImages, readMissingImages } from '@/lib/canvas/imageReading'
 import { exportMap } from '@/lib/canvas/mapExport'
 import { knownVocabulary } from '@/lib/canvas/mapImport'
 import { presetById } from '@/lib/canvas/presets'
@@ -160,6 +161,7 @@ function ReviewView({ editor }: { editor: Editor }) {
     const abort = new AbortController()
     setRun({ chars: 0, thinking: 0, abort })
     try {
+      await readMissingImages(editor, pageImages(editor), { settings, signal: abort.signal })
       const result = await askAi(settings, input('api'), check, { signal: abort.signal, onText: (s, thinking) => setRun((r) => r && { ...r, chars: s.length, thinking }) })
       accept(result.result)
     } catch (e) {

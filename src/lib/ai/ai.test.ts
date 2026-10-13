@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { defaultPresets } from '../presets/presets'
 import { MapSchema } from '../map/format'
 import { readJson } from '../map/read'
-import { STALL_MS, chat, readChatStream } from './chat'
+import { OPENROUTER_WEB_TOOL, STALL_MS, chat, readChatStream } from './chat'
 import { AiError, kindFromStatus, toAiError } from './errors'
 import { chatMessages, runWithRepair } from './run'
 import truthFr from '../examples/truth.fr.json'
@@ -54,6 +54,31 @@ describe('appel compatible OpenAI', () => {
     expect(seen[0].url).toBe('https://openrouter.ai/api/v1/chat/completions')
     expect(seen[0].headers.Authorization).toBe('Bearer sk-test')
     expect(seen[0].body).toMatchObject({ model: 'x/y', stream: true, response_format: { type: 'json_object' }, usage: { include: true } })
+  })
+
+  it('recherche sur le web : l’outil d’OpenRouter, sans JSON forcé ; rien ailleurs', async () => {
+    const seen: { url: string; body: Record<string, unknown>; headers: Record<string, string> }[] = []
+    const ask = (baseUrl: string) =>
+      chat({ baseUrl, model: 'x/y', messages: [{ role: 'user', content: 'hi' }], jsonMode: true, web: true, fetch: fakeFetch([sse([{ choices: [{ delta: { content: 'ok' } }] }])], seen) })
+    await ask('https://openrouter.ai/api/v1')
+    expect(seen[0].body.tools).toEqual([OPENROUTER_WEB_TOOL])
+    expect(seen[0].body.response_format).toBeUndefined()
+    await ask('http://localhost:11434/v1')
+    expect(seen[1].body.tools).toBeUndefined()
+  })
+
+  it('pages consultées : annotations « url_citation » du flux, une fois chacune', async () => {
+    const cite = (url: string, title?: string) => ({ type: 'url_citation', url_citation: { url, title, start_index: 0, end_index: 1 } })
+    const result = await readChatStream(
+      sse([
+        { choices: [{ delta: { content: 'a', annotations: [cite('https://example.org/a', 'A')] } }] },
+        { choices: [{ delta: { content: 'b', annotations: [cite('https://example.org/a', 'A'), cite('https://example.org/b'), cite('javascript:alert(1)')] } }] },
+        { choices: [{ delta: {}, finish_reason: 'stop' }] },
+      ])
+    )
+    expect(result.citations).toEqual([{ url: 'https://example.org/a', title: 'A' }, { url: 'https://example.org/b' }])
+    const plain = await readChatStream(sse([{ choices: [{ delta: { content: 'ok' } }] }]))
+    expect(plain.citations).toBeUndefined()
   })
 
   it('erreurs classées : clé, crédit, limite, modèle, contexte, réseau, annulation, réponse vide', async () => {

@@ -9,8 +9,15 @@ import { readSequence, writeSequence } from '@/lib/canvas/adapter'
 import { SPOTLIGHT_TYPE } from '@/lib/canvas/spotlight'
 import { getTreeIndex } from '@/lib/canvas/tree'
 import { noteOf, resolveTextImage, setNote, shapeLabel, storeTextImage } from '@/lib/canvas/notes'
-import { CertaintyField, FallacyField, NatureFields, ProvenanceField, ReasoningField } from './PresetTools'
+import { CertaintyField, FallacyField, NatureFields, ProvenanceField, ReasoningField, WebPageField } from './PresetTools'
 import { MarkdownEditor } from './MarkdownEditor'
+import { imageReadingOf, isImage } from '@/lib/canvas/imageReading'
+import { ImageReadings, ImageTypeField } from './ImageReading'
+import { imageGenAtom } from './ImageGen'
+import { imageSearchAtom } from './ImageSearch'
+import type { TextTarget } from '@/lib/canvas/imageGen'
+import { aiSettingsAtom, imageGenerationAvailable, serverAiAtom } from '@/lib/ai/client'
+import { MAX_REFERENCES } from '@/lib/ai/imageGen'
 import { aimGroups, elementAiAimAtom, elementAiAtom, elementAiRequestAtom, firstAimGroup } from './ElementAi'
 import { usePromptChoice } from './PromptPicker'
 import { openAssistant } from './MapJsonDialog'
@@ -357,6 +364,7 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
       >
         <StartCard
           intro={seq.intro ?? ''}
+          title={seq.title}
           images={images}
           onChange={(intro) => save({ ...seq, intro: intro || undefined })}
           onPresent={() => enterPresentation(-1)}
@@ -414,6 +422,8 @@ function SequencePanelContent({ editor, width }: { editor: Editor; width: number
  */
 function StartCard(p: {
   intro: string
+  /** Titre de la présentation : la recherche proposée pour l'image d'ouverture. */
+  title: string
   images: TextImages
   onChange(intro: string): void
   onPresent(): void
@@ -452,6 +462,7 @@ function StartCard(p: {
             title={t.step.startTitle}
             {...p.images}
           />
+          <TextImageButtons text={{}} subject={p.title} />
           {p.sourceText && (
             <label className="mt-2 flex items-center gap-2 text-xs text-zinc-600">
               <input type="checkbox" checked={p.sourceText.value} onChange={(e) => p.sourceText!.onChange(e.target.checked)} />
@@ -618,9 +629,48 @@ function StepCard(p: StepCardProps) {
             title={step.title}
             {...p.images}
           />
+          <TextImageButtons text={{ step: step.id }} subject={step.title} />
         </div>
       )}
     </li>
+  )
+}
+
+/**
+ * Une image en tête d'un texte de la présentation (l'accueil, ou la narration d'une étape) : une
+ * vraie image cherchée sur Wikimedia Commons, ou une image générée (si c'est possible).
+ */
+function TextImageButtons({ text, subject }: { text: TextTarget; subject: string }) {
+  const t = useT()
+  const settings = useValue(aiSettingsAtom)
+  const server = useValue(serverAiAtom)
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1 text-xs">
+      <span className="text-zinc-500">{text.step ? t.imageSearch.stepImage : t.imageSearch.openingImage}</span>
+      <button className="btn-xs" onClick={() => imageSearchAtom.set({ text, query: subject })} title={t.imageSearch.searchHint}>
+        {t.imageSearch.searchButton}
+      </button>
+      {imageGenerationAvailable(settings, server) && (
+        <button className="btn-xs" onClick={() => imageGenAtom.set({ sources: [], text, subject })} title={t.imageGen.pictureHint}>
+          {t.imageGen.generateShort}
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** Dessiner une image à partir d'une sélection (dessins, boîtes, flèches…) rendue en image. */
+function SketchButton({ editor, ids }: { editor: Editor; ids: TLShapeId[] }) {
+  const t = useT()
+  const settings = useValue(aiSettingsAtom)
+  const server = useValue(serverAiAtom)
+  // Seulement des images : les modifier ou les composer (bouton à part).
+  const drawn = useValue('selection has drawings', () => ids.some((id) => !isImage(editor.getShape(id))), [editor, ids])
+  if (!drawn || !imageGenerationAvailable(settings, server)) return null
+  return (
+    <button className="btn self-start text-xs" onClick={() => imageGenAtom.set({ sources: [], sketch: ids })} title={t.imageGen.sketchHint}>
+      {t.imageGen.sketchButton}
+    </button>
   )
 }
 
@@ -690,9 +740,15 @@ function ElementPane(p: { editor: Editor; selection: TLShapeId[]; usage: string;
   const id = p.selection.length === 1 ? p.selection[0] : null
   const pane = useRef<HTMLDivElement>(null)
   useCtrlWheel(pane, changeElementScale, id)
-  const title = useValue('element title', () => (id ? shapeLabel(p.editor, p.editor.getShape(id)!) : ''), [p.editor, id])
-  // L'IA part d'une boîte (pas d'une flèche, d'un dessin ou d'une image).
-  const isBox = useValue('element is box', () => !!id && p.editor.getShape(id)?.type === 'geo', [p.editor, id])
+  // Une image : son identification, si on la connaît.
+  const title = useValue(
+    'element title',
+    () => (id ? shapeLabel(p.editor, p.editor.getShape(id)!) || (imageReadingOf(p.editor.getShape(id))?.identification ?? '') : ''),
+    [p.editor, id]
+  )
+  // L'IA part d'une boîte ou d'une image (pas d'une flèche ni d'un dessin).
+  const isBox = useValue('element is box', () => !!id && ['geo', 'image'].includes(p.editor.getShape(id)?.type ?? ''), [p.editor, id])
+  const isImageShape = useValue('element is image', () => !!id && isImage(p.editor.getShape(id)), [p.editor, id])
   if (!p.selection.length) return <p className="p-4 text-[12px] leading-relaxed text-zinc-500">{t.panel.elementHint}</p>
   if (!id) return <SelectionPane editor={p.editor} selection={p.selection} />
   return (
@@ -712,11 +768,15 @@ function ElementPane(p: { editor: Editor; selection: TLShapeId[]; usage: string;
         {isBox && <ElementAiMenu editor={p.editor} id={id} />}
       </div>
       {p.usage && <p className="px-1 text-[11px] text-zinc-400">{p.usage}</p>}
+      {isImageShape && <ImageTypeField editor={p.editor} id={id} />}
+      {!isBox && <SketchButton editor={p.editor} ids={[id]} />}
       <NatureFields editor={p.editor} id={id} />
       <ProvenanceField editor={p.editor} id={id} />
       <CertaintyField editor={p.editor} id={id} />
+      <WebPageField editor={p.editor} id={id} />
       <FallacyField editor={p.editor} id={id} />
       <ReasoningField editor={p.editor} id={id} />
+      <ImageReadings key={`img-${id}`} editor={p.editor} id={id} />
       <StyleSection editor={p.editor} ids={p.selection} />
       <NoteSection key={id} editor={p.editor} id={id} images={p.images} />
     </div>
@@ -765,6 +825,12 @@ function StyleSection(p: { editor: Editor; ids: TLShapeId[] }) {
  */
 function SelectionPane(p: { editor: Editor; selection: TLShapeId[] }) {
   const t = useT()
+  // Images sélectionnées : en composer une nouvelle (si la génération est possible).
+  const settings = useValue(aiSettingsAtom)
+  const server = useValue(serverAiAtom)
+  const images = useValue('selected images', () => p.selection.filter((id) => isImage(p.editor.getShape(id))), [p.editor, p.selection]).filter(
+    () => imageGenerationAvailable(settings, server)
+  )
   const items = useValue(
     'selection items',
     () =>
@@ -788,6 +854,12 @@ function SelectionPane(p: { editor: Editor; selection: TLShapeId[] }) {
         </button>
       </div>
       <p className="px-1 text-[11px] leading-relaxed text-zinc-400">{t.panel.elementManyHint}</p>
+      {images.length > 0 && (
+        <button className="btn self-start text-xs" onClick={() => imageGenAtom.set({ sources: images.slice(0, MAX_REFERENCES) })} title={t.imageGen.composeHint}>
+          {t.imageGen.composeButton(images.length)}
+        </button>
+      )}
+      <SketchButton editor={p.editor} ids={p.selection} />
       <StyleSection editor={p.editor} ids={p.selection} />
       <ul className="mt-2 flex flex-col border-t border-zinc-200 pt-2">
         {items.map((item) => (
@@ -907,7 +979,8 @@ function ElementAiMenu({ editor, id }: { editor: Editor; id: TLShapeId }) {
   // celle de l'élément dépliée, les autres à déplier.
   const hasSource = useValue('has source', () => !!readPageSource(editor), [editor])
   const prompt = usePromptChoice('expand', { source: hasSource }, editor)
-  const groups = aimGroups(prompt.template, t)
+  const image = useValue('element is image', () => isImage(editor.getShape(id)), [editor, id])
+  const groups = aimGroups(prompt.template, t, image)
   const first = firstAimGroup(editor, id, groups)
   const [expanded, setExpanded] = useState<string | null>(null)
   const unfolded = expanded ?? first

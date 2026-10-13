@@ -63,6 +63,8 @@ export interface ChatRequest {
   extraBody?: Record<string, unknown>
   /** Niveau de réflexion du modèle. */
   reasoning?: ReasoningEffort
+  /** Recherche sur le web (OpenRouter seulement : son outil serveur, sans boucle d'outils à écrire). */
+  web?: boolean
   signal?: AbortSignal
   fetch?: typeof fetch
 }
@@ -74,13 +76,28 @@ export interface ChatUsage {
   cost?: number
 }
 
+/** Page consultée par le modèle (annotation « url_citation »). */
+export interface Citation {
+  url: string
+  title?: string
+}
+
 export interface ChatResult {
   text: string
   model?: string
   usage?: ChatUsage
+  /** Pages consultées, quand le modèle a cherché sur le web et que le fournisseur les donne. */
+  citations?: Citation[]
 }
 
 export const isOpenRouter = (baseUrl: string) => /(^|\.)openrouter\.ai(\/|$)/.test(baseUrl.replace(/^https?:\/\//, ''))
+
+/**
+ * Recherche sur le web d'OpenRouter : son outil serveur (le modèle décide quand chercher ; recherche
+ * du fournisseur pour Anthropic, OpenAI, Google, xAI, sinon Exa). Plafonnée : quelques recherches,
+ * cinq résultats chacune.
+ */
+export const OPENROUTER_WEB_TOOL = { type: 'openrouter:web_search', parameters: { max_results: 5, max_uses: 4 } }
 
 /** Ouvre la réponse en flux du fournisseur (sans la lire) ; erreur HTTP → AiError. */
 export async function openChatStream(req: ChatRequest): Promise<Response> {
@@ -91,7 +108,10 @@ export async function openChatStream(req: ChatRequest): Promise<Response> {
     stream_options: { include_usage: true },
     ...(req.maxTokens && { max_tokens: req.maxTokens }),
     ...(req.temperature !== undefined && { temperature: req.temperature }),
-    ...(req.jsonMode && { response_format: { type: 'json_object' } }),
+    // Avec la recherche, pas de réponse JSON forcée : tous les modèles n'acceptent pas les deux (le
+    // JSON est de toute façon extrait du texte).
+    ...(req.jsonMode && !req.web && { response_format: { type: 'json_object' } }),
+    ...(req.web && isOpenRouter(req.baseUrl) && { tools: [OPENROUTER_WEB_TOOL] }),
     // OpenRouter : coût de l'appel dans le dernier fragment.
     ...(isOpenRouter(req.baseUrl) && { usage: { include: true } }),
     ...reasoningParams(req.baseUrl, req.reasoning),
@@ -124,9 +144,12 @@ export async function readChatStream(res: Response, onText?: (text: string, thin
   const type = res.headers.get('content-type') ?? ''
   if (type.includes('application/json')) {
     const json = (await res.json()) as ChunkJson
-    const text = json.choices?.[0]?.message?.content ?? ''
+    const message = json.choices?.[0]?.message
+    const text = message?.content ?? ''
     onText?.(text, 0)
-    return { text, model: json.model, usage: usageOf(json.usage) }
+    const citations = new Map<string, Citation>()
+    addCitations(citations, message?.annotations)
+    return { text, model: json.model, usage: usageOf(json.usage), ...withCitations(citations) }
   }
   const reader = res.body?.getReader()
   if (!reader) throw new AiError('empty')
@@ -138,6 +161,7 @@ export async function readChatStream(res: Response, onText?: (text: string, thin
   let done = false
   let model: string | undefined
   let usage: ChatUsage | undefined
+  const citations = new Map<string, Citation>()
   for (;;) {
     const { value, done: ended } = await readWithin(reader, STALL_MS)
     if (ended) break
@@ -167,6 +191,7 @@ export async function readChatStream(res: Response, onText?: (text: string, thin
       if (thought) thinking += thought.length
       const delta = choice?.delta?.content
       if (delta) text += delta
+      addCitations(citations, choice?.delta?.annotations ?? choice?.message?.annotations)
       if (delta || thought) onText?.(text, thinking)
       model ??= chunk.model
       if (chunk.usage) usage = usageOf(chunk.usage)
@@ -174,8 +199,23 @@ export async function readChatStream(res: Response, onText?: (text: string, thin
   }
   if (finish === 'length') throw new AiError('length')
   if (!finish && !done) throw new AiError('interrupted')
-  return { text, model, usage }
+  return { text, model, usage, ...withCitations(citations) }
 }
+
+interface Annotation {
+  type?: string
+  url_citation?: { url?: string; title?: string }
+}
+
+/** Retient les pages citées (une fois chacune, dans l'ordre d'arrivée). */
+function addCitations(into: Map<string, Citation>, annotations: Annotation[] | undefined) {
+  for (const a of annotations ?? []) {
+    const url = a.type === 'url_citation' ? a.url_citation?.url : undefined
+    if (url && /^https?:\/\//.test(url) && !into.has(url)) into.set(url, { url, ...(a.url_citation?.title && { title: a.url_citation.title }) })
+  }
+}
+
+const withCitations = (citations: Map<string, Citation>) => (citations.size ? { citations: [...citations.values()] } : {})
 
 /** Lecture suivante du flux, abandonnée après `ms` sans données ; coupure réseau → « interrupted ». */
 export async function readWithin(reader: ReadableStreamDefaultReader<Uint8Array>, ms: number) {
@@ -206,7 +246,11 @@ export async function chat(req: ChatRequest, onText?: (text: string, thinking: n
 
 interface ChunkJson {
   model?: string
-  choices?: { delta?: { content?: string; reasoning?: string; reasoning_content?: string }; message?: { content?: string }; finish_reason?: string | null }[]
+  choices?: {
+    delta?: { content?: string; reasoning?: string; reasoning_content?: string; annotations?: Annotation[] }
+    message?: { content?: string; annotations?: Annotation[] }
+    finish_reason?: string | null
+  }[]
   usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number }
   error?: string | { message?: string }
 }
