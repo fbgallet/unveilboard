@@ -195,6 +195,7 @@ function SourceView({ editor }: { editor: Editor }) {
       const opts = {
         unverified: checked.excerpts?.unverified,
         ...(keepText && { source: { text, ...(label.trim() && { label: label.trim() }) } }),
+        ...(prompt.template && { method: prompt.template.id }),
       }
       const where = destination === 'here' && hereBlocked ? 'page' : destination === 'under' ? 'document' : destination
       if (where !== 'document') {
@@ -354,6 +355,7 @@ function SourceView({ editor }: { editor: Editor }) {
                 const id = await createDocumentFromMap(skeletonMap(record.plan, { source: true }), {
                   plan: { ...record, source: undefined },
                   source: record.source,
+                  ...(prompt.template && { method: prompt.template.id }),
                 })
                 planPanelOpenAtom.set(true)
                 openSourcePanel()

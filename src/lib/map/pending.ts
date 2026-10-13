@@ -15,6 +15,8 @@ export interface PendingMap {
   plan?: PlanRecord
   /** Schéma tiré d'un texte : le texte, gardé dans le document (panneau « Texte source »). */
   source?: { text: string; label?: string }
+  /** Méthode de la bibliothèque de prompts avec laquelle il a été créé (gardée avec sa page). */
+  method?: string
 }
 
 export function stashPendingMap(docId: string, pending: PendingMap) {

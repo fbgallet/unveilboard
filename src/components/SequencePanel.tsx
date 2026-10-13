@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import Link from 'next/link'
 import { LogoMark } from './Logo'
 import { shareDialogOpenAtom } from './ShareDialog'
@@ -9,9 +9,10 @@ import { readSequence, writeSequence } from '@/lib/canvas/adapter'
 import { SPOTLIGHT_TYPE } from '@/lib/canvas/spotlight'
 import { getTreeIndex } from '@/lib/canvas/tree'
 import { noteOf, resolveTextImage, setNote, shapeLabel, storeTextImage } from '@/lib/canvas/notes'
-import { NatureFields, ProvenanceField, ReasoningField } from './PresetTools'
+import { CertaintyField, FallacyField, NatureFields, ProvenanceField, ReasoningField } from './PresetTools'
 import { MarkdownEditor } from './MarkdownEditor'
-import { QUICK, elementAiAtom, elementAiRequestAtom } from './ElementAi'
+import { aimGroups, elementAiAimAtom, elementAiAtom, elementAiRequestAtom, firstAimGroup } from './ElementAi'
+import { usePromptChoice } from './PromptPicker'
 import { openAssistant } from './MapJsonDialog'
 import { ChatPane } from './ChatPane'
 import { ElementStyleControls, ElementStylePreview } from './ElementStyle'
@@ -708,11 +709,13 @@ function ElementPane(p: { editor: Editor; selection: TLShapeId[]; usage: string;
         >
           <Icon name="locate" />
         </button>
-        {isBox && <ElementAiMenu id={id} />}
+        {isBox && <ElementAiMenu editor={p.editor} id={id} />}
       </div>
       {p.usage && <p className="px-1 text-[11px] text-zinc-400">{p.usage}</p>}
       <NatureFields editor={p.editor} id={id} />
       <ProvenanceField editor={p.editor} id={id} />
+      <CertaintyField editor={p.editor} id={id} />
+      <FallacyField editor={p.editor} id={id} />
       <ReasoningField editor={p.editor} id={id} />
       <StyleSection editor={p.editor} ids={p.selection} />
       <NoteSection key={id} editor={p.editor} id={id} images={p.images} />
@@ -897,9 +900,18 @@ function useCtrlWheel(ref: RefObject<HTMLElement | null>, change: (delta: number
 }
 
 /** Menu ✦ de l'onglet Élément : demandes toutes faites à l'IA à partir de l'objet, ou demande libre. */
-function ElementAiMenu({ id }: { id: TLShapeId }) {
+function ElementAiMenu({ editor, id }: { editor: Editor; id: TLShapeId }) {
   const t = useT()
   const [open, setOpen] = useState(false)
+  // Visées : celles de la méthode de la page (ou choisie pour développer), puis les familles de l'app ;
+  // celle de l'élément dépliée, les autres à déplier.
+  const hasSource = useValue('has source', () => !!readPageSource(editor), [editor])
+  const prompt = usePromptChoice('expand', { source: hasSource }, editor)
+  const groups = aimGroups(prompt.template, t)
+  const first = firstAimGroup(editor, id, groups)
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const unfolded = expanded ?? first
+  const ordered = [...groups.filter((g) => g.id === first), ...groups.filter((g) => g.id !== first)]
   const root = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!open) return
@@ -914,26 +926,48 @@ function ElementAiMenu({ id }: { id: TLShapeId }) {
       document.removeEventListener('keydown', onKey)
     }
   }, [open])
-  const ask = (request = '') => {
+  const ask = (aim: { group: string; key: string } | null = null) => {
     setOpen(false)
-    // Le panneau de l'IA lit la demande préremplie à son ouverture : on le rouvre au besoin.
-    elementAiRequestAtom.set(request)
+    // Le panneau de l'IA lit la visée préchoisie à son ouverture : on le rouvre au besoin.
+    elementAiRequestAtom.set('')
+    elementAiAimAtom.set(aim)
     elementAiAtom.set(null)
     setTimeout(() => elementAiAtom.set(id))
   }
   return (
     <div ref={root} className="relative shrink-0">
-      <button className={`btn-ghost ${open ? 'btn-ghost-on' : ''}`} onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu" title={t.elementAi.buttonHint}>
+      <button
+        className={`btn-ghost ${open ? 'btn-ghost-on' : ''}`}
+        onClick={() => {
+          setExpanded(null)
+          setOpen(!open)
+        }}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        title={t.elementAi.buttonHint}
+      >
         <Icon name="sparkle" />
         {t.panel.elementAi}
       </button>
       {open && (
         <div className="panel-menu" role="menu">
-          {QUICK.map((k) => (
-            <button key={k} role="menuitem" onClick={() => ask(t.elementAi.quick[k].request)}>
-              {t.elementAi.quick[k].label}
-            </button>
-          ))}
+          {ordered.map((g) =>
+            g.id === unfolded ? (
+              <Fragment key={g.id}>
+                <p className="panel-menu-heading">{g.title}</p>
+                {g.aims.map((a) => (
+                  <button key={a.key} role="menuitem" title={a.hint ?? a.text} onClick={() => ask({ group: g.id, key: a.key })}>
+                    {a.label}
+                  </button>
+                ))}
+              </Fragment>
+            ) : (
+              <button key={g.id} role="menuitem" className="panel-menu-group" aria-expanded={false} onClick={() => setExpanded(g.id)}>
+                {g.title}
+                <span aria-hidden>▸</span>
+              </button>
+            )
+          )}
           <hr />
           <button role="menuitem" onClick={() => ask()}>
             {t.panel.elementAiFree}

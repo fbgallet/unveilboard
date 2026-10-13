@@ -38,11 +38,18 @@ Sent only when creating a diagram, and in each pass of a multi-pass creation (`p
 ## @expand @enrich
 
 Sent when developing an element or enriching the diagram.
+
+## @quick Distinctions
+
+A ready-made request, offered when developing an element with this method.
 ```
 
 - `tasks`: where the prompt is offered: `create`, `enrich`, `expand` (develop the selected element), `edit`, `sequence`, `review`, `plan`, `chat`. Omitted: all tasks. Offering `create` also offers the prompt for the plan of a multi-pass creation; offering `enrich`, `edit` or `expand` also offers it in the chat (which then uses the `@chat` variant, or else the `@edit` one).
 - `source`: `required` for a prompt that works on the page's source text (a text to explain): offered only when the request uses a source text (“Create a diagram from a text”, or “Use the source text of this page” checked); `none` for a prompt that works without one (an essay question): offered only then. Omitted: both.
 - The user's text (the subject, the notions…) is sent as "the user's request": refer to it as such. A source text is sent as "the source text", and the app already asks for verbatim excerpts.
+- `## @quick <label>`: an aim of the method, for developing an element (the *AI* menu of the Element tab, and the dialog *AI, from this element*). Its text is sent with the method, as the instruction for that aim; the request box stays free for a precision. The method's aims are offered first, before the app's own (Argue, Analyse, Question, Illustrate, in `src/lib/ai/aims.ts`): give a method aims only when they are specific to its analysis. Put them after the variants.
+- The user chooses how much to add when developing an element (Brief, Normal, Developed, Exhaustive): a method should not fix a number of elements for `expand`.
+- A diagram created with a method keeps it: developing or enriching it proposes that method first.
 - Write the method in the language of its users; the app tells the model which language the content must be written in.
 - Element types and relations are those of the app's default vocabulary (`statement`, `belief`, `concept`, `distinction`, `question`, `problem`, `example`, `quote`; `supports`, `objects`, `answers`, `presupposes`, `raises`, `defines`, `distinguishes`, `opposes`, `relates`…). A method may ask the model to declare new ones in the diagram's `vocabulary`.
 

@@ -495,6 +495,61 @@ export function ProvenanceField({ editor, id }: { editor: Editor; id: TLShapeId 
   )
 }
 
+/** Sophisme d'exercice : son nom (vu de l'enseignant seulement), modifiable, ou retiré. */
+export function FallacyField({ editor, id }: { editor: Editor; id: TLShapeId }) {
+  const t = useT()
+  const fallacy = useValue('fallacy', () => {
+    const value = editor.getShape(id)?.meta.fallacy
+    return typeof value === 'string' ? value : null
+  }, [editor, id])
+  if (fallacy === null) return null
+  const set = (value: string | null) => {
+    const shape = editor.getShape(id)
+    if (shape) editor.updateShape({ id, type: shape.type, meta: { ...shape.meta, fallacy: value } })
+  }
+  return (
+    <div className="provenance">
+      <label className="flex items-center gap-2" title={t.fallacy.hint}>
+        <span className="font-semibold uppercase tracking-wide text-orange-700">{t.fallacy.label}</span>
+        <input className="preset-input min-w-0 flex-1" value={fallacy} onChange={(e) => set(e.target.value)} aria-label={t.fallacy.label} />
+        <button className="btn-xs" onClick={() => set(null)}>
+          {t.fallacy.remove}
+        </button>
+      </label>
+    </div>
+  )
+}
+
+/** Source donnée de mémoire par l'IA, probable ou incertaine : à vérifier, puis marquée comme vérifiée. */
+export function CertaintyField({ editor, id }: { editor: Editor; id: TLShapeId }) {
+  const t = useT()
+  const certainty = useValue(
+    'certainty',
+    () => {
+      const value = editor.getShape(id)?.meta.certainty
+      return value === 'likely' || value === 'uncertain' ? value : null
+    },
+    [editor, id]
+  )
+  if (!certainty) return null
+  return (
+    <div className="provenance">
+      <span className="flex flex-wrap items-center gap-2 text-red-700">
+        {t.certainty[`${certainty}Hint`]}
+        <button
+          className="btn-xs"
+          onClick={() => {
+            const shape = editor.getShape(id)
+            if (shape) editor.updateShape({ id, type: shape.type, meta: { ...shape.meta, certainty: null } })
+          }}
+        >
+          {t.certainty.markVerified}
+        </button>
+      </span>
+    </div>
+  )
+}
+
 /**
  * Guide des natures et relations : pour chacune, sa forme ou son trait, sa définition, son usage
  * et un exemple. La forme dit la nature, la couleur la fonction.

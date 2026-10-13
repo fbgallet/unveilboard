@@ -32,6 +32,8 @@ Le menu ⋯ de la barre de présentation regroupe les actions moins fréquentes 
 
 ## En classe
 
+**Ce que le public ne voit pas.** Les rappels pour l'enseignant sur les boîtes (« à vérifier » pour un extrait introuvable dans le texte, « source à vérifier » ou « source incertaine » pour une source donnée de mémoire par l'IA, le nom d'un sophisme écrit pour l'exercice) ne s'affichent qu'en édition : jamais en présentation, dans la vue partagée ni sur l'écran de projection.
+
 **Double affichage.** Pendant la présentation, ⋯ › « Projeter sur un second écran » ouvre une **fenêtre public** pour le projecteur. Sur Chrome et Edge, elle se place d'elle-même sur le second écran (le navigateur demande l'autorisation une fois) ; ailleurs, on la glisse sur le projecteur. Un clic sur « Plein écran » (ou F) la passe en plein écran.
 
 - Le projecteur montre le schéma seul ; la narration s'y affiche à la demande (case « Narration au projecteur »).

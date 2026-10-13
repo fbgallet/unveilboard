@@ -194,6 +194,8 @@ function applyUpdate(
     if (value !== undefined) meta[key] = value
   }
   setMeta('author', op.source)
+  setMeta('certainty', op.certainty === 'established' ? null : op.certainty)
+  setMeta('fallacy', op.fallacy === null ? null : op.fallacy?.trim() || undefined)
   setMeta('modality', op.modality)
   setMeta('note', op.note)
   setMeta('origin', op.origin)

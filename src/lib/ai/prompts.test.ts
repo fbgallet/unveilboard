@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { MapSchema } from '../map/format'
+import { AIM_FAMILIES, AIM_TEXT, deepenText, FAMILY_AIMS, familyFor } from './aims'
+import { estimatedCost, MODELS } from './models'
 import { buildPrompt, PROMPT_VERSION, type VocabularyLine } from './prompts'
 import truthFr from '../examples/truth.fr.json'
 
@@ -57,7 +59,7 @@ describe('relecture : ce qu’on en attend', () => {
   it('construction seule : ni sophismes ni force des raisons', () => {
     const prompt = buildPrompt({ task: 'review', instruction: '', map, vocabulary, lang: 'fr', delivery: 'api', reviewFocus: ['structure'] })
     expect(prompt).not.toContain('"strengths"')
-    expect(prompt).not.toContain('`fallacy`')
+    expect(prompt).not.toContain('- **fallacy**')
     expect(prompt).toContain('`wording`')
   })
 })
@@ -69,6 +71,46 @@ describe('consignes : à partir d’un élément, ordre par défaut', () => {
     expect(prompt).toContain('## The current diagram (extract)')
     expect(prompt).toContain('`rationale`')
     expect(prompt).toContain('"unveilboard/patch"')
+  })
+
+  it('développer avec une visée et une ampleur : la consigne de la visée, le nombre d’éléments, enfants compris', () => {
+    const base = { task: 'expand' as const, instruction: '', map, focus: 'thesis', vocabulary, lang: 'fr', delivery: 'api' as const }
+    const prompt = buildPrompt({ ...base, aim: { label: 'Contraires', text: AIM_TEXT.opposites }, amount: 'brief' })
+    expect(prompt).toContain('## The aim of this request: Contraires')
+    expect(prompt).toContain('<aim>\n' + AIM_TEXT.opposites + '\n</aim>')
+    expect(prompt).toContain('about 2 to 4 elements in all, counting every element you add')
+    expect(prompt.indexOf('<aim>')).toBeLessThan(prompt.indexOf('## The shape of the diagram'))
+    expect(buildPrompt({ ...base, amount: 'exhaustive' })).toContain('as much as the material really offers')
+    expect(buildPrompt(base)).not.toContain('**How much to add**')
+    // Hors développement d'un élément, ni visée ni ampleur.
+    expect(buildPrompt({ ...base, task: 'enrich', aim: { label: 'X', text: 'Y' }, amount: 'brief' })).not.toMatch(/<aim>|\*\*How much to add/)
+  })
+
+  it('compléter : ce qui a déjà été proposé n’est pas repris ; approfondir : les éléments ajoutés, par leurs enfants', () => {
+    const base = { task: 'expand' as const, instruction: '', map, focus: 'thesis', vocabulary, lang: 'fr', delivery: 'api' as const }
+    const complete = buildPrompt({ ...base, avoid: ['Le savoir', 'La foi'] })
+    expect(complete).toContain('## Already proposed')
+    expect(complete).toContain('- Le savoir\n- La foi')
+    expect(buildPrompt(base)).not.toContain('## Already proposed')
+    const deepen = buildPrompt({ ...base, selection: ['thesis'], aim: { label: 'Approfondir', text: deepenText('Objections') } })
+    expect(deepen).toContain('Deepen the selected elements, which were just added from this element (as: Objections)')
+    expect(deepen).toContain('focus on them: `thesis`')
+  })
+
+  it('régénérer : une proposition à remplacer (sans ampleur), ou toutes, dans la direction voulue, sinon mieux', () => {
+    const base = { task: 'expand' as const, instruction: '', map, focus: 'thesis', vocabulary, lang: 'fr', delivery: 'api' as const, amount: 'normal' as const }
+    const one = buildPrompt({ ...base, redo: { replace: { text: 'Le savoir', rationale: 'Voisin fréquent' } } })
+    expect(one).toContain('## Redo one proposal')
+    expect(one).toContain('“Le savoir” (proposed because: Voisin fréquent)')
+    expect(one).toContain('The user gave no direction')
+    expect(one).not.toContain('**How much to add**')
+    const branch = buildPrompt({ ...base, redo: { replace: { text: 'Objection', branch: ['  - Réponse'] } } })
+    expect(branch).toContain('It came with this branch, replaced with it:\n\n  - Réponse')
+    expect(branch).toContain('with its own children as the replaced one had')
+    const all = buildPrompt({ ...base, avoid: ['Le savoir'], redo: { direction: 'plus concret' } })
+    expect(all).toContain('## Redo the proposals')
+    expect(all).toContain('The direction the user asks for: plus concret')
+    expect(all).toContain('**How much to add**')
   })
 
   it('séquence : l’ordre par défaut est donné', () => {
@@ -133,5 +175,33 @@ describe('langue du contenu', () => {
     const prompt = buildPrompt({ ...base, lang: 'fr' })
     expect(prompt).toContain('in French, except quotations')
     expect(prompt).not.toContain('vocabulary names above are not in that language')
+  })
+})
+
+describe('visées', () => {
+  it('chaque famille a ses visées, toutes avec une consigne', () => {
+    for (const f of AIM_FAMILIES) {
+      expect(FAMILY_AIMS[f].length).toBeGreaterThan(0)
+      for (const a of FAMILY_AIMS[f]) expect(AIM_TEXT[a]).toBeTruthy()
+    }
+  })
+
+  it('famille proposée d’abord : selon le type, sinon selon l’arbre', () => {
+    expect(familyFor('concept', true)).toBe('analyse')
+    expect(familyFor('question', false)).toBe('question')
+    expect(familyFor('example', true)).toBe('illustrate')
+    expect(familyFor('statement', false)).toBe('argue')
+    expect(familyFor(undefined, true)).toBe('argue')
+    expect(familyFor(undefined, false)).toBe('analyse')
+  })
+})
+
+describe('coût estimé', () => {
+  it('d’après les prix du catalogue, par million de jetons ; inconnu sans prix', () => {
+    const priced = MODELS.find((m) => m.price)!
+    const cost = estimatedCost(priced.id, { promptTokens: 1_000_000, completionTokens: 1_000_000 })
+    expect(cost).toBeCloseTo(priced.price!.input + priced.price!.output)
+    expect(estimatedCost('inconnu/modele', { promptTokens: 10 })).toBeUndefined()
+    expect(estimatedCost(priced.id, {})).toBeUndefined()
   })
 })

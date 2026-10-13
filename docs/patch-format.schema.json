@@ -151,6 +151,20 @@
                 "type": "string",
                 "maxLength": 300
               },
+              "certainty": {
+                "description": "A source or quotation given from memory: how sure it is (established, likely: to check, uncertain: to check before use).",
+                "type": "string",
+                "enum": [
+                  "established",
+                  "likely",
+                  "uncertain"
+                ]
+              },
+              "fallacy": {
+                "description": "A deliberately fallacious argument (an exercise): the name of the fallacy or bias. Shown to the teacher, hidden from the audience.",
+                "type": "string",
+                "maxLength": 100
+              },
               "modality": {
                 "description": "Statements and assumptions: descriptive (how things are) or prescriptive (how things ought to be).",
                 "type": "string",
@@ -386,6 +400,32 @@
                   {
                     "type": "string",
                     "maxLength": 300
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "certainty": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "established",
+                      "likely",
+                      "uncertain"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "fallacy": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 100
                   },
                   {
                     "type": "null"

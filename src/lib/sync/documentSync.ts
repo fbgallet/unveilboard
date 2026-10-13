@@ -15,6 +15,7 @@ import { seedDemo } from '../demo'
 import { seedMap } from '../canvas/mapImport'
 import { takePendingMap } from '../map/pending'
 import { writePlanRecord } from '../canvas/plan'
+import { writePageMethod } from '../canvas/pageMethod'
 import { writePageSource } from '../canvas/source'
 import type { DemoName } from '../demoNames'
 import { m } from '@/i18n/client'
@@ -130,6 +131,7 @@ export function startDocumentSync(
         )
         if (pending?.plan) writePlanRecord(editor, pending.plan)
         if (pending?.source) writePageSource(editor, pending.source)
+        if (pending?.method) writePageMethod(editor, pending.method)
         editor.zoomToFit()
       }
       setMeta({ version: server.version, dirty: true })

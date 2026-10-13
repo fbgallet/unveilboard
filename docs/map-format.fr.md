@@ -69,6 +69,8 @@ Les identifiants (`id`) sont courts et libres (sans espace), uniques dans tout l
 | `relation` | Relation qui relie l'élément à son parent : `supports`, `objects`, `refutes`, `answers`, `explains`, `implies`, `presupposes`, `illustrates`, `defines`, `raises`, `distinguishes`, `opposes`, `relates`, ou une relation du vocabulaire. Absente : une simple branche (carte mentale). |
 | `reasoning` | Type de raisonnement de cette relation : `deduction`, `induction`, `analogy`, `abduction` (meilleure explication), `absurd`, `afortiori`, `authority`, `example`. |
 | `source` | Source : auteur, théorie, position, référence. |
+| `certainty` | Une source ou une citation donnée de mémoire (par une IA) : `established`, `likely` (étiquetée « source à vérifier ») ou `uncertain` (« source incertaine ») ; absent : non évalué. Masqué pour le public. |
+| `fallacy` | Un argument fallacieux à dessein (un exercice) : le nom du sophisme ou du biais, affiché sur la boîte pour l'enseignant, masqué pour le public. |
 | `modality` | Énoncés et présupposés : `descriptive` ou `prescriptive` (normatif). |
 | `note` | Développement en Markdown, affiché à côté du schéma pendant la présentation. |
 | `folded` | Branche repliée au début de la présentation. |
@@ -81,7 +83,7 @@ Les identifiants (`id`) sont courts et libres (sans espace), uniques dans tout l
 
 ### Sens de lecture des relations
 
-Une relation se lit **« élément RELATION parent »** : « la prémisse *soutient* la thèse », « l'exemple *illustre* l'énoncé ». Trois relations de départ se lisent dans l'autre sens, **« parent RELATION élément »** : `implies`, `presupposes`, `raises` (« la thèse *présuppose*… »). Le vocabulaire l'indique pour chaque relation (`direction` : `toParent` ou `toChild`).
+Une relation se lit **« élément RELATION parent »** : « la prémisse *soutient* la thèse », « l'exemple *illustre* l'énoncé ». Certaines relations de départ se lisent dans l'autre sens, **« parent RELATION élément »** : `implies`, `presupposes`, `raises`, `fallsUnder`, `dividesInto`, `hasFeature`, `causes`, `hasStake` (« la thèse *présuppose*… », « le courage *relève des* vertus »). Le vocabulaire l'indique pour chaque relation (`direction` : `toParent` ou `toChild`).
 
 Dans un lien (`links`), la relation se lit toujours **« from RELATION to »**.
 
@@ -146,7 +148,7 @@ Pour modifier un schéma existant, une IA (ou un outil) n'a pas à le réécrire
 | `op` | Effet |
 |---|---|
 | `add` | Ajoute un élément (tous les champs d'un élément ; `id` nouveau). Son `parent` est un élément existant ou ajouté plus haut. `rationale` : pourquoi l'IA le propose (une phrase), affiché pour une suggestion. |
-| `update` | Change des champs d'un élément (`text`, `type`, `relation`, `reasoning`, `source`, `modality`, `note`, `folded`, `task`, `style`, `origin`, `excerpt`, `tree`) ; `null` retire un champ (`style` : seules les clés données changent ; `null` rend l'aspect du type). |
+| `update` | Change des champs d'un élément (`text`, `type`, `relation`, `reasoning`, `source`, `certainty`, `fallacy`, `modality`, `note`, `folded`, `task`, `style`, `origin`, `excerpt`, `tree`) ; `null` retire un champ (`style` : seules les clés données changent ; `null` rend l'aspect du type). |
 | `move` | Rattache un élément, avec sa branche, à un autre parent (`relation` facultative : sinon, il garde la sienne). |
 | `remove` | Supprime un élément avec toute sa branche (et les liens qui les touchent), ou un lien. Les étapes ne le visent plus. |
 | `link` | Ajoute un lien transversal. |

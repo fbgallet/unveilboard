@@ -32,6 +32,8 @@ The ⋯ menu of the presentation bar holds the less frequent actions: recenter, 
 
 ## In the classroom
 
+**What the audience does not see.** The teacher's reminders on the boxes (“to check” for an excerpt not found in the text, “source to check” or “uncertain source” for a source the AI gave from memory, the name of a fallacy written as an exercise) show only while editing: never in the presentation, the shared view or on the projection screen.
+
 **Dual screen.** While presenting, ⋯ › "Project on a second screen" opens an **audience window** for the projector. On Chrome and Edge it moves itself to the second screen (the browser asks for permission once); elsewhere, drag it to the projector. Click "Fullscreen" (or press F) there.
 
 - The projector shows the diagram only; the narration appears on demand ("Narration on the screen" checkbox).

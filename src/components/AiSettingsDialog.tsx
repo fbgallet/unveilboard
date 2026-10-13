@@ -38,7 +38,7 @@ import { DESKTOP_DOWNLOAD_URL, isDesktop } from '@/lib/desktop'
 export const aiSettingsOpenAtom = atom<boolean>('aiSettingsOpen', false)
 
 /** Nom et tarif d'un modèle du catalogue (« DeepSeek V4.1 flash · 0,3 / 1,2 $ par M de jetons »), sinon son identifiant. */
-function modelLabel(id: string, t: Messages) {
+export function modelLabel(id: string, t: Messages) {
   const m = MODELS.find((c) => c.id === id)
   if (!m) return id
   return m.price ? `${m.label} · ${t.ai.price(m.price.input, m.price.output)}` : m.label

@@ -517,6 +517,53 @@ export function newChildPlacement(editor: Editor, id: TLShapeId): { near: Vec; s
   return { near, side }
 }
 
+/** Frères d'un enfant (lui compris), dans l'ordre de l'arbre : celui de leur position ; du même côté sous une racine « both ». */
+function orderedSiblings(editor: Editor, parentId: TLShapeId, side?: TreeSide): TLShapeId[] {
+  const rootId = rootOf(editor, parentId)
+  const horizontal = treeAxis(directionOf(editor, rootId)).horizontal
+  const cross = (id: TLShapeId) => {
+    const b = editor.getShapePageBounds(id)
+    return b ? (horizontal ? b.midY : b.midX) : 0
+  }
+  return [...(getTreeIndex(editor).children.get(parentId) ?? [])]
+    .filter((k) => !side || storedSide(editor, rootId, k) === side)
+    .sort((a, b) => cross(a) - cross(b))
+}
+
+/** Place d'un enfant parmi ses frères : son parent, son rang et, sous une racine « both », son côté. */
+export function childPlace(editor: Editor, id: TLShapeId): { parent: TLShapeId; rank: number; side?: TreeSide } | null {
+  const parentId = getTreeIndex(editor).parent.get(id)
+  if (!parentId) return null
+  const rootId = rootOf(editor, parentId)
+  const side = parentId === rootId && directionOf(editor, rootId) === 'both' ? storedSide(editor, rootId, id) : undefined
+  return { parent: parentId, rank: orderedSiblings(editor, parentId, side).indexOf(id), ...(side && { side }) }
+}
+
+/**
+ * Remet un enfant à une place parmi ses frères (celle d'un élément qu'il remplace) : il est posé
+ * entre ses voisins (l'ordre suit la position), puis l'arbre est remis en page.
+ */
+export function moveToPlace(editor: Editor, id: TLShapeId, place: { rank: number; side?: TreeSide }) {
+  const shape = editor.getShape(id)
+  const parentId = getTreeIndex(editor).parent.get(id)
+  if (!shape || !parentId || place.rank < 0) return
+  const rootId = rootOf(editor, parentId)
+  const horizontal = treeAxis(directionOf(editor, rootId)).horizontal
+  if (place.side) editor.updateShape({ id, type: shape.type, meta: { ...shape.meta, treeSide: place.side } })
+  const others = orderedSiblings(editor, parentId, place.side).filter((k) => k !== id)
+  const bounds = (k: TLShapeId | undefined) => (k ? editor.getShapePageBounds(k) : undefined)
+  const before = bounds(others[place.rank - 1])
+  const after = bounds(others[place.rank])
+  const own = editor.getShapePageBounds(id)
+  if (!own || (!before && !after)) return relayout(editor, rootId)
+  // Centre visé, sur l'axe des frères : entre les deux voisins, ou juste avant le premier / après le dernier.
+  const center = (b: Box) => (horizontal ? b.midY : b.midX)
+  const target = before && after ? (center(before) + center(after)) / 2 : before ? center(before) + 1 : center(after!) - 1
+  const delta = target - center(own)
+  editor.updateShape({ id, type: shape.type, ...(horizontal ? { y: shape.y + delta } : { x: shape.x + delta }) })
+  relayout(editor, rootId)
+}
+
 /** Tab : ajoute un enfant (et fait de la forme la racine d'un arbre si besoin). */
 export function addChild(editor: Editor, id: TLShapeId) {
   editor.markHistoryStoppingPoint('ajouter un enfant')

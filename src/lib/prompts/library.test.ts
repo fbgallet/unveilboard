@@ -93,8 +93,16 @@ describe('format des prompts', () => {
     expect(parsed.problems).toEqual(['unknown task “@nope”'])
   })
 
+  it('demandes toutes faites : un libellé et un texte, hors de la partie commune et des variantes', () => {
+    const parsed = parseBody('Commun\n\n## @expand\n\nDévelopper\n\n## @quick Contraires\n\nPropose les contraires.\n\n## @quick Vide\n\n## @quick\n\nx\n\n## @review\n\nRelire')
+    expect(parsed.body).toBe('Commun')
+    expect(parsed.variants).toEqual({ expand: 'Développer', review: 'Relire' })
+    expect(parsed.quick).toEqual([{ label: 'Contraires', request: 'Propose les contraires.' }])
+    expect(parsed.problems).toEqual(['“@quick” needs a label', 'empty request “@quick Vide”'])
+  })
+
   it('aller-retour : un prompt réécrit en Markdown se relit à l’identique', () => {
-    const { template } = parsePromptFile('---\ntitle: Test\ntasks: [create, expand]\nplaceholder: "Le sujet : …"\n---\nCommun\n\n## @create\n\nA\n\n## @expand\n\nA', 'x/test')
+    const { template } = parsePromptFile('---\ntitle: Test\ntasks: [create, expand]\nplaceholder: "Le sujet : …"\n---\nCommun\n\n## @create\n\nA\n\n## @expand\n\nA\n\n## @quick Contraires\n\nB', 'x/test')
     const again = parsePromptFile(serializePrompt(template), 'x/test').template
     expect(again).toEqual(template)
     expect(serializePrompt(template)).toContain('## @create @expand')

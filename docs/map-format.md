@@ -69,6 +69,8 @@ Identifiers (`id`) are short and free (no spaces), unique in the whole diagram: 
 | `relation` | Relation that connects the element to its parent: `supports`, `objects`, `refutes`, `answers`, `explains`, `implies`, `presupposes`, `illustrates`, `defines`, `raises`, `distinguishes`, `opposes`, `relates`, or a relation from the vocabulary. Omitted: a plain branch (mind map). |
 | `reasoning` | Type of reasoning of that relation: `deduction`, `induction`, `analogy`, `abduction` (best explanation), `absurd` (reductio), `afortiori`, `authority`, `example`. |
 | `source` | Source: author, theory, position, reference. |
+| `certainty` | A source or quotation given from memory (by an AI): `established`, `likely` (labelled “source to check”) or `uncertain` (“uncertain source”); omitted: not assessed. Hidden from the audience. |
+| `fallacy` | An argument fallacious on purpose (an exercise): the name of the fallacy or bias, shown to the teacher on the box, hidden from the audience. |
 | `modality` | Statements and assumptions: `descriptive` or `prescriptive`. |
 | `note` | Markdown development, shown beside the diagram while presenting. |
 | `folded` | Branch folded at the start of the presentation. |
@@ -81,7 +83,7 @@ Identifiers (`id`) are short and free (no spaces), unique in the whole diagram: 
 
 ### Reading direction of relations
 
-A relation reads **“element RELATION parent”**: “the premise *supports* the thesis”, “the example *illustrates* the statement”. Three default relations read the other way, **“parent RELATION element”**: `implies`, `presupposes`, `raises` (“the thesis *presupposes*…”). The vocabulary gives it for each relation (`direction`: `toParent` or `toChild`).
+A relation reads **“element RELATION parent”**: “the premise *supports* the thesis”, “the example *illustrates* the statement”. Some default relations read the other way, **“parent RELATION element”**: `implies`, `presupposes`, `raises`, `fallsUnder`, `dividesInto`, `hasFeature`, `causes`, `hasStake` (“the thesis *presupposes*…”, “courage *falls under* the virtues”). The vocabulary gives it for each relation (`direction`: `toParent` or `toChild`).
 
 In a link (`links`), the relation always reads **“from RELATION to”**.
 
@@ -146,7 +148,7 @@ To change an existing diagram, an AI (or a tool) does not rewrite it: it sends c
 | `op` | Effect |
 |---|---|
 | `add` | Adds an element (any element field; a new `id`). Its `parent` is an existing element or one added earlier. `rationale`: why the AI proposes it (one sentence), shown for a suggestion. |
-| `update` | Changes fields of an element (`text`, `type`, `relation`, `reasoning`, `source`, `modality`, `note`, `folded`, `task`, `style`, `origin`, `excerpt`, `tree`); `null` removes a field (`style`: only the keys given change; `null` returns to the look of the type). |
+| `update` | Changes fields of an element (`text`, `type`, `relation`, `reasoning`, `source`, `certainty`, `fallacy`, `modality`, `note`, `folded`, `task`, `style`, `origin`, `excerpt`, `tree`); `null` removes a field (`style`: only the keys given change; `null` returns to the look of the type). |
 | `move` | Attaches an element, with its branch, to another parent (optional `relation`: otherwise it keeps its own). |
 | `remove` | Removes an element with its whole branch (and the links touching them), or a link. Steps no longer target it. |
 | `link` | Adds a cross-link. |

@@ -14,7 +14,10 @@ describe('normalizePresetSettings', () => {
       ],
     }
     const v6 = normalizePresetSettings(v5, n)
-    expect(v6.items.map((p) => p.id)).toEqual(['concept', 'distinction', 'distinguishes', 'opposes', 'relates', 'premise', 'linked'])
+    expect(v6.items.map((p) => p.id)).toEqual([
+      'concept', 'distinction', 'distinguishes', 'opposes', 'relates', 'fallsUnder', 'dividesInto', 'hasFeature', 'causes', 'linked', 'premise',
+      'tests', 'hasStake',
+    ])
     expect(v6.items.find((p) => p.id === 'distinguishes')!.name).toBe('se distingue de')
   })
 
@@ -60,9 +63,10 @@ describe('normalizePresetSettings', () => {
       ],
     }
     const v3 = normalizePresetSettings(v2, names, roles)
-    expect(v3.version).toBe(12)
+    expect(v3.version).toBe(14)
     expect(v3.items.map((p) => p.id)).toEqual([
-      'statement', 'belief', 'fact', 'example', 'quote', 'linked', 'objects', 'explains', 'distinction', 'opposes', 'relates', 'premise',
+      'statement', 'belief', 'fact', 'example', 'quote', 'linked', 'objects', 'explains', 'distinction', 'opposes', 'relates',
+      'fallsUnder', 'dividesInto', 'hasFeature', 'causes', 'premise', 'tests', 'hasStake',
     ])
     expect(v3.items.find((p) => p.id === 'example')!.style.color).toBe('grey')
     // Couleur modifiée par l'utilisateur : conservée.
@@ -85,6 +89,25 @@ describe('normalizePresetSettings', () => {
         .items.find((p) => p.id === 'opposes')!.style.color
     expect(opposes('blue')).toBe('red')
     expect(opposes('green')).toBe('green')
+  })
+
+  it('v12 → v13 : relations de l’analyse d’un concept et « entraîne » ajoutées après « se rapproche de », hors Essentiel', () => {
+    const v12 = { version: 12, items: [{ id: 'relates', name: 'r', target: 'arrow', style: {} }, { id: 'premise', name: 'p', target: 'arrow', style: {} }] }
+    const v13 = normalizePresetSettings(v12, names)
+    expect(v13.items.map((p) => p.id)).toEqual(['relates', 'fallsUnder', 'dividesInto', 'hasFeature', 'causes', 'premise', 'tests', 'hasStake'])
+    expect(v13.items.find((p) => p.id === 'fallsUnder')!.towardChild).toBe(true)
+    expect(offeredPresets(v13).map((p) => p.id)).not.toContain('fallsUnder')
+  })
+
+  it('v13 → v14 : « met à l’épreuve » après « illustre », « a pour enjeu » après « soulève »', () => {
+    const v13 = {
+      version: 13,
+      items: [
+        { id: 'illustrates', name: 'i', target: 'arrow', style: {} },
+        { id: 'raises', name: 's', target: 'arrow', style: {} },
+      ],
+    }
+    expect(normalizePresetSettings(v13, names).items.map((p) => p.id)).toEqual(['illustrates', 'tests', 'raises', 'hasStake'])
   })
 })
 

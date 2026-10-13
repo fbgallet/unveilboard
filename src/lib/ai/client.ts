@@ -173,7 +173,7 @@ function serverModelOf(settings: AiSettings, server: ServerAi | null) {
 
 // ---------- Appels ----------
 
-interface CallOptions {
+export interface CallOptions {
   signal?: AbortSignal
   /** Texte reçu jusque-là, et longueur de la réflexion reçue ; ('', 0) quand on recommence. */
   onText?: (text: string, thinking: number) => void

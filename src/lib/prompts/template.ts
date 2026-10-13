@@ -16,6 +16,9 @@
 //   ## @expand @enrich
 //   Variante pour le développement d'un élément et l'enrichissement.
 //
+//   ## @quick Distinctions
+//   Visée de la méthode, pour développer un élément : sa consigne part avec la méthode.
+//
 // Pur (ni navigateur ni système de fichiers) : lu par la génération de library.json et par l'app.
 
 import { TASKS, type PromptMethod, type Task } from '../ai/prompts'
@@ -46,6 +49,14 @@ export interface PromptTemplate {
   source?: 'required' | 'none'
   body: string
   variants: Partial<Record<Task, string>>
+  /** Visées de la méthode, pour développer un élément (proposées avant celles de l'app). */
+  quick?: QuickRequest[]
+}
+
+/** Une visée : son bouton, et sa consigne, envoyée avec la méthode. */
+export interface QuickRequest {
+  label: string
+  request: string
 }
 
 export interface PromptCollection {
@@ -104,23 +115,38 @@ function unquote(value: string) {
 
 /** Marqueur d'une variante : « ## @create » ou « ## @expand @enrich ». */
 const VARIANT = /^##\s+((?:@[a-z]+\s*)+)$/
+/** Marqueur d'une demande toute faite : « ## @quick Distinctions ». */
+const QUICK = /^##\s+@quick(?:\s+(.*))?$/
 
-/** Partie commune et variantes par tâche d'un corps de prompt. Problèmes : tâches inconnues. */
-export function parseBody(body: string): { body: string; variants: Partial<Record<Task, string>>; problems: string[] } {
+/** Partie commune, variantes par tâche et demandes toutes faites d'un corps de prompt. Problèmes : tâches inconnues, demandes vides. */
+export function parseBody(body: string): { body: string; variants: Partial<Record<Task, string>>; quick: QuickRequest[]; problems: string[] } {
   const common: string[] = []
   const variants: Partial<Record<Task, string[]>> = {}
+  const quick: { label: string; lines: string[] }[] = []
   const problems: string[] = []
   let current: Task[] | null = null
+  let request: string[] | null = null
   for (const line of body.split(/\r?\n/)) {
+    const named = QUICK.exec(line.trim())
+    if (named) {
+      const label = named[1]?.trim() ?? ''
+      if (!label) problems.push('“@quick” needs a label')
+      request = []
+      quick.push({ label, lines: request })
+      current = null
+      continue
+    }
     const marker = VARIANT.exec(line.trim())
     if (marker) {
       const names = marker[1].split('@').map((n) => n.trim()).filter(Boolean)
       current = names.filter((n): n is Task => (TASKS as readonly string[]).includes(n))
       for (const n of names) if (!current.includes(n as Task)) problems.push(`unknown task “@${n}”`)
       for (const task of current) variants[task] ??= []
+      request = null
       continue
     }
-    if (current) for (const task of current) variants[task]!.push(line)
+    if (request) request.push(line)
+    else if (current) for (const task of current) variants[task]!.push(line)
     else common.push(line)
   }
   const joined = Object.fromEntries(
@@ -128,7 +154,9 @@ export function parseBody(body: string): { body: string; variants: Partial<Recor
       .map(([task, lines]) => [task, lines.join('\n').trim()])
       .filter(([, text]) => text)
   ) as Partial<Record<Task, string>>
-  return { body: common.join('\n').trim(), variants: joined, problems }
+  const requests = quick.filter((q) => q.label).map((q) => ({ label: q.label, request: q.lines.join('\n').trim() }))
+  for (const q of requests) if (!q.request) problems.push(`empty request “@quick ${q.label}”`)
+  return { body: common.join('\n').trim(), variants: joined, quick: requests.filter((q) => q.request), problems }
 }
 
 const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined)
@@ -136,7 +164,7 @@ const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : unde
 /** Un fichier de prompt : son en-tête et son corps. `path` : chemin sans extension. */
 export function parsePromptFile(source: string, path: string): { template: PromptTemplate; problems: string[] } {
   const { data, body: rawBody } = parseFrontmatter(source)
-  const { body, variants, problems } = parseBody(rawBody)
+  const { body, variants, quick, problems } = parseBody(rawBody)
   const title = str(data.title)
   if (!title) problems.push('missing “title”')
   const declared = Array.isArray(data.tasks) ? data.tasks : typeof data.tasks === 'string' ? [data.tasks] : undefined
@@ -157,6 +185,7 @@ export function parsePromptFile(source: string, path: string): { template: Promp
     ...((data.source === 'required' || data.source === 'none') && { source: data.source }),
     body,
     variants,
+    ...(quick.length && { quick }),
   }
   return { template, problems }
 }
@@ -186,20 +215,21 @@ export function serializeFrontmatter(meta: Pick<PromptTemplate, 'title' | 'descr
   return `---\n${head.join('\n')}\n---\n`
 }
 
-/** Le corps d'un prompt : la partie commune, puis les variantes (celles qui ont le même texte, sous un seul marqueur). */
-export function serializeBody(body: string, variants: Partial<Record<Task, string>>): string {
+/** Le corps d'un prompt : la partie commune, les variantes (celles qui ont le même texte, sous un seul marqueur), puis les demandes toutes faites. */
+export function serializeBody(body: string, variants: Partial<Record<Task, string>>, quick: QuickRequest[] = []): string {
   const groups = new Map<string, Task[]>()
   for (const task of TASKS) {
     const text = variants[task]
     if (text) groups.set(text, [...(groups.get(text) ?? []), task])
   }
   const parts = [...groups].map(([text, tasks]) => `## ${tasks.map((t) => `@${t}`).join(' ')}\n\n${text}`)
-  return [body, ...parts].filter(Boolean).join('\n\n')
+  const requests = quick.map((q) => `## @quick ${q.label}\n\n${q.request}`)
+  return [body, ...parts, ...requests].filter(Boolean).join('\n\n')
 }
 
 /** Réécrit un prompt en Markdown (export d'un prompt personnel). */
 export function serializePrompt(template: Omit<PromptTemplate, 'id' | 'collection'>): string {
-  return `${serializeFrontmatter(template)}\n${serializeBody(template.body, template.variants)}\n`
+  return `${serializeFrontmatter(template)}\n${serializeBody(template.body, template.variants, template.quick)}\n`
 }
 
 /** Contexte d'une demande : s'appuie-t-elle sur un texte source ? (absent : ne pas filtrer) */

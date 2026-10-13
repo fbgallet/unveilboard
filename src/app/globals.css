@@ -42,6 +42,10 @@ body {
   .btn-ghost-on {
     @apply bg-amber-100 text-amber-800 hover:bg-amber-200 hover:text-amber-900;
   }
+  /* Petit bouton choisi (visée de l'IA) */
+  .btn-xs-on {
+    @apply border-amber-300 bg-amber-100 text-amber-900 hover:bg-amber-200;
+  }
   /* Onglets du panneau d'édition (séquence, élément) : contrôle segmenté */
   .panel-tabs {
     @apply flex gap-0.5 rounded-lg bg-zinc-200/70 p-0.5;
@@ -80,6 +84,12 @@ body {
   }
   .panel-menu > hr {
     @apply my-1 border-zinc-200;
+  }
+  .panel-menu > .panel-menu-heading {
+    @apply truncate px-2.5 pt-1.5 pb-0.5 text-[11px] font-semibold text-zinc-400;
+  }
+  .panel-menu > .panel-menu-group {
+    @apply flex items-center justify-between font-medium text-zinc-500;
   }
   /* Bouton icône du panneau d'édition (situer, modifier) */
   .icon-btn {
@@ -401,6 +411,32 @@ body {
   letter-spacing: 0.04em;
   text-transform: none;
 }
+/* Source donnée de mémoire par l'IA : probable (ambre) ou incertaine (rouge, comme un extrait introuvable). */
+.certainty-pill {
+  margin-right: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--color-amber-600);
+  color: var(--color-white);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+.fallacy-pill {
+  margin-right: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--color-orange-600);
+  color: var(--color-white);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+.certainty-pill[data-certainty='uncertain'] {
+  background: var(--color-red-700);
+}
 .provenance {
   display: grid;
   gap: 4px;
@@ -440,6 +476,9 @@ body {
 .suggestion-accept {
   color: var(--color-emerald-700);
 }
+.suggestion-redo {
+  color: var(--color-violet-700);
+}
 .suggestion-accept:hover {
   border-color: var(--color-emerald-600);
   background: var(--color-emerald-50);
@@ -460,6 +499,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
   max-width: min(720px, calc(100% - 32px));
   padding: 6px 8px 6px 12px;
   border: 1px solid var(--color-violet-300);
@@ -469,6 +509,40 @@ body {
   font-size: 12px;
   color: var(--color-stone-700);
   pointer-events: auto;
+}
+/* Après un développement : résumé de l'IA, au-dessus de la barre ; message d'erreur. */
+.suggestion-summary {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 40vh;
+  overflow: auto;
+  padding: 8px 12px;
+  border: 1px solid var(--color-violet-300);
+  border-radius: 12px;
+  background: var(--color-white);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+}
+.redo-panel {
+  display: grid;
+  gap: 8px;
+}
+.suggestion-usage {
+  color: var(--color-stone-500);
+  white-space: nowrap;
+}
+.suggestion-bar-sep {
+  align-self: stretch;
+  width: 1px;
+  background: var(--color-stone-200);
+}
+.suggestion-failure {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-red-700);
 }
 .suggestion-rationale {
   min-width: 0;

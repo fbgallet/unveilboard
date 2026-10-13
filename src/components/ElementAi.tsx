@@ -3,17 +3,17 @@
 import { useEffect, useState } from 'react'
 import { atom, renderPlaintextFromRichText, useValue, type Editor, type TLRichText, type TLShapeId } from 'tldraw'
 import { useT } from '@/i18n/client'
-import { aiSettingsAtom, askAi, isAiReady, serverAiAtom } from '@/lib/ai/client'
+import type { Messages } from '@/i18n/config'
+import { AIM_FAMILIES, AIM_TEXT, AMOUNTS, DEFAULT_AMOUNT, FAMILY_AIMS, familyFor, type AimFamily, type Amount } from '@/lib/ai/aims'
+import { aiSettingsAtom, isAiReady, serverAiAtom } from '@/lib/ai/client'
 import { toAiError } from '@/lib/ai/errors'
 import { buildPrompt } from '@/lib/ai/prompts'
-import { editorPromptInput, readPasted } from '@/lib/canvas/assistant'
-import { applyPatch } from '@/lib/canvas/mapPatch'
-import { reverifyExcerpts } from '@/lib/canvas/passage'
+import { applyElementAnswer, elementPromptInput, readElementAnswer, runElementRequest, type ElementRequest } from '@/lib/canvas/elementAi'
 import { readPageSource } from '@/lib/canvas/source'
+import { isArgumentTree } from '@/lib/canvas/tree'
 import type { MapIssue } from '@/lib/map/check'
-import type { ReadResult } from '@/lib/map/read'
+import type { PromptTemplate } from '@/lib/prompts/template'
 import { aiSettingsOpenAtom } from './AiSettingsDialog'
-import { Markdownish } from './Markdownish'
 import { PromptPicker, usePromptChoice } from './PromptPicker'
 
 /** Élément d'où partir (panneau ouvert), ou null. */
@@ -21,13 +21,62 @@ export const elementAiAtom = atom<TLShapeId | null>('elementAi', null)
 /** Demande préremplie à l'ouverture (ex. : à partir d'un passage du texte source). */
 export const elementAiRequestAtom = atom<string>('elementAiRequest', '')
 
-/** Demandes toutes faites : la clé d'une phrase de t.elementAi.quick. */
-export const QUICK = ['arguments', 'objections', 'answers', 'examples', 'assumptions', 'distinctions', 'definitions', 'consequences'] as const
+/** Visée choisie à l'ouverture (menu ✦ de l'onglet Élément) : son groupe et sa clé. */
+export const elementAiAimAtom = atom<{ group: string; key: string } | null>('elementAiAim', null)
 
-/** Réponse de l'IA acceptable ici : des modifications (pas un schéma entier). */
-function patchOnly(result: ReadResult): ReadResult {
-  if (result.kind === 'patch' || !result.ok) return result
-  return { kind: 'unknown', ok: false, issues: [{ level: 'error', code: 'wrong_format', path: 'format', detail: 'expected "unveilboard/patch"' }] }
+/** Une visée proposée : de l'app (src/lib/ai/aims.ts) ou de la méthode choisie (« ## @quick »). */
+export interface AimOption {
+  key: string
+  label: string
+  hint?: string
+  text: string
+}
+
+/** Un groupe de visées : une famille de l'app, ou celles de la méthode choisie (« method »). */
+export interface AimGroup {
+  id: AimFamily | 'method'
+  title: string
+  aims: AimOption[]
+}
+
+/** Visées proposées : celles de la méthode choisie d'abord, puis les familles de l'app. */
+export function aimGroups(template: PromptTemplate | undefined, t: Messages): AimGroup[] {
+  const method: AimGroup[] = template?.quick?.length
+    ? [{ id: 'method', title: template.title, aims: template.quick.map((q, i) => ({ key: `method:${i}`, label: q.label, text: q.request })) }]
+    : []
+  const families = AIM_FAMILIES.map((f) => ({
+    id: f,
+    title: t.elementAi.families[f],
+    aims: FAMILY_AIMS[f].map((a) => ({ key: a, label: t.elementAi.aims[a].label, hint: t.elementAi.aims[a].hint, text: AIM_TEXT[a] })),
+  }))
+  return [...method, ...families]
+}
+
+/** Groupe proposé d'abord pour un élément : la méthode, sinon la famille de son type (ou de son arbre). */
+export function firstAimGroup(editor: Editor, id: TLShapeId, groups: AimGroup[]): AimGroup['id'] {
+  if (groups[0]?.id === 'method') return 'method'
+  const type = editor.getShape(id)?.meta.preset
+  return familyFor(typeof type === 'string' ? type : undefined, isArgumentTree(editor, id))
+}
+
+/** Ampleur d'un développement : la dernière choisie sur cet appareil. */
+const AMOUNT_KEY = 'element-ai-amount'
+
+function readAmount(): Amount {
+  try {
+    const value = localStorage.getItem(AMOUNT_KEY)
+    return AMOUNTS.includes(value as Amount) ? (value as Amount) : DEFAULT_AMOUNT
+  } catch {
+    return DEFAULT_AMOUNT
+  }
+}
+
+function writeAmount(amount: Amount) {
+  try {
+    localStorage.setItem(AMOUNT_KEY, amount)
+  } catch {
+    // stockage indisponible
+  }
 }
 
 /**
@@ -73,32 +122,46 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
   const [pasted, setPasted] = useState('')
   const [issues, setIssues] = useState<MapIssue[]>([])
   const [failure, setFailure] = useState<string | null>(null)
-  const [done, setDone] = useState<{ added: number; skipped: number; summary?: string } | null>(null)
 
   const pageSource = useValue('page source', () => readPageSource(editor), [editor])
   const [useSource, setUseSource] = useState(true)
-  const prompt = usePromptChoice('expand', { source: useSource && !!pageSource })
-  const input = () => ({
-    ...editorPromptInput(editor, 'expand', instruction, { focus: id, wholeMap, delivery: ready ? 'api' : 'clipboard', withSource: useSource }),
+  const prompt = usePromptChoice('expand', { source: useSource && !!pageSource }, editor)
+  // Visée : préchoisie depuis le menu ✦, sinon aucune ; groupe affiché : celui de l'élément.
+  const [preset] = useState(() => {
+    const aim = elementAiAimAtom.get()
+    elementAiAimAtom.set(null)
+    return aim
+  })
+  const groups = aimGroups(prompt.template, t)
+  const [groupId, setGroupId] = useState<string | null>(preset?.group ?? null)
+  const first = firstAimGroup(editor, id, groups)
+  const shown = groups.find((g) => g.id === groupId) ?? groups.find((g) => g.id === first) ?? groups[0]
+  const [aimKey, setAimKey] = useState<string | null>(preset?.key ?? null)
+  const aim = aimKey ? (shown.aims.find((a) => a.key === aimKey) ?? groups.flatMap((g) => g.aims).find((a) => a.key === aimKey)) : undefined
+  const [amount, setAmount] = useState(readAmount)
+  const request = (): ElementRequest => ({
+    focus: id,
+    instruction,
+    wholeMap,
     notes,
+    withSource: useSource,
+    ghost,
+    amount,
+    ...(aim && { aim: { label: aim.label, text: aim.text } }),
     ...(prompt.method && { method: prompt.method }),
   })
   const reset = () => {
     setIssues([])
     setFailure(null)
-    setDone(null)
   }
 
-  /** Applique une réponse valide : en suggestions, ou directement. */
-  function apply(result: ReadResult) {
-    if (!result.ok || result.kind !== 'patch') return setIssues(result.issues.filter((i) => i.level === 'error'))
-    const added = result.patch.operations.filter((o) => o.op === 'add' || o.op === 'link').length
-    const { skipped } = applyPatch(editor, result.patch, { ghost })
-    // Schéma tiré d'un texte : les extraits ajoutés sont cherchés dans le texte (sinon « à vérifier »).
-    if (pageSource) reverifyExcerpts(editor, pageSource.text)
-    setDone({ added, skipped, summary: result.patch.summary })
-    setPasted('')
-    setPasting(false)
+  /**
+   * Réponse appliquée (en suggestions ou directement) : la boîte se ferme, et la barre des
+   * suggestions prend le relais (résumé, compléter, approfondir). Sinon, les problèmes restent affichés.
+   */
+  function settle(outcome: ReturnType<typeof applyElementAnswer>) {
+    if ('issues' in outcome) return setIssues(outcome.issues)
+    close()
   }
 
   async function ask() {
@@ -106,11 +169,12 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
     const abort = new AbortController()
     setRun({ chars: 0, thinking: 0, abort })
     try {
-      const result = await askAi(settings, input(), (answer) => patchOnly(readPasted(editor, answer)), {
-        signal: abort.signal,
-        onText: (answer, thinking) => setRun((r) => r && { ...r, chars: answer.length, thinking }),
-      })
-      apply(result.result)
+      settle(
+        await runElementRequest(editor, request(), {
+          signal: abort.signal,
+          onText: (answer, thinking) => setRun((r) => r && { ...r, chars: answer.length, thinking }),
+        })
+      )
     } catch (e) {
       const error = toAiError(e)
       setFailure(`${t.ai.errors[error.kind]}${error.detail && error.kind !== 'aborted' ? ` (${error.detail})` : ''}`)
@@ -122,7 +186,7 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
   async function copy() {
     reset()
     try {
-      await navigator.clipboard.writeText(buildPrompt(input()))
+      await navigator.clipboard.writeText(buildPrompt(elementPromptInput(editor, request(), 'clipboard')))
       setPasting(true)
     } catch (e) {
       setFailure(e instanceof Error ? e.message : t.common.genericError)
@@ -137,21 +201,39 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
           ✕
         </button>
       </header>
-      <div className="flex flex-wrap gap-1">
-        {QUICK.map((k) => (
-          <button
-            key={k}
-            className="btn-xs"
-            onClick={() => {
-              setInstruction(t.elementAi.quick[k].request)
-              reset()
-            }}
-          >
-            {t.elementAi.quick[k].label}
-          </button>
-        ))}
-      </div>
       <PromptPicker choice={prompt} disabled={!!run} />
+      <div className="grid gap-1.5">
+        <div className="panel-tabs" role="tablist">
+          {groups.map((g) => (
+            <button
+              key={g.id}
+              role="tab"
+              aria-selected={g.id === shown.id}
+              className={`panel-tab min-w-0 truncate ${g.id === shown.id ? 'panel-tab-active' : ''}`}
+              onClick={() => setGroupId(g.id)}
+              title={g.title}
+            >
+              {g.title}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {shown.aims.map((a) => (
+            <button
+              key={a.key}
+              className={`btn-xs ${aimKey === a.key ? 'btn-xs-on' : ''}`}
+              aria-pressed={aimKey === a.key}
+              title={a.hint ?? a.text}
+              onClick={() => {
+                setAimKey(aimKey === a.key ? null : a.key)
+                reset()
+              }}
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <textarea
         className="map-json-input assistant-instruction"
         rows={2}
@@ -160,10 +242,29 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
           setInstruction(e.target.value)
           reset()
         }}
-        placeholder={prompt.method ? t.elementAi.placeholderMethod : t.elementAi.placeholder}
+        placeholder={aim ? t.elementAi.placeholderAim : prompt.method ? t.elementAi.placeholderMethod : t.elementAi.placeholder}
         aria-label={t.elementAi.instructionLabel}
         autoFocus
       />
+      <div className="flex flex-wrap items-center gap-2 text-xs" title={t.elementAi.amountHint}>
+        <span className="text-zinc-600">{t.elementAi.amountLabel}</span>
+        <div className="seq-mode" role="radiogroup" aria-label={t.elementAi.amountLabel}>
+          {AMOUNTS.map((a) => (
+            <button
+              key={a}
+              role="radio"
+              aria-checked={amount === a}
+              className={`seq-mode-btn ${amount === a ? 'seq-mode-on' : ''}`}
+              onClick={() => {
+                setAmount(a)
+                writeAmount(a)
+              }}
+            >
+              {t.elementAi.amounts[a]}
+            </button>
+          ))}
+        </div>
+      </div>
       <label className="flex items-center gap-2 text-xs">
         <input type="checkbox" checked={wholeMap} onChange={(e) => setWholeMap(e.target.checked)} />
         {t.elementAi.wholeMap}
@@ -190,11 +291,11 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {ready ? (
-          <button className="btn-primary" disabled={!!run || (!instruction.trim() && !prompt.method)} onClick={() => void ask()}>
+          <button className="btn-primary" disabled={!!run || (!instruction.trim() && !prompt.method && !aim)} onClick={() => void ask()}>
             {t.ai.ask}
           </button>
         ) : (
-          <button className="btn-primary" disabled={!instruction.trim() && !prompt.method} onClick={() => void copy()}>
+          <button className="btn-primary" disabled={!instruction.trim() && !prompt.method && !aim} onClick={() => void copy()}>
             {t.assistant.copy}
           </button>
         )}
@@ -224,7 +325,7 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
             aria-label={t.mapJson.pasteLabel}
             spellCheck={false}
           />
-          <button className="btn self-start justify-self-start" disabled={!pasted.trim()} onClick={() => apply(patchOnly(readPasted(editor, pasted)))}>
+          <button className="btn self-start justify-self-start" disabled={!pasted.trim()} onClick={() => settle(applyElementAnswer(editor, request(), readElementAnswer(editor, pasted)))}>
             {ghost ? t.elementAi.addSuggestions : t.mapJson.apply}
           </button>
         </div>
@@ -243,19 +344,6 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
             </li>
           ))}
         </ul>
-      )}
-      {done && (
-        <div className="grid gap-1 text-xs">
-          <p className="text-emerald-700" role="status">
-            {ghost ? t.elementAi.doneGhost(done.added) : t.elementAi.doneDirect(done.added)}
-            {done.skipped > 0 && ` ${t.elementAi.skipped(done.skipped)}`}
-          </p>
-          {done.summary && (
-            <div className="patch-summary-text">
-              <Markdownish text={done.summary} />
-            </div>
-          )}
-        </div>
       )}
     </div>
   )

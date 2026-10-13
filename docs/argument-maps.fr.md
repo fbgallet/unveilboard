@@ -48,7 +48,7 @@ Les présupposés structurent nos représentations du monde (présupposés **des
 
 ## Les relations
 
-Dans un arbre, une relation pointe par défaut **vers l'élément existant** (« la prémisse soutient la thèse ») ; certaines pointent vers le nouvel élément (implique, présuppose, soulève).
+Dans un arbre, une relation pointe par défaut **vers l'élément existant** (« la prémisse soutient la thèse ») ; certaines pointent vers le nouvel élément (implique, présuppose, soulève, relève de, se divise en, a pour caractéristique, entraîne, a pour enjeu).
 
 | Relation | Fonction de l'élément relié | Définition | Exemple |
 |---|---|---|---|
@@ -58,13 +58,19 @@ Dans un arbre, une relation pointe par défaut **vers l'élément existant** («
 | **répond à** (violet sous une question, orange sous une objection) | Réponse | Propose une réponse à une question, ou répond à une objection. | « Oui, si être libre c'est faire ce que l'on veut ». |
 | **explique** (bleu clair) | Explication | Rend compte des causes ou des raisons d'un fait, sans chercher à le justifier. | « L'ignorance des causes » explique « le sentiment d'être libre » (Spinoza). |
 | **implique** (noir) | Implication | A pour conséquence, logique ou pratique. | « Tout est déterminé » implique-t-il « nul n'est responsable » ? |
+| **entraîne** (noir, tirets) | Effet | Produit un effet, dans les faits plutôt que par nécessité logique. | La division du travail entraîne un accroissement de la productivité. |
 | **présuppose** (violet, tirets) | Présupposé | Repose, sans le dire, sur un présupposé. | « Punir le coupable » présuppose « il aurait pu agir autrement ». |
 | **illustre** (gris, pointillés) | Exemple | Donne un exemple de ce qui est affirmé. | Le tyran illustre l'erreur sur le bien. |
+| **met à l'épreuve** (gris, tirets) | Cas limite | Un cas où l'on hésite à appliquer une notion ou une thèse. | Le patient dans le coma met à l'épreuve la définition de la personne. |
 | **définit** (bleu, tirets) | Définition | Précise le sens d'une notion. | « Pouvoir faire ce que l'on veut » définit la liberté au sens commun. |
-| **soulève** (rouge, tirets) | Difficulté | Fait apparaître une difficulté ou un problème. | Le déterminisme soulève le problème de la responsabilité. |
+| **soulève** (rouge, tirets) | Difficulté (une question garde son étiquette : Question) | Fait apparaître une difficulté ou un problème. | Le déterminisme soulève le problème de la responsabilité. |
+| **a pour enjeu** (rouge clair, pointillés) | Enjeu | Ce qui dépend d'une thèse ou d'une question : ce qui change selon qu'on l'admet ou la rejette. | « Sommes-nous libres ? » a pour enjeu la responsabilité morale. |
 | **se distingue de** (bleu, barres) | Distinction | Marque une différence entre deux notions là où il y a confusion. | La liberté se distingue de la licence. |
-| **s'oppose à** (bleu, deux pointes) | Opposition | Oppose deux notions : contraires ou contradictoires. | La nature s'oppose à la culture. |
+| **s'oppose à** (rouge, deux pointes) | Opposition | Oppose deux notions : contraires ou contradictoires. | La nature s'oppose à la culture. |
 | **se rapproche de** (bleu, fin, pointillés) | Notion voisine | Rapproche deux notions voisines ou apparentées. | La liberté se rapproche de l'autonomie. |
+| **relève de** (bleu) | Catégorie | Situe une notion dans la catégorie plus générale dont elle relève (son genre). | Le courage relève des vertus. |
+| **se divise en** (bleu clair) | Espèce | Divise une notion en ses espèces ou variétés. | La justice se divise en justice commutative et distributive. |
+| **a pour caractéristique** (bleu clair, pointillés) | Caractéristique | Un trait essentiel, que possède chaque cas de la notion. | La croyance a pour caractéristique d'admettre des degrés. |
 
 *Soutient* ou *explique* ? Une justification donne une raison de **croire** que c'est vrai ; une explication rend compte de **pourquoi** c'est ainsi, sans chercher à le prouver.
 
@@ -73,7 +79,10 @@ Dans un arbre, une relation pointe par défaut **vers l'élément existant** («
 Distinguer est souvent décisif dans une discussion : bien des objections tombent quand on dissipe une équivoque. Unveilboard la prend en compte à deux niveaux :
 
 - **dans l'argument**, l'élément **Distinction** (« liberté ≠ licence ») est un coup à part entière : il peut *réfuter* une objection, *répondre* à une question ou lever une difficulté, avec les relations habituelles ;
-- **entre concepts**, pour cartographier un champ notionnel : **se distingue de** (différence là où il y a confusion), **s'oppose à** (contraires, qui s'excluent sans épuiser les possibles, ou contradictoires, dont l'un est la négation de l'autre), **se rapproche de** (parenté, proximité).
+- **entre concepts**, pour cartographier un champ notionnel : **se distingue de** (différence là où il y a confusion), **s'oppose à** (contraires, qui s'excluent sans épuiser les possibles, ou contradictoires, dont l'un est la négation de l'autre), **se rapproche de** (parenté, proximité) ;
+- **pour analyser un concept**, avec **relève de** (sa catégorie), **se divise en** (ses espèces) et **a pour caractéristique** (ses traits essentiels), à côté des relations ci-dessus : c'est ce qu'emploient les visées *Analyser* de l'IA (voir [Travailler avec une IA](ai.fr.md)).
+
+Les relations ajoutées pour l'analyse d'un concept, les cas limites et les enjeux sont dans le vocabulaire complet (« Plus… » dans le panneau des préréglages).
 
 ## Prémisses liées
 

@@ -6,7 +6,7 @@
 import { renderPlaintextFromRichText, type Editor, type TLArrowBinding, type TLRichText, type TLShape, type TLShapeId } from 'tldraw'
 import { m } from '@/i18n/client'
 import { richTextToMarkdown, type RichNode } from '../map/markdown'
-import { MAP_FORMAT, MAP_VERSION, TASK_STATES, type MapElement, type MapLink, type MapOther, type MapVocabulary, type TaskState, type UnveilMap } from '../map/format'
+import { CERTAINTIES, MAP_FORMAT, MAP_VERSION, TASK_STATES, type Certainty, type MapElement, type MapLink, type MapOther, type MapVocabulary, type TaskState, type UnveilMap } from '../map/format'
 import { fromEngineSteps, type RefShapes, type ShapeOwner } from '../map/sequence'
 import { defaultPresets, MODALITIES, REASONINGS, type Modality, type Preset, type Reasoning } from '../presets/presets'
 import { treeAxis } from '../tree/layout'
@@ -103,6 +103,7 @@ export function exportMap(editor: Editor): MapExport {
     const side = shape.meta.treeSide
     const role = functionOf(editor, id)?.role
     const task = shape.meta.task as TaskState | undefined
+    const certainty = shape.meta.certainty as Certainty | undefined
     const style = ownStyle(editor, shape)
     return {
       id: refOf.get(id)!,
@@ -114,6 +115,8 @@ export function exportMap(editor: Editor): MapExport {
       ...(relation && reasoning && REASONINGS.includes(reasoning) && { reasoning }),
       ...(p && !parent.has(p) && directionOf(editor, p) === 'both' && (side === 'left' || side === 'right') && { side }),
       ...(str(shape.meta.author) && { source: shape.meta.author as string }),
+      ...(certainty && CERTAINTIES.includes(certainty) && { certainty }),
+      ...(str(shape.meta.fallacy) && { fallacy: shape.meta.fallacy as string }),
       ...(modality && MODALITIES.includes(modality) && { modality }),
       ...(str(shape.meta.note) && { note: shape.meta.note as string }),
       ...(shape.meta.folded === true && children.has(id) && { folded: true }),

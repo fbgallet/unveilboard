@@ -144,7 +144,7 @@ export const CUSTOM_PREFIX = 'custom:'
 
 /** Un prompt personnel, lu comme un prompt partagé. */
 export function customTemplate(prompt: CustomPrompt, defaultGroup: string): PromptTemplate {
-  const { body, variants } = parseBody(prompt.source)
+  const { body, variants, quick } = parseBody(prompt.source)
   return {
     id: prompt.id,
     collection: `${CUSTOM_PREFIX}${prompt.group?.trim() || defaultGroup}`,
@@ -154,6 +154,7 @@ export function customTemplate(prompt: CustomPrompt, defaultGroup: string): Prom
     ...(prompt.placeholder && { placeholder: prompt.placeholder }),
     body,
     variants,
+    ...(quick.length && { quick }),
   }
 }
 

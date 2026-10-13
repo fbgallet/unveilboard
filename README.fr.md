@@ -20,7 +20,7 @@ Vous travaillez sur un texte ? Construisez le schéma à partir de lui : le text
 
 **Le construire à partir d'un texte.** Collez un texte ou ouvrez un fichier : il reste dans une barre latérale, ses passages cités surlignés aux couleurs de leurs éléments, jusque dans la présentation. Sélectionnez un passage pour en faire un élément, ou le relier à un élément existant. → [Textes source](docs/source-texts.fr.md)
 
-**S'aider d'une IA, si vous voulez.** La vôtre (par une consigne copiée ou votre clé OpenRouter), votre forfait ChatGPT (application de bureau), un modèle local, ou celle de l'instance : créer, enrichir, séquencer ou relire un schéma, ou en construire un riche section par section à partir d'un plan. Les réponses sont contrôlées, et les extraits cherchés dans le texte. → [Travailler avec une IA](docs/ai.fr.md)
+**S'aider d'une IA, si vous voulez.** La vôtre (par une consigne copiée ou votre clé OpenRouter), votre forfait ChatGPT (application de bureau), un modèle local, ou celle de l'instance : créer, enrichir, séquencer ou relire un schéma, ou en construire un riche section par section à partir d'un plan ; développer n'importe quel élément selon les principales démarches de la réflexion (argumenter, analyser un concept, questionner, illustrer), puis compléter ou approfondir ce qu'elle propose. Les réponses sont contrôlées, et les extraits cherchés dans le texte. → [Travailler avec une IA](docs/ai.fr.md)
 
 ## En bref
 

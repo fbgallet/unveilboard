@@ -39,7 +39,7 @@ export interface Preset {
 }
 
 export interface PresetSettings {
-  version: 12
+  version: 14
   /** Section « Préréglages » affichée dans le panneau de styles. */
   enabled: boolean
   /** Étiquettes de nature affichées sur le canevas. */
@@ -120,19 +120,29 @@ export function defaultPresets(names: Record<string, string>, roles: Record<stri
     arrow('implies', n('implies'), { color: 'black' }, { towardChild: true, childNature: 'statement', role: r('implies') }),
     arrow('presupposes', n('presupposes'), { color: 'violet', dash: 'dashed' }, { towardChild: true, childNature: 'belief', role: r('presupposes') }),
     arrow('illustrates', n('illustrates'), { color: 'grey', dash: 'dotted' }, { childNature: 'example', role: r('illustrates') }),
+    // Cas limite : un cas qui met un concept ou une thèse à l'épreuve (gris des exemples, en tirets).
+    arrow('tests', n('tests'), { color: 'grey', dash: 'dashed' }, { childNature: 'example', role: r('tests') }),
     arrow('defines', n('defines'), { color: 'blue', dash: 'dashed' }, { childNature: 'concept', role: r('defines') }),
     arrow('raises', n('raises'), { color: 'red', dash: 'dashed' }, { towardChild: true, childNature: 'problem', role: r('raises') }),
+    // Enjeu : ce qui dépend d'une thèse ou d'une question (famille rouge des questions, en pointillé).
+    arrow('hasStake', n('hasStake'), { color: 'light-red', dash: 'dotted' }, { towardChild: true, childNature: 'statement', role: r('hasStake') }),
     // Rapports entre concepts, symétriques : différence, opposition (en rouge, comme ce qui s'oppose), parenté.
     arrow('distinguishes', n('distinguishes'), { color: 'blue', arrowheadStart: 'bar', arrowheadEnd: 'bar' }, { childNature: 'concept', role: r('distinguishes') }),
     arrow('opposes', n('opposes'), { color: 'red', arrowheadStart: 'arrow', arrowheadEnd: 'arrow' }, { childNature: 'concept', role: r('opposes') }),
     arrow('relates', n('relates'), { color: 'blue', size: 's', dash: 'dotted', arrowheadStart: 'none', arrowheadEnd: 'none' }, { childNature: 'concept', role: r('relates') }),
+    // Analyse d'un concept : sa catégorie, ses espèces, ses caractéristiques (en bleu, comme les
+    // rapports entre concepts) ; ce qu'il entraîne.
+    arrow('fallsUnder', n('fallsUnder'), { color: 'blue' }, { towardChild: true, childNature: 'concept', role: r('fallsUnder') }),
+    arrow('dividesInto', n('dividesInto'), { color: 'light-blue' }, { towardChild: true, childNature: 'concept', role: r('dividesInto') }),
+    arrow('hasFeature', n('hasFeature'), { color: 'light-blue', dash: 'dotted' }, { towardChild: true, childNature: 'concept', role: r('hasFeature') }),
+    arrow('causes', n('causes'), { color: 'black', dash: 'dashed' }, { towardChild: true, childNature: 'statement', role: r('causes') }),
     // Prémisse d'une pastille de prémisses liées : un trait fin, sans pointe ni étiquette.
     { ...arrow(PREMISE, n(PREMISE), { color: 'green', size: 's', arrowheadEnd: 'none' }, { childNature: 'statement', role: r(PREMISE) }), label: undefined },
   ]
 }
 
 export function defaultPresetSettings(names: Record<string, string>, roles: Record<string, string> = {}): PresetSettings {
-  return { version: 12, enabled: true, showTags: true, profile: 'essential', items: defaultPresets(names, roles) }
+  return { version: 14, enabled: true, showTags: true, profile: 'essential', items: defaultPresets(names, roles) }
 }
 
 /** Couleurs de départ changées en v8 (familles de couleurs de l'enseignant) : [id, ancienne, nouvelle]. */
@@ -182,7 +192,10 @@ export const LEGACY_DEFAULT_NAMES: Record<string, string[]> = { belief: OLD_BELI
  * - v9 → v11 : la citation, sans cadre, prend un fond jaune pâle (`solid` : la teinte pâle de sa
  *   couleur ; `semi` est le fond blanc) ; elle perd le cadre en tirets de la v1, si son trait n'avait
  *   pas été changé, et gagne son fond, s'il était vide ou blanc (celui, erroné, d'une v10) ;
- * - v11 → v12 : « s'oppose à » passe du bleu au rouge, si sa couleur n'avait pas été changée.
+ * - v11 → v12 : « s'oppose à » passe du bleu au rouge, si sa couleur n'avait pas été changée ;
+ * - v12 → v13 : relations de l'analyse d'un concept (« relève de », « se divise en », « a pour
+ *   caractéristique ») et « entraîne » ajoutées ;
+ * - v13 → v14 : « met à l'épreuve » (cas limites) et « a pour enjeu » ajoutées.
  */
 export function normalizePresetSettings(
   raw: unknown,
@@ -235,6 +248,8 @@ export function normalizePresetSettings(
     ...(version < 4 ? ['fact'] : []),
     ...(version < 6 ? ['distinction', 'opposes', 'relates'] : []),
     ...(version < 9 ? [LINKED, PREMISE] : []),
+    ...(version < 13 ? ['fallsUnder', 'dividesInto', 'hasFeature', 'causes'] : []),
+    ...(version < 14 ? ['tests', 'hasStake'] : []),
   ]
   {
     for (const id of added) {
@@ -246,7 +261,7 @@ export function normalizePresetSettings(
     }
   }
   const profile = r.profile === 'complete' ? 'complete' : 'essential'
-  return { version: 12, enabled: r.enabled !== false, showTags: r.showTags !== false, profile, items }
+  return { version: 14, enabled: r.enabled !== false, showTags: r.showTags !== false, profile, items }
 }
 
 export function newPresetId(name: string) {
@@ -291,11 +306,11 @@ export function offeredPresets(settings: PresetSettings): Preset[] {
  * distingue, oppose ou rapproche. Les relations créées par l'utilisateur sont toujours proposées.
  */
 const RELATIONS_BY_CONTEXT: Record<string, string[]> = {
-  question: ['answers', 'defines', 'distinguishes', 'raises'],
+  question: ['answers', 'defines', 'distinguishes', 'raises', 'hasStake'],
   objects: ['answers', 'supports', 'objects', 'refutes', 'illustrates', 'distinguishes', 'presupposes'],
-  concept: ['defines', 'distinguishes', 'opposes', 'relates', 'illustrates'],
+  concept: ['defines', 'distinguishes', 'opposes', 'relates', 'fallsUnder', 'dividesInto', 'hasFeature', 'illustrates', 'tests'],
   distinction: ['supports', 'illustrates', 'defines', 'opposes'],
-  default: ['supports', 'objects', 'illustrates', 'presupposes', 'explains', 'implies', 'defines', 'raises', 'distinguishes', 'refutes', 'answers'],
+  default: ['supports', 'objects', 'illustrates', 'tests', 'presupposes', 'explains', 'implies', 'causes', 'defines', 'raises', 'hasStake', 'distinguishes', 'refutes', 'answers'],
 }
 
 /** Contexte d'un nœud : sa fonction (relation qui le relie à son parent) si elle en a un, sinon son type. */

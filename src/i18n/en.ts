@@ -570,6 +570,12 @@ export const en = {
     opposes: 'is opposed to',
     relates: 'is akin to',
     implies: 'implies',
+    fallsUnder: 'falls under',
+    dividesInto: 'divides into',
+    hasFeature: 'is characterized by',
+    causes: 'leads to',
+    tests: 'puts to the test',
+    hasStake: 'has at stake',
   },
 
   /** Fonction d'un nœud relié par une relation, dans un arbre argumentatif (étiquette). */
@@ -680,6 +686,36 @@ export const en = {
       use: 'Connects two close concepts, without conflating them.',
       example: 'Freedom is akin to autonomy.',
     },
+    fallsUnder: {
+      definition: 'Places a notion in the more general category it belongs to (its genus).',
+      use: 'Connects a concept to its category; what sets it apart from the other species of that category can go in the note.',
+      example: 'Courage falls under the virtues.',
+    },
+    dividesInto: {
+      definition: 'Divides a notion into its species, forms or varieties.',
+      use: 'Connects a concept to each of its species, ideally divided by one clear criterion.',
+      example: 'Justice divides into commutative and distributive justice.',
+    },
+    hasFeature: {
+      definition: 'Gives an essential feature of a notion: what every case of it has.',
+      use: 'Connects a concept to its defining or revealing characteristics.',
+      example: 'Belief is characterized by degrees (one can believe more or less firmly).',
+    },
+    tests: {
+      definition: 'A borderline case, where one hesitates to apply a notion or a claim: it tests its boundaries.',
+      use: 'Connects a borderline case to the concept or the claim it puts to the test; unlike “illustrates”, the case is not a clear instance.',
+      example: 'The coma patient puts to the test the definition of a person as a being aware of itself.',
+    },
+    hasStake: {
+      definition: 'What depends on a claim or a question: what changes if one accepts or rejects it.',
+      use: 'Connects a claim or a question to its stakes (moral, political, practical, theoretical).',
+      example: '“Are we free?” has at stake moral responsibility and the justification of punishment.',
+    },
+    causes: {
+      definition: 'Produces an effect, in fact rather than by logical necessity.',
+      use: 'Connects a cause, an action or a phenomenon to what it leads to; unlike “implies”, which states a logical consequence.',
+      example: 'The division of labour leads to an increase in productivity.',
+    },
     linked: {
       definition: 'Premises that only support (or object) together: neither is enough on its own, both are needed to conclude.',
       use: 'A dot between the conclusion and its premises. Shift+Enter on a justification links a premise to it; an objection attached to the dot targets the inference itself, not one of the premises.',
@@ -727,6 +763,12 @@ export const en = {
     distinguishes: 'Distinction',
     opposes: 'Opposition',
     relates: 'Related notion',
+    fallsUnder: 'Category',
+    dividesInto: 'Species',
+    hasFeature: 'Characteristic',
+    causes: 'Effect',
+    tests: 'Borderline case',
+    hasStake: 'Stake',
     premise: 'Premise',
   } as Record<string, string>,
 
@@ -1279,8 +1321,9 @@ export const en = {
     thinking: (chars: number, s?: number) => `The AI is thinking… ${chars.toLocaleString('en')} characters${s === undefined ? '' : ` · ${s} s`}`,
     done: (model: string, s: number) => `Answer from ${model || 'the AI'} in ${s} s: check it below, then apply it.`,
     retried: 'The first answer had problems: the AI was asked to correct it.',
-    usage: (tokens: number, cost?: number) =>
-      `${tokens.toLocaleString('en')} tokens${cost !== undefined ? ` · $${cost.toFixed(cost < 0.01 ? 4 : 2)}` : ''}`,
+    /** `estimated` : coût estimé d'après les prix du catalogue (le fournisseur ne l'a pas donné). */
+    usage: (tokens: number, cost?: number, estimated?: boolean) =>
+      `${tokens.toLocaleString('en')} tokens${cost !== undefined ? ` · ${estimated ? '≈ ' : ''}$${cost.toFixed(cost < 0.01 ? 4 : 2)}` : ''}`,
     errors: {
       unreachable:
         'The AI could not be reached: no connection, server stopped, or refused by the server (a local server must accept this site’s origin, see the AI settings).',
@@ -1382,16 +1425,71 @@ export const en = {
     placeholder: 'What should the AI add from this element? E.g.: two objections, each with an answer.',
     placeholderMethod: 'Optional: the method is enough. You may add a precision (for instance: a single line, towards ethics).',
     instructionLabel: 'Your request',
-    quick: {
-      arguments: { label: 'Arguments', request: 'Propose arguments that support this element.' },
-      objections: { label: 'Objections', request: 'Propose the strongest objections to this element.' },
-      answers: { label: 'Answers', request: 'Propose answers to this element.' },
-      examples: { label: 'Examples', request: 'Propose examples (or counterexamples) of this element.' },
-      assumptions: { label: 'Assumptions', request: 'Bring out the assumptions this element rests on.' },
-      distinctions: { label: 'Distinctions', request: 'Propose the distinctions that clarify this element.' },
-      definitions: { label: 'Definitions', request: 'Propose definitions of the notions at stake in this element.' },
-      consequences: { label: 'Consequences', request: 'Propose what this element implies.' },
-    } as Record<string, { label: string; request: string }>,
+    families: {
+      argue: 'Argue',
+      analyse: 'Analyse',
+      question: 'Question',
+      illustrate: 'Illustrate',
+    } as Record<string, string>,
+    aims: {
+      arguments: { label: 'Arguments', hint: 'The strongest reasons to accept it, with their premises.' },
+      objections: { label: 'Objections', hint: 'The strongest objections, each aimed at a precise point.' },
+      answers: { label: 'Answers', hint: 'The positions that answer a question, or the replies to an objection.' },
+      assumptions: { label: 'Assumptions', hint: 'What it takes for granted without saying it.' },
+      consequences: { label: 'Consequences', hint: 'What follows from it?' },
+      references: { label: 'References', hint: 'Authors and works that hold or discuss it, with how reliable each one is.' },
+      fallacies: { label: 'Fallacies', hint: 'An exercise: typical fallacious arguments; the name of the fallacy, hidden from the audience, and why it fails in the note.' },
+      senses: { label: 'Senses', hint: 'What are the senses of the word?' },
+      confusions: { label: 'Not to be confused with', hint: 'What is it confused with, and what is the decisive difference?' },
+      opposites: { label: 'Opposites', hint: 'What is opposed to it, and which sense does each opposite bring out?' },
+      category: { label: 'Category', hint: 'What more general category does it fall under?' },
+      species: { label: 'Species', hint: 'What are its species, its varieties?' },
+      features: { label: 'Characteristics', hint: 'What do all its cases have in common?' },
+      conditions: { label: 'Conditions', hint: 'What does it take for it to exist? (conditions, principles, causes)' },
+      definition: { label: 'Definition', hint: 'A working definition, drawn from the analysis.' },
+      questions: { label: 'Questions', hint: 'What questions does it raise?' },
+      difficulties: { label: 'Difficulties', hint: 'What stands in its way or makes it problematic?' },
+      problem: { label: 'Problem', hint: 'A question, with two plausible but opposed answers, each one quickly put in question.' },
+      tensions: { label: 'Tensions', hint: 'A paradox, two requirements that pull against each other.' },
+      stakes: { label: 'Stakes', hint: 'Why does it matter?' },
+      examples: { label: 'Examples', hint: 'Concrete cases that illustrate it.' },
+      counterexamples: { label: 'Counterexamples', hint: 'Cases that it fails to account for.' },
+      borderline: { label: 'Borderline cases', hint: 'Where one hesitates to apply it.' },
+      analogies: { label: 'Analogies', hint: 'Comparisons that help to grasp it, and their limits.' },
+    } as Record<string, { label: string; hint: string }>,
+    amountLabel: 'Amount',
+    amounts: {
+      brief: 'Brief (2–4)',
+      normal: 'Normal (5–8)',
+      developed: 'Developed (9–15)',
+      exhaustive: 'Exhaustive (15+)',
+    } as Record<string, string>,
+    amountHint: 'Number of elements added, children included',
+    placeholderAim: 'Optional: a precision (for instance: towards ethics, for a final-year class).',
+    /** Barre des suggestions, après un développement : le prolonger sans rouvrir la boîte. */
+    follow: {
+      added: (n: number) => `${n} ${n === 1 ? 'element added' : 'elements added'}`,
+      summary: 'Summary',
+      complete: 'Complete',
+      completeHint: 'More elements of the same kind, at the same level, without repeating those already proposed',
+      deepen: 'Deepen',
+      deepenHint: 'Develop the added elements by their children: justifications, examples, answers, distinctions…',
+      deepenPending: 'First accept the suggestions to deepen',
+      chat: 'Continue in the chat',
+      chatHint: 'Ask for a change or an addition in the Chat tab, with these elements selected',
+      remove: 'Remove the additions',
+      dismiss: 'Close',
+      redo: 'Regenerate',
+      redoAllHint: 'Replace the proposals still pending (or added directly) with new ones; accepted ones stay',
+      redoOne: 'Regenerate this suggestion',
+      redoOneTitle: (text: string) => `Regenerate “${text}”`,
+      redoAllTitle: 'Regenerate the proposals',
+      redoPlaceholder: 'Optional: in which direction? (otherwise, the AI looks for better ones)',
+      model: 'Model',
+      effort: 'Thinking',
+      overrideHint: 'For this request only',
+      usageHint: 'Last request: tokens used and cost (≈: estimated from the catalogue prices)',
+    },
     wholeMap: 'Take the whole diagram into account (otherwise: this element, its ancestors and its branch)',
     resultLabel: 'Result',
     asSuggestions: 'As suggestions to accept or reject',
@@ -1399,9 +1497,6 @@ export const en = {
     running: (chars: number) => `The AI is answering… ${chars.toLocaleString('en')} characters`,
     copied: 'Prompt copied: paste it into your AI, then paste its answer here.',
     addSuggestions: 'Add as suggestions',
-    doneGhost: (n: number) => `${n} suggestion${n === 1 ? '' : 's'} added: accept (✓) or reject (✕) each one on the diagram.`,
-    doneDirect: (n: number) => `${n} element${n === 1 ? '' : 's'} or link${n === 1 ? '' : 's'} added (Ctrl/⌘ + Z to undo).`,
-    skipped: (n: number) => `${n} change${n === 1 ? '' : 's'} to existing elements ignored.`,
   },
 
   /** Créer un schéma à partir d'un texte (collé, fichier, PDF, photo). */
@@ -1502,6 +1597,23 @@ export const en = {
     remove: 'Remove the text',
     removeConfirm: 'Remove the source text from this diagram? The elements keep their excerpts; the text will no longer be shown.',
     toCheck: 'to check',
+  },
+
+  /** Sophisme d'exercice : son nom, vu de l'enseignant seulement. */
+  fallacy: {
+    tag: (name: string) => `fallacy: ${name}`,
+    label: 'Fallacy',
+    hint: 'A fallacious argument, as an exercise: its name is hidden from the audience (presentation, shared view).',
+    remove: 'Remove',
+  },
+
+  /** Fiabilité d'une source ou d'une citation donnée de mémoire par l'IA. */
+  certainty: {
+    likely: 'source to check',
+    uncertain: 'uncertain source',
+    likelyHint: 'Source given from memory by the AI, probably right: check it.',
+    uncertainHint: 'Source given from memory by the AI, uncertain: check it before using it.',
+    markVerified: 'Mark as checked',
   },
 
   /** Relecture critique (panneau) : remarques de l'IA et vérifications automatiques. */

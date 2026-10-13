@@ -64,6 +64,14 @@ export function rejectSuggestion(editor: Editor, id: TLShapeId) {
   remove(editor, [id])
 }
 
+/** Retire des boîtes ajoutées directement par l'IA (avec leur branche et les liens qui les touchent). */
+export function removeAdded(editor: Editor, ids: TLShapeId[]) {
+  const present = ids.filter((id) => editor.getShape(id))
+  if (!present.length) return
+  editor.markHistoryStoppingPoint('retirer les ajouts de l’IA')
+  remove(editor, present)
+}
+
 export function acceptAllSuggestions(editor: Editor) {
   editor.markHistoryStoppingPoint('accepter les suggestions')
   unmark(editor, editor.getCurrentPageShapes().filter(isSuggestion).map((s) => s.id))

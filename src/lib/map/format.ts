@@ -33,6 +33,10 @@ const VocabularyId = z.string().min(1).max(64).regex(/^\S+$/)
 export const TASK_STATES = ['todo', 'done'] as const
 export type TaskState = (typeof TASK_STATES)[number]
 
+/** Fiabilité d'une source ou d'une citation donnée de mémoire (par une IA) : sûre, probable, incertaine. */
+export const CERTAINTIES = ['established', 'likely', 'uncertain'] as const
+export type Certainty = (typeof CERTAINTIES)[number]
+
 /** Aspect propre d'une boîte (valeurs de tldraw), au-delà de celui que lui donne son type. */
 export const STYLE_GEOS = ['rectangle', 'oval', 'ellipse', 'diamond', 'hexagon', 'octagon', 'cloud', 'rhombus', 'triangle', 'pentagon', 'trapezoid', 'star'] as const
 export const STYLE_COLORS = ['black', 'grey', 'light-violet', 'violet', 'blue', 'light-blue', 'yellow', 'orange', 'green', 'light-green', 'light-red', 'red', 'white'] as const
@@ -77,6 +81,15 @@ export const ElementSchema = z
       .describe('Type of reasoning of the relation to the parent (mostly for supports and objects).'),
     side: z.enum(['left', 'right']).optional().describe('Trees with direction "both": side of a child of the root.'),
     source: z.string().max(300).optional().describe('Source: author, theory, position, reference.'),
+    certainty: z
+      .enum(CERTAINTIES)
+      .optional()
+      .describe('A source or quotation given from memory: how sure it is (established, likely: to check, uncertain: to check before use).'),
+    fallacy: z
+      .string()
+      .max(100)
+      .optional()
+      .describe('A deliberately fallacious argument (an exercise): the name of the fallacy or bias. Shown to the teacher, hidden from the audience.'),
     modality: z
       .enum(MODALITIES)
       .optional()

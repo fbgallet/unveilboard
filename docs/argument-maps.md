@@ -48,7 +48,7 @@ Assumptions structure our picture of the world (**descriptive** assumptions) or 
 
 ## Relations
 
-In a tree, a relation points **to the existing element** by default (“the premise supports the thesis”); some point to the new element (implies, presupposes, raises).
+In a tree, a relation points **to the existing element** by default (“the premise supports the thesis”); some point to the new element (implies, presupposes, raises, falls under, divides into, is characterized by, leads to, has at stake).
 
 | Relation | Function of the connected element | Definition | Example |
 |---|---|---|---|
@@ -58,13 +58,19 @@ In a tree, a relation points **to the existing element** by default (“the prem
 | **answers** (purple under a question, orange under an objection) | Answer | Offers an answer to a question, or replies to an objection. | “Yes, if being free means doing what one wants”. |
 | **explains** (light blue) | Explanation | Accounts for the causes or reasons of a fact, without trying to justify it. | “Ignorance of causes” explains “the feeling of being free” (Spinoza). |
 | **implies** (black) | Implication | Has as a consequence, logical or practical. | Does “everything is determined” imply “no one is responsible”? |
+| **leads to** (black, dashed) | Effect | Produces an effect, in fact rather than by logical necessity. | The division of labour leads to higher productivity. |
 | **presupposes** (purple, dashed) | Presupposition | Rests, without saying so, on an assumption. | “Punishing the guilty” presupposes “they could have acted otherwise”. |
 | **illustrates** (grey, dotted) | Example | Gives an example of what is asserted. | The tyrant illustrates the error about the good. |
+| **puts to the test** (grey, dashed) | Borderline case | A case where one hesitates to apply a notion or a claim. | The coma patient puts to the test the definition of a person. |
 | **defines** (blue, dashed) | Definition | Specifies the meaning of a notion. | “Being able to do what one wants” defines freedom in the common sense. |
-| **raises** (red, dashed) | Problem | Brings out a difficulty or a problem. | Determinism raises the problem of responsibility. |
+| **raises** (red, dashed) | Problem (a question keeps its label: Question) | Brings out a difficulty or a problem. | Determinism raises the problem of responsibility. |
+| **has at stake** (light red, dotted) | Stake | What depends on a claim or a question: what changes if one accepts or rejects it. | “Are we free?” has at stake moral responsibility. |
 | **is distinct from** (blue, bars) | Distinction | Marks a difference between two notions where there is confusion. | Liberty is distinct from licence. |
-| **is opposed to** (blue, two heads) | Opposition | Opposes two notions: contraries or contradictories. | Nature is opposed to culture. |
+| **is opposed to** (red, two heads) | Opposition | Opposes two notions: contraries or contradictories. | Nature is opposed to culture. |
 | **is akin to** (blue, thin, dotted) | Related notion | Brings together two neighbouring or kindred notions. | Freedom is akin to autonomy. |
+| **falls under** (blue) | Category | Places a notion in the more general category it belongs to (its genus). | Courage falls under the virtues. |
+| **divides into** (light blue) | Species | Divides a notion into its species or varieties. | Justice divides into commutative and distributive justice. |
+| **is characterized by** (light blue, dotted) | Characteristic | An essential feature, which every case of the notion has. | Belief is characterized by degrees. |
 
 *Supports* or *explains*? A justification gives a reason to **believe** it is true; an explanation accounts for **why** it is so, without trying to prove it.
 
@@ -73,7 +79,10 @@ In a tree, a relation points **to the existing element** by default (“the prem
 Drawing a distinction is often decisive in a discussion: many objections fall once an equivocation is dispelled. Unveilboard handles it at two levels:
 
 - **in the argument**, the **Distinction** element (“liberty ≠ licence”) is a move in its own right: it can *refute* an objection, *answer* a question or resolve a problem, with the usual relations;
-- **between concepts**, to map a field of notions: **is distinct from** (a difference where there is confusion), **is opposed to** (contraries, mutually exclusive but not exhaustive, or contradictories, one being the negation of the other), **is akin to** (kinship, proximity).
+- **between concepts**, to map a field of notions: **is distinct from** (a difference where there is confusion), **is opposed to** (contraries, mutually exclusive but not exhaustive, or contradictories, one being the negation of the other), **is akin to** (kinship, proximity);
+- **to analyse a concept**, with **falls under** (its category), **divides into** (its species) and **is characterized by** (its essential features), alongside the relations above: this is what the AI's *Analyse* aims use (see [Working with an AI](ai.md)).
+
+The relations added for analysing a concept, borderline cases and stakes are in the complete vocabulary (“More…” in the presets panel).
 
 ## Linked premises
 

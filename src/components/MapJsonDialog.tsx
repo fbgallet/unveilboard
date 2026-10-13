@@ -113,6 +113,7 @@ function JsonPastePanel({
   text,
   setText,
   source,
+  method,
   size,
   outline: acceptOutline,
   styleOnly,
@@ -123,6 +124,8 @@ function JsonPastePanel({
   setText(text: string): void
   /** Schéma créé à partir de ce texte (celui de la page) : il le garde. */
   source?: { text: string; label?: string }
+  /** Schéma créé avec cette méthode (identifiant de prompt) : sa page la garde. */
+  method?: string
   /** Taille demandée à l'IA : un schéma qui en sort est signalé. */
   size?: DiagramSize
   /** Accepte aussi un plan (ce qui n'est pas du JSON). */
@@ -179,7 +182,10 @@ function JsonPastePanel({
     setFailure(null)
     try {
       // Créé à partir du texte de la page : le nouveau schéma le garde, extraits vérifiés.
-      const opts = source ? { source, unverified: checkExcerpts(result.map, source.text, false).unverified } : {}
+      const opts = {
+        ...(source && { source, unverified: checkExcerpts(result.map, source.text, false).unverified }),
+        ...(method && { method }),
+      }
       if (destination === 'under') {
         const target = branchTarget(editor)
         const problems = target ? addMapUnder(editor, result.map, target) : [t.mapJson.noTarget]
@@ -372,7 +378,7 @@ function AssistantView({ editor }: { editor: Editor }) {
   const [answer, setAnswer] = useState('')
   const [run, setRun] = useState<{ chars: number; thinking: number; seconds: number; abort: AbortController } | null>(null)
   const [outcome, setOutcome] = useState<AiRun<unknown> & { seconds: number } | null>(null)
-  const prompt = usePromptChoice(task, { source: withSource })
+  const prompt = usePromptChoice(task, { source: withSource }, editor)
   const method = prompt.method && { method: prompt.method }
   // Taille du schéma créé : celle des réglages de l'IA, modifiable pour cette création.
   const [size, setSize] = useState(() => settings.size)
@@ -553,6 +559,7 @@ function AssistantView({ editor }: { editor: Editor }) {
               const id = await createDocumentFromMap(skeletonMap(record.plan, { source: !!record.source }), {
                 plan: { ...record, source: undefined },
                 ...(record.source && { source: record.source }),
+                ...(prompt.template && { method: prompt.template.id }),
               })
               if (record.source) openSourcePanel()
               planPanelOpenAtom.set(true)
@@ -613,6 +620,7 @@ function AssistantView({ editor }: { editor: Editor }) {
           text={answer}
           setText={setAnswer}
           source={withSource && task === 'create' ? pageSource! : undefined}
+          method={task === 'create' ? prompt.template?.id : undefined}
           size={created.size}
           styleOnly={task === 'style'}
         />

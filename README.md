@@ -20,7 +20,7 @@ Working on a text? Build the diagram from it: the text stays beside the diagram,
 
 **Build it from a text.** Paste a text or open a file: it stays in a sidebar, its cited passages highlighted in the colors of their elements, even while presenting. Select a passage to turn it into an element, or link it to an existing one. → [Source texts](docs/source-texts.md)
 
-**Use an AI, if you want.** Your own AI (through a copied prompt or your OpenRouter key), your ChatGPT plan (desktop app), a local model, or the instance's: create, enrich, sequence or review a diagram, or build a rich one section by section from a plan. Answers are checked, and excerpts are searched for in the text. → [Working with an AI](docs/ai.md)
+**Use an AI, if you want.** Your own AI (through a copied prompt or your OpenRouter key), your ChatGPT plan (desktop app), a local model, or the instance's: create, enrich, sequence or review a diagram, or build a rich one section by section from a plan; develop any element along the main moves of reflection (argue, analyse a concept, question, illustrate), then complete or deepen what it proposes. Answers are checked, and excerpts are searched for in the text. → [Working with an AI](docs/ai.md)
 
 ## At a glance
 

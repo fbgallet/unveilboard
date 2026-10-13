@@ -153,6 +153,8 @@ export function createElementBox(editor: Editor, e: MapElement, at: Vec, extraMe
   const meta = {
     ref: e.id,
     ...(e.source && { author: e.source }),
+    ...(e.certainty && e.certainty !== 'established' && { certainty: e.certainty }),
+    ...(e.fallacy?.trim() && { fallacy: e.fallacy.trim() }),
     ...(e.modality && { modality: e.modality }),
     ...(e.note && { note: e.note }),
     ...(e.folded && { folded: true }),

@@ -9,7 +9,7 @@ import { z } from 'zod'
 import { MODALITIES, REASONINGS } from '../presets/presets'
 import { TREE_DIRECTIONS } from '../tree/layout'
 import { checkMap, type KnownVocabulary, type MapIssue } from './check'
-import { ElementSchema, ElementStyleSchema, LinkSchema, StepSchema, TASK_STATES, VocabularySchema, type MapElement, type UnveilMap } from './format'
+import { CERTAINTIES, ElementSchema, ElementStyleSchema, LinkSchema, StepSchema, TASK_STATES, VocabularySchema, type MapElement, type UnveilMap } from './format'
 
 export const PATCH_FORMAT = 'unveilboard/patch'
 export const PATCH_VERSION = 1
@@ -32,6 +32,8 @@ const UpdateOp = z
     relation: VocabularyId.nullable().optional(),
     reasoning: z.enum(REASONINGS).nullable().optional(),
     source: z.string().max(300).nullable().optional(),
+    certainty: z.enum(CERTAINTIES).nullable().optional(),
+    fallacy: z.string().max(100).nullable().optional(),
     modality: z.enum(MODALITIES).nullable().optional(),
     note: z.string().max(20000).nullable().optional(),
     folded: z.boolean().optional(),

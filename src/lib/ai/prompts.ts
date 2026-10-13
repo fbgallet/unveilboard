@@ -11,8 +11,9 @@ import { numberedSource, passageOf, sourceParagraphs } from '../source/paragraph
 import { FOCUS_OF_KIND, REMARK_KINDS, REVIEW_FOCUS, type ReviewFocus } from '../map/review'
 import { APP_LANGS, AUTO_LANG, baseLang, languageName } from './language'
 import { SIZE_LIMITS, sizeText, type DiagramSize } from '../map/size'
+import { AMOUNTS, amountText, type Amount } from './aims'
 
-export const PROMPT_VERSION = 14
+export const PROMPT_VERSION = 15
 
 export const TASKS = ['create', 'enrich', 'sequence', 'review', 'edit', 'expand', 'plan', 'develop', 'finish', 'style', 'chat'] as const
 export type Task = (typeof TASKS)[number]
@@ -33,6 +34,15 @@ export interface PromptMethod {
   title: string
   body: string
   variants?: Partial<Record<Task, string>>
+}
+
+/**
+ * Visée d'un développement (« expand ») : une demande toute faite, de l'app (src/lib/ai/aims.ts)
+ * ou de la méthode choisie, envoyée comme sa consigne avec la demande de l'utilisateur.
+ */
+export interface PromptAim {
+  label: string
+  text: string
 }
 
 /**
@@ -94,6 +104,17 @@ export interface PromptInput {
   history?: ChatTurn[]
   /** Méthode de la bibliothèque de prompts, à suivre pour cette tâche (et les étapes qui en découlent). */
   method?: PromptMethod
+  /** « expand » : la visée choisie (arguments, contraires…). */
+  aim?: PromptAim
+  /** « expand » : combien d'éléments ajouter, enfants compris. */
+  amount?: Amount
+  /** « expand » : ce qui a déjà été proposé à partir de l'élément (compléter sans répéter). */
+  avoid?: string[]
+  /**
+   * « expand » : refaire, dans une direction donnée (sinon : mieux), une proposition (`replace` : une
+   * seule, à la place de celle-ci) ou l'ensemble des propositions (listées dans `avoid`).
+   */
+  redo?: { direction?: string; replace?: { text: string; branch?: string[]; rationale?: string } }
   vocabulary: VocabularyLine[]
   /** Langue du contenu à écrire (« fr », « en »…). */
   lang: string
@@ -140,6 +161,17 @@ export const PromptInputSchema = z.object({
       title: z.string().max(200),
       body: z.string().max(30_000),
       variants: z.partialRecord(z.enum(TASKS), z.string().max(30_000)).optional(),
+    })
+    .optional(),
+  aim: z.object({ label: z.string().max(200), text: z.string().max(10_000) }).optional(),
+  amount: z.enum(AMOUNTS).optional(),
+  avoid: z.array(z.string().max(1000)).max(200).optional(),
+  redo: z
+    .object({
+      direction: z.string().max(2000).optional(),
+      replace: z
+        .object({ text: z.string().max(4000), branch: z.array(z.string().max(4000)).max(100).optional(), rationale: z.string().max(1000).optional() })
+        .optional(),
     })
     .optional(),
   vocabulary: z
@@ -191,6 +223,9 @@ export function buildPrompt(input: PromptInput): string {
                 ? FINISH_LINKS_TEXT
           : TASK_TEXT[input.task].replace('{focus}', input.focus ?? ''),
     methodText(input.method, input.task),
+    input.task === 'expand' ? aimText(input.aim, input.focus ?? '') : '',
+    input.task === 'expand' && input.avoid?.length ? avoidText(input.avoid) : '',
+    input.task === 'expand' && input.redo ? redoText(input.redo) : '',
     instruction ? `## The user's request\n\n${instruction}` : '',
     sourceWorkText(input),
     sourceFor(input),
@@ -249,6 +284,44 @@ ${text}
 </method>`
 }
 
+/** La visée choisie pour développer un élément : seuls les éléments de cette sorte sont ajoutés. */
+function aimText(aim: PromptAim | undefined, focus: string): string {
+  if (!aim?.text.trim()) return ''
+  return `## The aim of this request: ${aim.label.trim()}
+
+The user asked for this kind of development from the element \`${focus}\`: add only elements of this kind (with their own children when the aim calls for it). The user's request, if any, only makes it more precise. The aim may be written in another language than the content.
+
+<aim>
+${aim.text.trim()}
+</aim>`
+}
+
+/** Compléter : ce qui a déjà été proposé (accepté ou écarté) n'est ni repris ni reformulé. */
+function avoidText(avoid: string[]): string {
+  return `## Already proposed
+
+These were already proposed from this element (the user accepted some and rejected others). Do not propose them again, nor reformulations or close variants of them: find other ones, of the same kind and at the same level.
+
+${avoid.map((a) => `- ${a.replace(/\s+/g, ' ').trim()}`).join('\n')}`
+}
+
+/** Refaire une proposition, ou toutes, dans la direction voulue (sinon : mieux). */
+function redoText(redo: NonNullable<PromptInput['redo']>): string {
+  const direction = redo.direction?.trim()
+    ? `The direction the user asks for: ${redo.direction.trim()}`
+    : 'The user gave no direction: propose better ones (stronger, more precise, more relevant to the element, more instructive), not reformulations.'
+  if (redo.replace) {
+    return `## Redo one proposal
+
+The user wants this proposal replaced: “${redo.replace.text.replace(/\s+/g, ' ').trim()}”${redo.replace.rationale ? ` (proposed because: ${redo.replace.rationale})` : ''}.${
+      redo.replace.branch?.length ? ` It came with this branch, replaced with it:\n\n${redo.replace.branch.join('\n')}\n\n` : ' '
+    }Propose **one** element to take its place, of the same kind and at the same place in the tree, with its own children ${redo.replace.branch?.length ? 'as the replaced one had' : 'only if it needs them'}. ${direction}`
+  }
+  return `## Redo the proposals
+
+The user rejected the previous proposals (listed under “Already proposed”) and wants new ones instead, as many as asked below. ${direction}`
+}
+
 /** Tâches qui construisent la structure d'un schéma : sa forme (à la création), sa profondeur. */
 const SHAPE_TASKS: Task[] = ['create', 'plan', 'develop', 'enrich', 'expand']
 
@@ -261,10 +334,10 @@ const FORM_TEXT = `Choose the form that fits the material, rather than a tree of
 - a comparison (two doctrines, authors, periods) → **one tree per term**, side by side (several roots), and links between the points that correspond or oppose;
 - notions bound by many mutual relations → a tree for the main structure, and links for the other relations.`
 
-/** Bornes de taille de l'utilisateur, pour la création, son plan et ses sections. */
+/** Bornes de taille de l'utilisateur, pour la création, son plan et ses sections ; ampleur d'un développement. */
 function shapeSizeText(input: PromptInput) {
   const scope = input.task === 'create' ? 'diagram' : input.task === 'plan' ? 'plan' : input.task === 'develop' ? 'section' : null
-  const text = scope ? sizeText(input.size, scope) : ''
+  const text = scope ? sizeText(input.size, scope) : input.task === 'expand' && input.amount && !input.redo?.replace ? amountText(input.amount) : ''
   return text ? `\n\n${text}` : ''
 }
 
@@ -291,7 +364,7 @@ Write the sequence that reveals the diagram below step by step, following the us
 Change the diagram below as the user asks.`,
   expand: `## Your task: develop the diagram from one element
 
-Starting from the element \`{focus}\`, do what the user asks below. Add new elements connected to it: as its children, with the right relation and type (justifications, objections, answers, examples, assumptions, distinctions, definitions…), deeper when useful (an answer to a new objection), and cross-links (\`link\`) between new elements and existing ones when they are really related. Do not change, move or remove existing elements, and do not write the sequence. Give each added element and link a short \`rationale\` (one sentence, for the user): the user will accept or reject each of them. Propose a handful of strong elements rather than many weak ones.`,
+Starting from the element \`{focus}\`, do what the user asks below. Add new elements connected to it: as its children, with the right relation and type (justifications, objections, answers, examples, assumptions, distinctions, definitions…), deeper when useful (an answer to a new objection), and cross-links (\`link\`) between new elements and existing ones when they are really related. Do not change, move or remove existing elements, and do not write the sequence. Give each added element and link a short \`rationale\` (one sentence, for the user): the user will accept or reject each of them. Prefer strong elements to many weak ones (see “How much to add” below, when given).`,
   plan: `## Your task: plan a rich diagram
 
 The user wants a rich diagram, too large to be written in one answer. It will be built in several passes: first this **plan**, then each section developed separately (by other calls, in parallel, which will see this plan), then the cross-links and the presentation sequence. Write only the plan.
@@ -414,7 +487,7 @@ Judge the reasoning, not whether you agree with its conclusions. Read charitably
 - **inconsistency**: elements that contradict each other, a conclusion that does not follow, a relation that says the opposite of the texts;
 - **gap**: a premise the argument needs but does not state, a strong objection left without answer, a thesis without justification, a key notion never defined;
 - **confusion**: an equivocation (a word taken in two senses), two distinct notions treated as one;
-- **fallacy**: a reasoning that really commits a fallacy, with its usual \`name\` (hasty generalization, false dilemma, slippery slope, begging the question, straw man, ad hominem, appeal to an authority outside its field, post hoc, composition or division, appeal to nature…): say why this instance is fallacious;
+- **fallacy**: a reasoning that really commits a fallacy, with its usual \`name\` (hasty generalization, false dilemma, slippery slope, begging the question, straw man, ad hominem, appeal to an authority outside its field, post hoc, composition or division, appeal to nature…): say why this instance is fallacious. An element with a \`fallacy\` field is fallacious on purpose (an exercise): do not report it as a flaw, but say so if the name it is given is not the right one;
 - **bias**: a one-sided treatment, with its \`name\` if it has one: the weakest objections chosen while stronger ones exist (straw man by selection), cherry-picked examples, loaded wording, a debatable assumption taken for granted;
 - **premise**: a premise that is doubtful, false, or itself needs support;
 - **inference**: premises that may be acceptable yet do not lead to the conclusion, or only weakly: say what is missing.
@@ -552,12 +625,13 @@ const MAP_FORMAT_TEXT = `## The diagram format (JSON)
   "elements": [ Element… ], "links": [ Link… ], "sequence": { "steps": [ Step… ] } }
 \`\`\`
 
-- **Element**: \`{ "id", "text", "type"?, "parent"?, "relation"?, "reasoning"?, "source"?, "modality"?, "note"?, "task"?, "style"?, "tree"?, "origin"?, "excerpt"? }\`
+- **Element**: \`{ "id", "text", "type"?, "parent"?, "relation"?, "reasoning"?, "source"?, "certainty"?, "fallacy"?, "modality"?, "note"?, "task"?, "style"?, "tree"?, "origin"?, "excerpt"? }\`
   - \`id\`: short and unique, without spaces (e.g. \`thesis\`, \`obj1\`). Parents come before their children; siblings are in display order.
   - \`parent\` + \`relation\`: the tree. An element without parent is a root (or a standalone box). Without \`relation\`, a plain branch (mind map).
   - \`type\`: omitted, the relation's default child type applies.
   - **Linked premises**: when premises only support (or object to) a conclusion **together**, none being enough alone, do not attach them separately: add a \`"type": "linked"\` element with an empty \`text\`, child of the conclusion with the relation (\`supports\`, \`objects\`…), then each premise as its child with \`"relation": "premise"\`. An objection to the inference itself (the premises may be true, yet not lead to the conclusion) is a child of the \`linked\` element. Independent reasons stay separate children.
-  - \`source\`: author, work, theory or position the element comes from.
+  - \`source\`: author, work, theory or position the element comes from. \`certainty\`, for a source or a quotation you give from memory (not from a source text): \`"established"\` (well known, certain), \`"likely"\` (probably right, to check) or \`"uncertain"\` (to check before use); the app flags the last two for the user.
+  - \`fallacy\`: only for an argument written fallacious on purpose (an exercise, when asked): the name of the fallacy or bias (“slippery slope”, “ad hominem”…). The teacher sees it; the audience does not.
   - \`note\`: a longer development in Markdown (a full quotation, an explanation), shown beside the diagram on demand.
   - \`task\`: a checkbox on the box, \`"todo"\` or \`"done"\` (for a plan, a to-do list); omitted: none.
   - \`style\`: the look of this box, over the one its type gives it (only the keys that change): \`{ "geo"?, "color"?, "fill"?, "dash"?, "size"?: "s" | "m" | "l" | "xl", "font"?: "draw" | "sans" | "serif" | "mono" }\` (values as for a type's style, below). Prefer types; leave it out unless asked to work on the look.
@@ -666,7 +740,7 @@ function rules(lang: string, notes: boolean, chat = false) {
 
 ${writingRules(notes)}
 ${languageRules(lang)}
-- Be faithful: never invent a quotation, a source or a reference. A \`quote\` element must be an exact quotation with its \`source\`; when you are not sure of the exact words, write a \`statement\` without \`source\`. Mark your own reconstructions with \`"origin": "reconstruction"\`.
+- Be faithful: never invent a quotation, a source or a reference. A \`quote\` element must be an exact quotation with its \`source\`; when you are not sure of the exact words, write a \`statement\` without \`source\`. When you give a source from memory and are not fully sure of it (the attribution, the work, the wording), say so with \`certainty\` rather than leaving it out silently. Mark your own reconstructions with \`"origin": "reconstruction"\`.
 - Use the vocabulary above (ids, not names). It was designed for arguments and theories: when the material calls for other kinds of elements or relations (a step, an event, a period, a cause, a character, a work; “leads to”, “precedes”, “is a kind of”, “is part of”, “causes”, “influences”…), declare them in \`vocabulary\` rather than forcing a type or relation that does not fit: \`{ "id", "kind": "type" | "relation", "name" (in the content language), "description", "direction"?, "childType"?, "style"? }\`. A relation reads “child RELATION parent” unless \`"direction": "toChild"\` (“parent RELATION child”: “leads to”, “is divided into”). \`style\` (optional): for a type, \`{ "geo": "rectangle" | "oval" | "ellipse" | "diamond" | "hexagon" | "octagon" | "cloud" | "rhombus" | "triangle" | "pentagon" | "trapezoid" | "star", "color", "fill": "none" | "semi" | "solid" | "pattern" | "fill", "dash": "draw" | "solid" | "dashed" | "dotted", "size"?, "font"? }\` (\`fill\`: \`semi\` pale, \`solid\` light, \`fill\` full colour); for a relation, \`{ "color", "dash" }\`; colors: \`black\`, \`grey\`, \`violet\`, \`light-violet\`, \`blue\`, \`light-blue\`, \`yellow\`, \`orange\`, \`green\`, \`light-green\`, \`red\`, \`light-red\`. Keep such additions few and consistent.
 - Nothing may rely on colors or positions: positions are computed by the app, and colors only reinforce what types, relations and the tree already say.
 - Never write an element's \`id\` in text meant for the user (message, summary, reason, rationale, narration): the user does not see ids. Name the element by its text, briefly quoted.${

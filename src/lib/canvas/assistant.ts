@@ -22,6 +22,7 @@ import { setReview } from './review'
 import { revealOrder } from './tree'
 import { extractAround } from '../map/extract'
 import { presetSettingsAtom } from './presets'
+import { readPageMethod, writePageMethod } from './pageMethod'
 import { readPageSource, writePageSource } from './source'
 import { documentRelationLabels } from './relationLabels'
 import { aiSettingsAtom } from '../ai/client'
@@ -51,14 +52,16 @@ export function promptVocabulary(editor?: Editor): VocabularyLine[] {
 }
 
 /** Identifiants (du format) des éléments sélectionnés. */
-export function selectedRefs(editor: Editor): string[] {
-  const selected = new Set<string>(editor.getSelectedShapeIds())
+export function selectedRefs(editor: Editor, ids: TLShapeId[] = editor.getSelectedShapeIds()): string[] {
+  const selected = new Set<string>(ids)
   return [...exportMap(editor).shapes].filter(([, s]) => selected.has(s.node)).map(([ref]) => ref)
 }
 
 export interface PromptOptions {
   /** Porter l'attention sur les éléments sélectionnés. */
   selection?: boolean
+  /** Ou sur ces formes-là (approfondir ce qui vient d'être ajouté). */
+  selectionIds?: TLShapeId[]
   delivery?: PromptInput['delivery']
   /** « expand » : la forme d'où partir. */
   focus?: TLShapeId
@@ -84,7 +87,7 @@ export function editorPromptInput(editor: Editor, task: Task, instruction: strin
     task,
     instruction,
     map,
-    selection: opts.selection ? selectedRefs(editor) : undefined,
+    selection: opts.selectionIds ? selectedRefs(editor, opts.selectionIds) : opts.selection ? selectedRefs(editor) : undefined,
     ...(focus && { focus }),
     ...(partial && { partial }),
     ...(task === 'sequence' && exported && { order: defaultOrder(editor, exported.map, refOf) }),
@@ -197,6 +200,8 @@ export function addMapToDocument(
   const meta = editor.getDocumentSettings().meta
   if (map.lang && !meta.lang) editor.updateDocumentSettings({ meta: { ...meta, lang: map.lang } })
   if (opts.source && !readPageSource(editor)) writePageSource(editor, opts.source)
+  // Méthode de la création : sur une nouvelle page, ou sur la page ouverte qui n'en avait pas.
+  if (opts.method && (destination === 'page' || readPageMethod(editor) === undefined)) writePageMethod(editor, opts.method)
   editor.squashToMark(mark)
 
   const bounds = [...shapes.values()].map((s) => editor.getShapePageBounds(s.node as TLShapeId)).filter((b) => !!b)

@@ -30,8 +30,8 @@ export function PromptLibraryDialog() {
 
 const save = (next: PromptLibrarySettings) => savePromptLibrary(settingsStore(storageModeAtom.get()), next)
 
-/** Le corps d'un prompt, marqueurs de variantes compris (pour l'éditer comme un prompt personnel). */
-const sourceOf = (template: PromptTemplate) => serializeBody(template.body, template.variants)
+/** Le corps d'un prompt, marqueurs de variantes et demandes toutes faites compris (pour l'éditer comme un prompt personnel). */
+const sourceOf = (template: PromptTemplate) => serializeBody(template.body, template.variants, template.quick)
 
 function download(name: string, text: string) {
   const a = document.createElement('a')

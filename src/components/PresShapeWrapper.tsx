@@ -7,7 +7,7 @@ import { presetById, presetSettingsAtom, swatchColor } from '@/lib/canvas/preset
 import { functionColorOf, functionOf, isThesisRoot } from '@/lib/canvas/tree'
 import { presetName, presetRole } from '@/lib/presets/labels'
 import { LINKED } from '@/lib/presets/presets'
-import { shapeClassesAtom } from '@/lib/presentation/store'
+import { modeAtom, shapeClassesAtom, viewerAtom } from '@/lib/presentation/store'
 import { taskOf, toggleTask } from '@/lib/canvas/tasks'
 
 /**
@@ -96,6 +96,8 @@ function NatureTag({ shape }: { shape: TLShape }) {
       // pour rester correcte dans toutes les langues (accord, place de l'adjectif).
       const modality = shape.meta.modality === 'descriptive' || shape.meta.modality === 'prescriptive' ? t.presets.modalities[shape.meta.modality] : ''
       const label = (name: string | undefined, color: string) => ({ text: [name, author].filter(Boolean).join(' · '), color, modality, quote })
+      // Une question soulevée reste une question (la fonction de « soulève » est la difficulté).
+      if (relation?.id === 'raises' && nature?.id === 'question') return label(presetName(nature, t), swatchColor(editor, nature))
       if (relation) {
         const color = functionColorOf(editor, shape.id) ?? relation.style.color
         return label(presetRole(relation, t), swatchColor(editor, { ...relation, style: { ...relation.style, color } }))
@@ -108,15 +110,30 @@ function NatureTag({ shape }: { shape: TLShape }) {
     [editor, shape.id, shape.meta.preset, shape.meta.modality, shape.meta.author, t]
   )
   const pending = !!shape.meta.suggestion
-  // Extrait introuvable dans la source : « à vérifier », écrit sur l'étiquette.
-  const unverified = !!shape.meta.excerptUnverified
-  if (!tag && !pending && !unverified) return null
+  // Rappels pour l'enseignant, que le public ne voit pas (présentation, vue partagée, projection) :
+  // extrait introuvable dans la source (« à vérifier »), source donnée de mémoire par l'IA sans certitude.
+  const audience = useValue('audience view', () => modeAtom.get() === 'present' || viewerAtom.get(), [])
+  const unverified = !audience && !!shape.meta.excerptUnverified
+  const certainty = !audience && (shape.meta.certainty === 'likely' || shape.meta.certainty === 'uncertain') ? shape.meta.certainty : null
+  // Sophisme d'exercice : son nom, pour l'enseignant seulement (les élèves doivent le trouver).
+  const fallacy = !audience && typeof shape.meta.fallacy === 'string' ? shape.meta.fallacy.trim() : ''
+  if (!tag && !pending && !unverified && !certainty && !fallacy) return null
   return (
     <>
-      {(tag?.text || pending || unverified) && (
+      {(tag?.text || pending || unverified || certainty || fallacy) && (
         <div className="nature-tag" style={{ color: tag?.color }}>
           {pending && <span className="suggestion-pill">{t.suggestions.tag}</span>}
           {unverified && <span className="unverified-pill">{t.source.toCheck}</span>}
+          {fallacy && (
+            <span className="fallacy-pill" title={t.fallacy.hint}>
+              {t.fallacy.tag(fallacy)}
+            </span>
+          )}
+          {certainty && (
+            <span className="certainty-pill" data-certainty={certainty} title={t.certainty[`${certainty}Hint`]}>
+              {t.certainty[certainty]}
+            </span>
+          )}
           {tag?.text}
           {tag?.modality && <span className="nature-modality">{tag.modality}</span>}
         </div>
