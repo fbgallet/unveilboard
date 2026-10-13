@@ -1321,6 +1321,14 @@ export const en = {
     thinking: (chars: number, s?: number) => `The AI is thinking… ${chars.toLocaleString('en')} characters${s === undefined ? '' : ` · ${s} s`}`,
     done: (model: string, s: number) => `Answer from ${model || 'the AI'} in ${s} s: check it below, then apply it.`,
     retried: 'The first answer had problems: the AI was asked to correct it.',
+    /** Progression d'une demande : réflexion, écriture, correction. */
+    progress: {
+      thinking: (chars: number) => (chars ? `Thinking (${chars.toLocaleString('en')} characters)` : 'Thinking'),
+      writing: (n: number) => `Writing: ${n} ${n === 1 ? 'element' : 'elements'}`,
+      writingText: (chars: number) => `Writing: ${chars.toLocaleString('en')} characters`,
+      repairing: 'Correction asked',
+      seconds: (s: number) => `${s} s`,
+    },
     /** `estimated` : coût estimé d'après les prix du catalogue (le fournisseur ne l'a pas donné). */
     usage: (tokens: number, cost?: number, estimated?: boolean) =>
       `${tokens.toLocaleString('en')} tokens${cost !== undefined ? ` · ${estimated ? '≈ ' : ''}$${cost.toFixed(cost < 0.01 ? 4 : 2)}` : ''}`,
@@ -1449,7 +1457,7 @@ export const en = {
       definition: { label: 'Definition', hint: 'A working definition, drawn from the analysis.' },
       questions: { label: 'Questions', hint: 'What questions does it raise?' },
       difficulties: { label: 'Difficulties', hint: 'What stands in its way or makes it problematic?' },
-      problem: { label: 'Problem', hint: 'A question, with two plausible but opposed answers, each one quickly put in question.' },
+      problem: { label: 'Problem', hint: 'An argument map: a question, two plausible but opposed answers, and an objection that puts each one in question.' },
       tensions: { label: 'Tensions', hint: 'A paradox, two requirements that pull against each other.' },
       stakes: { label: 'Stakes', hint: 'Why does it matter?' },
       examples: { label: 'Examples', hint: 'Concrete cases that illustrate it.' },
@@ -1482,6 +1490,7 @@ export const en = {
       redo: 'Regenerate',
       redoAllHint: 'Replace the proposals still pending (or added directly) with new ones; accepted ones stay',
       redoOne: 'Regenerate this suggestion',
+      regenerating: 'Being regenerated…',
       redoOneTitle: (text: string) => `Regenerate “${text}”`,
       redoAllTitle: 'Regenerate the proposals',
       redoPlaceholder: 'Optional: in which direction? (otherwise, the AI looks for better ones)',
@@ -1494,7 +1503,6 @@ export const en = {
     resultLabel: 'Result',
     asSuggestions: 'As suggestions to accept or reject',
     directly: 'Add directly',
-    running: (chars: number) => `The AI is answering… ${chars.toLocaleString('en')} characters`,
     copied: 'Prompt copied: paste it into your AI, then paste its answer here.',
     addSuggestions: 'Add as suggestions',
   },

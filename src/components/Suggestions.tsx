@@ -9,9 +9,11 @@ import { aiSettingsAtom, isAiReady, serverAiAtom, type AiSettings } from '@/lib/
 import { MODELS } from '@/lib/ai/models'
 import { toAiError } from '@/lib/ai/errors'
 import {
+  canRegenerate,
   completeRequest,
   deepenable,
   lastElementRunAtom,
+  regeneratingAtom,
   regenerateRun,
   regenerateSuggestion,
   runElementRequest,
@@ -31,6 +33,7 @@ import {
   suggestionOf,
 } from '@/lib/canvas/suggestions'
 import { modelLabel } from './AiSettingsDialog'
+import { AiProgress, progressCallbacks, startProgress, type AiProgressState } from './AiProgress'
 import { Markdownish } from './Markdownish'
 
 /** Régénération demandée : une suggestion (boîte), ou tout le dernier développement. */
@@ -50,7 +53,7 @@ export function SuggestionBadges() {
         if (!b || editor.isShapeHidden(s.id)) return []
         // Boîte : coin supérieur droit ; lien : son milieu.
         const at = s.type === 'arrow' ? { x: b.midX, y: b.midY } : { x: b.maxX, y: b.minY }
-        return [{ id: s.id, ...at, rationale: suggestionOf(s)?.rationale ?? '', box: s.type !== 'arrow' }]
+        return [{ id: s.id, ...at, rationale: suggestionOf(s)?.rationale ?? '', redoable: s.type !== 'arrow' && canRegenerate(editor, s.id) }]
       })
     },
     [editor]
@@ -59,6 +62,7 @@ export function SuggestionBadges() {
   const settings = useValue(aiSettingsAtom)
   const server = useValue(serverAiAtom)
   const ready = isAiReady(settings, server)
+  const regenerating = useValue(regeneratingAtom)
   return (
     <>
       {badges.map((b) => (
@@ -68,21 +72,29 @@ export function SuggestionBadges() {
           style={{ left: b.x, top: b.y, transform: `scale(${1 / zoom}) translate(-50%, -50%)` }}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <button className="suggestion-accept" title={[t.suggestions.accept, b.rationale].filter(Boolean).join(' · ')} aria-label={t.suggestions.accept} onClick={() => acceptSuggestion(editor, b.id)}>
-            ✓
-          </button>
-          <button className="suggestion-reject" title={t.suggestions.reject} aria-label={t.suggestions.reject} onClick={() => rejectSuggestion(editor, b.id)}>
-            ✕
-          </button>
-          {ready && b.box && (
-            <button
-              className="suggestion-redo"
-              title={t.elementAi.follow.redoOne}
-              aria-label={t.elementAi.follow.redoOne}
-              onClick={() => redoTargetAtom.set({ kind: 'one', id: b.id })}
-            >
+          {regenerating.has(b.id) ? (
+            <span className="suggestion-spinning" role="status" title={t.elementAi.follow.regenerating} aria-label={t.elementAi.follow.regenerating}>
               ↻
-            </button>
+            </span>
+          ) : (
+            <>
+              <button className="suggestion-accept" title={[t.suggestions.accept, b.rationale].filter(Boolean).join(' · ')} aria-label={t.suggestions.accept} onClick={() => acceptSuggestion(editor, b.id)}>
+                ✓
+              </button>
+              <button className="suggestion-reject" title={t.suggestions.reject} aria-label={t.suggestions.reject} onClick={() => rejectSuggestion(editor, b.id)}>
+                ✕
+              </button>
+              {ready && b.redoable && (
+                <button
+                  className="suggestion-redo"
+                  title={t.elementAi.follow.redoOne}
+                  aria-label={t.elementAi.follow.redoOne}
+                  onClick={() => redoTargetAtom.set({ kind: 'one', id: b.id })}
+                >
+                  ↻
+                </button>
+              )}
+            </>
           )}
         </div>
       ))}
@@ -123,7 +135,7 @@ export function SuggestionBar({ editor }: { editor: Editor }) {
   const settings = useValue(aiSettingsAtom)
   const server = useValue(serverAiAtom)
   const ready = isAiReady(settings, server)
-  const [busy, setBusy] = useState<{ chars: number; thinking: number; abort: AbortController } | null>(null)
+  const [busy, setBusy] = useState<{ progress: AiProgressState; abort: AbortController } | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
   // Résumé déplié pour ce développement-là (replié pour le suivant).
   const [summaryOf, setSummaryOf] = useState<ElementRun | null>(null)
@@ -145,11 +157,11 @@ export function SuggestionBar({ editor }: { editor: Editor }) {
   async function track(call: (opts: ElementCallOptions) => Promise<{ issues: MapIssue[] } | { run: ElementRun }>) {
     setFailure(null)
     const abort = new AbortController()
-    setBusy({ chars: 0, thinking: 0, abort })
+    setBusy({ progress: startProgress(), abort })
     try {
       const outcome = await call({
         signal: abort.signal,
-        onText: (answer, thinking) => setBusy((b) => b && { ...b, chars: answer.length, thinking }),
+        ...progressCallbacks((next) => setBusy((b) => b && { ...b, progress: next(b.progress) })),
       })
       if ('issues' in outcome) setFailure(outcome.issues.map((i) => t.mapJson.issues[i.code]).join(' '))
     } catch (e) {
@@ -251,7 +263,7 @@ export function SuggestionBar({ editor }: { editor: Editor }) {
       )}
       {busy && (
         <>
-          <span role="status">{!busy.chars && busy.thinking ? t.ai.thinking(busy.thinking) : t.elementAi.running(busy.chars)}</span>
+          <AiProgress state={busy.progress} />
           <button className="btn-xs" onClick={() => busy.abort.abort()}>
             {t.ai.stop}
           </button>

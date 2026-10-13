@@ -63,6 +63,16 @@ export interface ElementRun {
 
 export const lastElementRunAtom = atom<ElementRun | null>('lastElementRun', null)
 
+/** Formes en cours de régénération (une suggestion, sa branche et ses flèches) : signalées sur le canevas. */
+export const regeneratingAtom = atom<ReadonlySet<string>>('regenerating', new Set())
+
+/** Une branche : ses boîtes et les flèches qui les relient à leur parent. */
+function branchShapes(editor: Editor, id: TLShapeId): TLShapeId[] {
+  const { children, edge } = getTreeIndex(editor)
+  const e = edge.get(id)
+  return [id, ...(e ? [e] : []), ...(children.get(id) ?? []).flatMap((k) => branchShapes(editor, k))]
+}
+
 /** La demande à l'IA. */
 export function elementPromptInput(editor: Editor, req: ElementRequest, delivery: PromptInput['delivery']): PromptInput {
   return {
@@ -181,6 +191,9 @@ function suggestedHead(editor: Editor, id: TLShapeId): { head: TLShapeId; parent
   return { head, parent: parent.get(head) }
 }
 
+/** Une suggestion se régénère si sa branche suggérée est rattachée à un élément du schéma (pas une racine à part). */
+export const canRegenerate = (editor: Editor, id: TLShapeId) => !!suggestedHead(editor, id).parent
+
 /** Une branche en liste indentée (son texte, puis celui de ses descendants). */
 function branchLines(editor: Editor, id: TLShapeId, depth = 0): string[] {
   const text = plainText(editor, id).replace(/\s+/g, ' ')
@@ -229,6 +242,7 @@ export async function regenerateSuggestion(editor: Editor, id: TLShapeId, direct
     ...(pageMethod(editor) && { method: pageMethod(editor) }),
   }
   const [first, ...rest] = branchLines(editor, head)
+  const marked = branchShapes(editor, head)
   const req: ElementRequest = {
     ...base,
     ghost: true,
@@ -239,7 +253,16 @@ export async function regenerateSuggestion(editor: Editor, id: TLShapeId, direct
       replace: { text: first.replace(/^- /, ''), ...(rest.length && { branch: rest }), rationale: suggestionOf(editor.getShape(head))?.rationale },
     },
   }
-  const { result, usage } = await ask(editor, req, opts)
+  regeneratingAtom.set(new Set([...regeneratingAtom.get(), ...marked]))
+  let answer: Awaited<ReturnType<typeof ask>>
+  try {
+    answer = await ask(editor, req, opts)
+  } finally {
+    const still = new Set(regeneratingAtom.get())
+    for (const m of marked) still.delete(m)
+    regeneratingAtom.set(still)
+  }
+  const { result, usage } = answer
   // La nouvelle proposition prend la place de l'ancienne parmi ses frères.
   const place = childPlace(editor, head)
   return applyElementAnswer(editor, req, result, {

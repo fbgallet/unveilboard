@@ -14,6 +14,7 @@ import { isArgumentTree } from '@/lib/canvas/tree'
 import type { MapIssue } from '@/lib/map/check'
 import type { PromptTemplate } from '@/lib/prompts/template'
 import { aiSettingsOpenAtom } from './AiSettingsDialog'
+import { AiProgress, progressCallbacks, startProgress, type AiProgressState } from './AiProgress'
 import { PromptPicker, usePromptChoice } from './PromptPicker'
 
 /** Élément d'où partir (panneau ouvert), ou null. */
@@ -117,7 +118,7 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
   const [wholeMap, setWholeMap] = useState(true)
   const [ghost, setGhost] = useState(true)
   const [notes, setNotes] = useState(true)
-  const [run, setRun] = useState<{ chars: number; thinking: number; abort: AbortController } | null>(null)
+  const [run, setRun] = useState<{ progress: AiProgressState; abort: AbortController } | null>(null)
   const [pasting, setPasting] = useState(false)
   const [pasted, setPasted] = useState('')
   const [issues, setIssues] = useState<MapIssue[]>([])
@@ -167,12 +168,12 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
   async function ask() {
     reset()
     const abort = new AbortController()
-    setRun({ chars: 0, thinking: 0, abort })
+    setRun({ progress: startProgress(), abort })
     try {
       settle(
         await runElementRequest(editor, request(), {
           signal: abort.signal,
-          onText: (answer, thinking) => setRun((r) => r && { ...r, chars: answer.length, thinking }),
+          ...progressCallbacks((next) => setRun((r) => r && { ...r, progress: next(r.progress) })),
         })
       )
     } catch (e) {
@@ -304,9 +305,7 @@ function ElementAiView({ editor, id }: { editor: Editor; id: TLShapeId }) {
         </button>
         {run && (
           <>
-            <span className="text-xs text-zinc-600" role="status">
-              {!run.chars && run.thinking ? t.ai.thinking(run.thinking) : t.elementAi.running(run.chars)}
-            </span>
+            <AiProgress state={run.progress} />
             <button className="btn-xs" onClick={() => run.abort.abort()}>
               {t.ai.stop}
             </button>

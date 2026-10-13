@@ -1311,6 +1311,13 @@ export const fr: Messages = {
     thinking: (chars, s) => `L’IA réfléchit… ${chars.toLocaleString('fr')} caractères${s === undefined ? '' : ` · ${s} s`}`,
     done: (model, s) => `Réponse de ${model || 'l’IA'} en ${s} s : vérifiez-la ci-dessous, puis appliquez-la.`,
     retried: 'La première réponse avait des problèmes : l’IA a été invitée à la corriger.',
+    progress: {
+      thinking: (chars) => (chars ? `Réflexion (${chars.toLocaleString('fr')} caractères)` : 'Réflexion'),
+      writing: (n) => `Écriture : ${plural(n, 'élément', 'éléments')}`,
+      writingText: (chars) => `Écriture : ${chars.toLocaleString('fr')} caractères`,
+      repairing: 'Correction demandée',
+      seconds: (s) => `${s} s`,
+    },
     usage: (tokens, cost, estimated) =>
       `${tokens.toLocaleString('fr')} jetons${cost !== undefined ? ` · ${estimated ? '≈ ' : ''}${cost.toLocaleString('fr', { maximumFractionDigits: cost < 0.01 ? 4 : 2 })} $` : ''}`,
     errors: {
@@ -1435,7 +1442,7 @@ export const fr: Messages = {
       definition: { label: 'Définition', hint: 'Une définition de travail, tirée de l’analyse.' },
       questions: { label: 'Questions', hint: 'Quelles questions soulève-t-il ?' },
       difficulties: { label: 'Difficultés', hint: 'Qu’est-ce qui lui fait obstacle, ou le rend problématique ?' },
-      problem: { label: 'Problème', hint: 'Une question, avec deux réponses plausibles qui s’opposent, chacune rapidement mise en question.' },
+      problem: { label: 'Problème', hint: 'Une carte d’argument : une question, deux réponses plausibles qui s’opposent, et une objection qui met chacune en question.' },
       tensions: { label: 'Tensions', hint: 'Un paradoxe, deux exigences qui s’opposent.' },
       stakes: { label: 'Enjeux', hint: 'Pourquoi est-ce que ça compte ?' },
       examples: { label: 'Exemples', hint: 'Des cas concrets qui l’illustrent.' },
@@ -1467,6 +1474,7 @@ export const fr: Messages = {
       redo: 'Régénérer',
       redoAllHint: 'Remplacer les propositions encore en attente (ou ajoutées directement) par de nouvelles ; celles qui sont acceptées restent',
       redoOne: 'Régénérer cette suggestion',
+      regenerating: 'En cours de régénération…',
       redoOneTitle: (text) => `Régénérer « ${text} »`,
       redoAllTitle: 'Régénérer les propositions',
       redoPlaceholder: 'Facultatif : dans quelle direction ? (sinon, l’IA cherche mieux)',
@@ -1479,7 +1487,6 @@ export const fr: Messages = {
     resultLabel: 'Résultat',
     asSuggestions: 'En suggestions à accepter ou écarter',
     directly: 'Ajouter directement',
-    running: (chars) => `L’IA répond… ${chars.toLocaleString('fr')} caractères`,
     copied: 'Consigne copiée : collez-la dans votre IA, puis collez sa réponse ici.',
     addSuggestions: 'Ajouter en suggestions',
   },

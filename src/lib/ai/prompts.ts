@@ -289,7 +289,7 @@ function aimText(aim: PromptAim | undefined, focus: string): string {
   if (!aim?.text.trim()) return ''
   return `## The aim of this request: ${aim.label.trim()}
 
-The user asked for this kind of development from the element \`${focus}\`: add only elements of this kind (with their own children when the aim calls for it). The user's request, if any, only makes it more precise. The aim may be written in another language than the content.
+The user asked for this kind of development from the element \`${focus}\`: add only elements of this kind (with their own children when the aim calls for it). Where the aim says how to attach them (a separate tree, a link), this takes precedence over the general instructions above. The user's request, if any, only makes it more precise. The aim may be written in another language than the content.
 
 <aim>
 ${aim.text.trim()}

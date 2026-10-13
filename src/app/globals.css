@@ -389,6 +389,47 @@ body {
   /* tldraw pose l'opacité de la forme en style direct. */
   opacity: 0.45 !important;
 }
+/* Suggestion en cours de régénération : elle pulse, et son badge tourne. */
+.tl-shape.ai-suggestion.ai-regenerating {
+  animation: ai-regenerating 1.4s ease-in-out infinite;
+}
+/* L'opacité des suggestions est imposée (!important) : c'est un filtre qui pulse. */
+@keyframes ai-regenerating {
+  0%,
+  100% {
+    filter: opacity(1);
+  }
+  50% {
+    filter: opacity(0.3);
+  }
+}
+.suggestion-spinning {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-violet-300);
+  background: var(--color-white);
+  color: var(--color-violet-700);
+  font: 700 13px/20px system-ui, sans-serif;
+  animation: suggestion-spin 1s linear infinite;
+}
+@keyframes suggestion-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tl-shape.ai-suggestion.ai-regenerating {
+    animation: none;
+    filter: opacity(0.45);
+  }
+  .suggestion-spinning {
+    animation: none;
+  }
+}
 .suggestion-pill {
   margin-right: 6px;
   padding: 0 5px;

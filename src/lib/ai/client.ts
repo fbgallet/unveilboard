@@ -177,6 +177,8 @@ export interface CallOptions {
   signal?: AbortSignal
   /** Texte reçu jusque-là, et longueur de la réflexion reçue ; ('', 0) quand on recommence. */
   onText?: (text: string, thinking: number) => void
+  /** La réponse ne passait pas les contrôles : elle est renvoyée au modèle pour correction. */
+  onRepair?: () => void
 }
 
 /** Pannes passagères (flux coupé, silence) : on recommence une fois, depuis le début. */
@@ -195,7 +197,13 @@ async function withRetry<T>(call: () => Promise<T>, opts: CallOptions): Promise<
 
 /** Un envoi (et au besoin une demande de correction) au fournisseur choisi. */
 function sender(settings: AiSettings, input: PromptInput, opts: CallOptions) {
-  return (repair?: Repair) => withRetry(() => sendOnce(settings, input, opts, repair), opts)
+  return (repair?: Repair) => {
+    if (repair) {
+      opts.onRepair?.()
+      opts.onText?.('', 0)
+    }
+    return withRetry(() => sendOnce(settings, input, opts, repair), opts)
+  }
 }
 
 async function sendOnce(settings: AiSettings, input: PromptInput, opts: CallOptions, repair?: Repair): Promise<ChatResult> {

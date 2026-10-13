@@ -9,6 +9,7 @@ import { presetName, presetRole } from '@/lib/presets/labels'
 import { LINKED } from '@/lib/presets/presets'
 import { modeAtom, shapeClassesAtom, viewerAtom } from '@/lib/presentation/store'
 import { taskOf, toggleTask } from '@/lib/canvas/tasks'
+import { regeneratingAtom } from '@/lib/canvas/elementAi'
 
 /**
  * Enveloppe chaque forme rendue et lui ajoute les classes de présentation
@@ -30,9 +31,11 @@ export const PresShapeWrapper = forwardRef<HTMLDivElement, TLShapeWrapperProps>(
     )
     // Suggestion de l'IA en attente : estompée (et étiquetée « suggestion », voir NatureTag).
     const pending = props.shape.meta.suggestion ? 'ai-suggestion' : ''
+    // Suggestion en cours de régénération : elle pulse, jusqu'à être remplacée.
+    const regenerating = useValue('regenerating', () => regeneratingAtom.get().has(id), [id])
     // Case cochée : le texte est barré et estompé.
     const task = props.shape.type === 'geo' && !props.isBackground ? taskOf(props.shape.meta) : undefined
-    const className = [props.className, pres?.className, pending, task === 'done' && 'task-done'].filter(Boolean).join(' ')
+    const className = [props.className, pres?.className, pending, regenerating && 'ai-regenerating', task === 'done' && 'task-done'].filter(Boolean).join(' ')
     const style = pres?.style ? { ...props.style, ...pres.style } : props.style
     return (
       <DefaultShapeWrapper ref={ref} {...props} style={style} className={className || undefined}>
